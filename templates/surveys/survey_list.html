@@ -1,0 +1,29 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Surveys</title>
+    <!-- Load Bootstrap CSS for responsive styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Page header -->
+        <h1>Available Surveys</h1>
+        <!-- List of active surveys -->
+        <ul class="list-group">
+            {% for survey in surveys %}
+                <!-- Display each survey with title, description, and points -->
+                <li class="list-group-item">
+                    <a href="{% url 'surveys:survey_detail' survey.id %}">{{ survey.title }}</a>
+                    <p>{{ survey.description }}</p>
+                    <p>Points: {{ survey.points_reward }}</p>
+                </li>
+            {% empty %}
+                <!-- Message if no surveys are available -->
+                <li class="list-group-item">No surveys available.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>
