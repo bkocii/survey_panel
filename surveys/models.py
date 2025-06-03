@@ -1,7 +1,7 @@
 
 from django.db import models
 from users.models import CustomUser
-
+from django.contrib.auth.models import Group
 
 # Model for surveys, storing title, description, and status
 class Survey(models.Model):
@@ -10,10 +10,15 @@ class Survey(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)  # Auto-set creation timestamp
     is_active = models.BooleanField(default=True)  # Flag to show/hide survey
     points_reward = models.PositiveIntegerField(default=10)  # Points awarded for completion
+    groups = models.ManyToManyField(
+        Group,
+        related_name='surveys',
+        blank=True,
+        help_text='Groups allowed to access this survey. Leave blank for all users.'
+    )  # Groups assigned to this survey
 
     def __str__(self):
         return self.title  # String representation for admin interface
-
 
 # Model for survey questions, linked to a survey
 class Question(models.Model):
@@ -24,7 +29,6 @@ class Question(models.Model):
     def __str__(self):
         return self.text  # String representation for admin
 
-
 # Model for multiple-choice options, linked to a question
 class Choice(models.Model):
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)  # Link to parent question
@@ -32,7 +36,6 @@ class Choice(models.Model):
 
     def __str__(self):
         return self.text  # String representation for admin
-
 
 # Model for user responses, linking users, surveys, questions, and answers
 class Response(models.Model):

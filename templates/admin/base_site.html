@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {{ title }} | {{ site_title|default:"Django administration" }}
+{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name">{{ site_header|default:"Django administration" }}</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

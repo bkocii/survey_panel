@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Page title -->
+    <title>Register</title>
+    <!-- Load Bootstrap CSS for responsive styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Registration form header -->
+        <h1>Register</h1>
+        <!-- Registration form -->
+        <form method="post">
+            {% csrf_token %} <!-- CSRF token for security -->
+            {% for field in form %}
+                <div class="mb-3">
+                    <!-- Field label -->
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    <!-- Field input (e.g., text, password, select) -->
+                    {{ field }}
+                    <!-- Display field-specific errors -->
+                    {% if field.errors %}
+                        <div class="text-danger">
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                    <!-- Display field help text if available -->
+                    {% if field.help_text %}
+                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <!-- Display non-field form errors (e.g., password mismatch) -->
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+            <!-- Submit button -->
+            <button type="submit" class="btn btn-primary">Register</button>
+            <!-- Link to login page -->
+            <a href="{% url 'users:login' %}" class="btn btn-secondary">Login</a>
+        </form>
+    </div>
+</body>
+</html>

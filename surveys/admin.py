@@ -1,75 +1,71 @@
-
 from django.contrib import admin
+import nested_admin
 from .models import Survey, Question, Choice, Response
+from notifications.tasks import send_survey_notification
 
-
-# Inline admin for Questions to manage them within Survey admin
-class QuestionInline(admin.TabularInline):
-    model = Question
-    extra = 1  # Number of empty question forms to display
-    show_change_link = True  # Allow editing individual questions
-
-
-# Inline admin for Choices to manage them within Question admin
-class ChoiceInline(admin.TabularInline):
+# Inline admin for Choices, nested within Question
+class ChoiceInline(nested_admin.NestedTabularInline):
     model = Choice
-    extra = 2  # Number of empty choice forms to display
+    extra = 2  # Two empty choice forms
+    fields = ('text',)
+    show_change_link = True
 
+# Inline admin for Questions, nested within Survey
+class QuestionInline(nested_admin.NestedTabularInline):
+    model = Question
+    extra = 1  # One empty question form
+    fields = ('text', 'question_type')
+    show_change_link = True
+    inlines = [ChoiceInline]  # Nest ChoiceInline here
+
+# Inline admin for Responses, within Question (for QuestionAdmin)
+class ResponseInline(nested_admin.NestedTabularInline):
+    model = Response
+    extra = 1
+    fields = ('user', 'choice', 'text_answer', 'submitted_at')
+    readonly_fields = ('submitted_at',)
+    raw_id_fields = ('user',)
+    show_change_link = True
+    fk_name = 'question'
 
 # Admin configuration for Survey model
 @admin.register(Survey)
-class SurveyAdmin(admin.ModelAdmin):
-    # Fields to display in the admin list view
+class SurveyAdmin(nested_admin.NestedModelAdmin):
     list_display = ('title', 'is_active', 'points_reward', 'created_at')
-    # Fields to filter by
-    list_filter = ('is_active', 'created_at')
-    # Fields to search by
+    list_filter = ('is_active', 'created_at', 'groups')
     search_fields = ('title', 'description')
-    # Include inline Questions
     inlines = [QuestionInline]
-    # Enable sorting by these fields
     ordering = ('-created_at',)
+    actions = ['send_notifications']
 
+    def send_notifications(self, request, queryset):
+        for survey in queryset:
+            send_survey_notification.delay(survey.id)
+        self.message_user(request, f"Notifications queued for {queryset.count()} survey(s).")
+    send_notifications.short_description = "Send notifications to assigned groups"
 
 # Admin configuration for Question model
 @admin.register(Question)
-class QuestionAdmin(admin.ModelAdmin):
-    # Fields to display in the admin list view
+class QuestionAdmin(nested_admin.NestedModelAdmin):
     list_display = ('text', 'survey', 'question_type')
-    # Fields to filter by
     list_filter = ('survey', 'question_type')
-    # Fields to search by
     search_fields = ('text',)
-    # Include inline Choices
-    inlines = [ChoiceInline]
-    # Enable sorting by survey
+    inlines = [ChoiceInline, ResponseInline]
     ordering = ('survey',)
-
 
 # Admin configuration for Choice model
 @admin.register(Choice)
 class ChoiceAdmin(admin.ModelAdmin):
-    # Fields to display in the admin list view
     list_display = ('text', 'question')
-    # Fields to filter by
     list_filter = ('question__survey',)
-    # Fields to search by
     search_fields = ('text',)
-    # Enable sorting by question
     ordering = ('question',)
-
 
 # Admin configuration for Response model
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):
-    # Fields to display in the admin list view
     list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at')
-    # Fields to filter by
     list_filter = ('survey', 'question', 'submitted_at')
-    # Fields to search by
     search_fields = ('user__username', 'survey__title', 'question__text', 'text_answer')
-    # Enable sorting by submission date
     ordering = ('-submitted_at',)
-    # Make fields read-only to prevent accidental changes
     readonly_fields = ('submitted_at',)
-

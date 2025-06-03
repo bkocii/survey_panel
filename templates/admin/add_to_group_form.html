@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}
+    {{ title }} | {{ site_title|default:"Django administration" }}
+{% endblock %}
+
+{% block content_subtitle %}
+    {# Override to prevent subtitle lookup #}
+{% endblock %}
+
+{% block extrahead %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.querySelector('form');
+            form.addEventListener('submit', (e) => {
+                console.log('Form submitted with data:', new FormData(form));
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    <p>{% trans "Selected users" %}:</p>
+    <ul>
+        {% for user in users %}
+            <li>{{ user.username }}</li>
+        {% endfor %}
+    </ul>
+    {% if form.errors %}
+        <ul class="errorlist">
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <form method="post" action=".">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div style="margin-top: 10px;">
+            <input type="submit" name="apply" value="{% trans 'Add to Group' %}" class="default" style="padding: 5px 10px; font-weight: bold;">
+            <input type="submit" name="cancel" value="{% trans 'Cancel' %}" formnovalidate style="padding: 5px 10px;">
+        </div>
+    </form>
+{% endblock %}
