@@ -1,0 +1,20 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+
+<form method="post">{% csrf_token %}
+  {{ form.as_p }}
+  <input type="submit" value="Add Users" class="default">
+</form>
+    <br>
+
+<p><strong>Users selected:</strong></p>
+<ul>
+  {% for user in users %}
+    <li>{{ user.username }} ({{ user.email }})</li>
+  {% endfor %}
+</ul>
+<br>
+<a class="deletelink" href="..">Cancel</a>
+{% endblock %}
