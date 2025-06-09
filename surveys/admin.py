@@ -7,7 +7,8 @@ from notifications.tasks import send_survey_notification
 class ChoiceInline(nested_admin.NestedTabularInline):
     model = Choice
     extra = 2  # Two empty choice forms
-    fields = ('text',)
+    fields = ('text', 'next_question')
+    fk_name = 'question'  # 🔧 Tells Django which FK relates to the parent
     show_change_link = True
 
 # Inline admin for Questions, nested within Survey
@@ -60,6 +61,7 @@ class ChoiceAdmin(admin.ModelAdmin):
     list_filter = ('question__survey',)
     search_fields = ('text',)
     ordering = ('question',)
+
 
 # Admin configuration for Response model
 @admin.register(Response)

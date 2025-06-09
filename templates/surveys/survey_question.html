@@ -1,0 +1,13 @@
+<h2>{{ survey.title }}</h2>
+<p>{{ question.text }}</p>
+<form method="post">
+    {% csrf_token %}
+    {% if question.question_type == 'MC' %}
+        {% for choice in question.choices.all %}
+            <label><input type="radio" name="answer" value="{{ choice.id }}"> {{ choice.text }}</label><br>
+        {% endfor %}
+    {% else %}
+        <textarea name="answer" required></textarea>
+    {% endif %}
+    <button type="submit">Next</button>
+</form>

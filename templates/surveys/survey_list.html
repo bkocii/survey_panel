@@ -15,7 +15,7 @@
             {% for survey in surveys %}
                 <!-- Display each survey with title, description, and points -->
                 <li class="list-group-item">
-                    <a href="{% url 'surveys:survey_detail' survey.id %}">{{ survey.title }}</a>
+                    <a href="{% url 'surveys:survey_start' survey.id %}">{{ survey.title }}</a>
                     <p>{{ survey.description }}</p>
                     <p>Points: {{ survey.points_reward }}</p>
                 </li>

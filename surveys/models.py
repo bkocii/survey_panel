@@ -33,6 +33,14 @@ class Question(models.Model):
 class Choice(models.Model):
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)  # Link to parent question
     text = models.CharField(max_length=200)  # Choice text
+    # Add this to your Choice model
+    next_question = models.ForeignKey(
+        'Question',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="The next question to go to if this choice is selected. Leave blank to go to the next in order."
+    )
 
     def __str__(self):
         return self.text  # String representation for admin
