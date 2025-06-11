@@ -12,4 +12,7 @@ urlpatterns = [
     path('<int:survey_id>/', views.survey_detail, name='survey_detail'),
     path('<int:survey_id>/question/', views.survey_question, name='survey_start'),
     path('<int:survey_id>/question/<int:question_id>/', views.survey_question, name='survey_question'),
+    path('<int:survey_id>/submit/', views.survey_submit, name='survey_submit'),
+    path('<int:survey_id>/already-submitted/', views.already_submitted, name='already_submitted'),
+
 ]

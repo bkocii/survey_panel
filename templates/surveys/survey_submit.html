@@ -1,0 +1,20 @@
+{#{% extends "base.html" %}  {# Or "admin/base_site.html" if inside Django admin context #}
+{#{% load static %}#}
+{##}
+{#{% block content %}#}
+<div class="container" style="max-width: 700px; margin: auto; padding: 2rem; text-align: center;">
+
+  <h1>Survey Submitted</h1>
+
+  <p>Thank you for completing the survey <strong>"{{ survey.title }}"</strong>!</p>
+
+  {% if rewarded %}
+    <p>🎉 You have been awarded <strong>{{ rewarded }}</strong> points.</p>
+  {% endif %}
+
+  <a href="{% url 'surveys:survey_list' %}" class="button" style="margin-top: 2rem; display: inline-block; padding: 0.5rem 1rem; background: #4CAF50; color: white; border-radius: 4px; text-decoration: none;">
+    Back to Surveys
+  </a>
+
+</div>
+{#{% endblock %}#}

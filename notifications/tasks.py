@@ -17,7 +17,7 @@ def send_survey_notification(survey_id):
     messages = []
     for user in users:
         if user.email:  # Only include users with email addresses
-            survey_url = settings.SITE_URL + reverse('surveys:survey_detail', args=[survey.id])  # Generate survey URL
+            survey_url = settings.SITE_URL + reverse('surveys:survey_start', args=[survey.id])  # Generate survey URL
             messages.append((
                 f'New Survey Available: {survey.title}',  # Email subject
                 f'Participate in our new survey: {survey.description}\n'

@@ -1,0 +1,10 @@
+{#{% extends "base.html" %}#}
+
+{% block content %}
+<div class="container mt-5 text-center">
+    <h2>You've already completed this survey</h2>
+    <p>Thank you for your participation in <strong>{{ survey.title }}</strong>.</p>
+
+    <a href="{% url 'surveys:survey_list' %}" class="btn btn-primary mt-3">Back to Survey List</a>
+</div>
+{% endblock %}

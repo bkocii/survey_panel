@@ -45,8 +45,20 @@ class Choice(models.Model):
     def __str__(self):
         return self.text  # String representation for admin
 
+class Submission(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    survey = models.ForeignKey('Survey', on_delete=models.CASCADE)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'survey')  # Prevent duplicates
+
+    def __str__(self):
+        return f"{self.user} submitted {self.survey}"
+
 # Model for user responses, linking users, surveys, questions, and answers
 class Response(models.Model):
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='responses', null=True, blank=True)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # User who submitted response
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE)  # Associated survey
     question = models.ForeignKey(Question, on_delete=models.CASCADE)  # Associated question
@@ -56,3 +68,5 @@ class Response(models.Model):
 
     class Meta:
         unique_together = ('user', 'survey', 'question')  # Ensure one response per user per question per survey
+
+

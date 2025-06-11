@@ -1,6 +1,6 @@
 from django.contrib import admin
 import nested_admin
-from .models import Survey, Question, Choice, Response
+from .models import Survey, Question, Choice, Response, Submission
 from notifications.tasks import send_survey_notification
 
 # Inline admin for Choices, nested within Question
@@ -66,8 +66,14 @@ class ChoiceAdmin(admin.ModelAdmin):
 # Admin configuration for Response model
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):
-    list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at')
-    list_filter = ('survey', 'question', 'submitted_at')
+    list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at', 'submission')
+    list_filter = ('survey', 'question', 'submitted_at', 'submission')
     search_fields = ('user__username', 'survey__title', 'question__text', 'text_answer')
     ordering = ('-submitted_at',)
     readonly_fields = ('submitted_at',)
+
+@admin.register(Submission)
+class SubmissionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'survey', 'submitted_at')
+    list_filter = ('survey', 'submitted_at')
+    search_fields = ('user__username', 'survey__title')
