@@ -16,11 +16,12 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-
+from . import views
 
 # Project-level URL configuration
 urlpatterns = [
     # Admin interface at /admin/
+    path('', views.home, name='home'),
     path('admin/', admin.site.urls),
     # Include surveys app URLs at /surveys/
     path('surveys/', include('surveys.urls')),
