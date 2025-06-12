@@ -88,13 +88,27 @@ def survey_question(request, survey_id, question_id=None):
 
         # Avoid duplicate
         if not Response.objects.filter(user=request.user, survey=survey, question=question).exists():
-            if question.question_type == 'MC':
-                choice = Choice.objects.get(id=answer)
-                Response.objects.create(user=request.user, survey=survey, question=question, choice=choice)
+            if question.question_type in ['MC', 'RATING', 'DROPDOWN']:
+                try:
+                    choice = Choice.objects.get(id=answer)
+                except Choice.DoesNotExist:
+                    return HttpResponseBadRequest("Invalid choice selected.")
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    choice=choice,
+                )
                 next_q = choice.next_question
-            else:
-                Response.objects.create(user=request.user, survey=survey, question=question, text_answer=answer)
+            elif question.question_type == 'TEXT':
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=answer,
+                )
                 next_q = None
+
         else:
             next_q = None
 
@@ -118,7 +132,7 @@ def survey_question(request, survey_id, question_id=None):
             if not Submission.objects.filter(user=request.user, survey=survey).exists():
                 submission = Submission.objects.create(user=request.user, survey=survey)
                 Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(submission=submission)
-                request.user.add_points(survey.points_reward)
+                # request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
     return render(request, 'surveys/survey_question.html', {
