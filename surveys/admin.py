@@ -15,7 +15,7 @@ class ChoiceInline(nested_admin.NestedTabularInline):
 class QuestionInline(nested_admin.NestedTabularInline):
     model = Question
     extra = 1  # One empty question form
-    fields = ('text', 'question_type')
+    fields = ('text', 'question_type', 'next_question')
     show_change_link = True
     inlines = [ChoiceInline]  # Nest ChoiceInline here
 

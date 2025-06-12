@@ -25,7 +25,7 @@ class Question(models.Model):
     survey = models.ForeignKey(Survey, related_name='questions', on_delete=models.CASCADE)  # Link to parent survey
     text = models.CharField(max_length=500)  # Question text
     question_type = models.CharField(max_length=20, choices=[('MC', 'Multiple Choice'), ('TEXT', 'Text')])  # Type of question
-
+    next_question = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
     def __str__(self):
         return self.text  # String representation for admin
 

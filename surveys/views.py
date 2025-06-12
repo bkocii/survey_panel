@@ -99,7 +99,12 @@ def survey_question(request, survey_id, question_id=None):
             next_q = None
 
         # Get next question in order if not defined
-        if not next_q:
+        if question.question_type == 'MC' and choice.next_question:
+            next_q = choice.next_question
+        elif question.next_question:
+            next_q = question.next_question
+        else:
+            # fallback: next in sequence
             try:
                 idx = all_questions.index(question)
                 next_q = all_questions[idx + 1]
