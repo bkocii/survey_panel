@@ -83,6 +83,11 @@ def survey_question(request, survey_id, question_id=None):
             request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
+        # ⏳ Add progress tracking
+    current_index = all_questions.index(question) + 1
+    total_questions = len(all_questions)
+    progress_percent = int((current_index / total_questions) * 100)
+
     if request.method == 'POST':
         answer = request.POST.get('answer')
 
@@ -138,6 +143,9 @@ def survey_question(request, survey_id, question_id=None):
     return render(request, 'surveys/survey_question.html', {
         'survey': survey,
         'question': question,
+        'current_index': current_index,
+        'total_questions': total_questions,
+        'progress_percent': progress_percent,
     })
 
 

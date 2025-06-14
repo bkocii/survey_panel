@@ -40,6 +40,15 @@
 
         <button type="submit" class="btn btn-primary mt-3">Next</button>
     </form>
+    <div class="progress mb-3">
+        <div class="progress-bar" role="progressbar"
+           style="width: {{ progress_percent }}%;"
+           aria-valuenow="{{ progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+        {{ current_index }} of {{ total_questions }}
+        </div>
+    </div>
 </div>
+
+
 {% endblock %}
 

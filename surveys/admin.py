@@ -67,7 +67,7 @@ class ChoiceAdmin(admin.ModelAdmin):
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):
     list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at', 'submission')
-    list_filter = ('survey', 'question', 'submitted_at', 'submission')
+    list_filter = ('survey', 'question', 'submitted_at', 'submission', 'survey__groups', 'submitted_at')
     search_fields = ('user__username', 'survey__title', 'question__text', 'text_answer')
     ordering = ('-submitted_at',)
     readonly_fields = ('submitted_at',)
