@@ -1,7 +1,43 @@
 from django.contrib import admin
 import nested_admin
+from datetime import date
+import csv
+from django.http import HttpResponse
 from .models import Survey, Question, Choice, Response, Submission
 from notifications.tasks import send_survey_notification
+
+
+# Age range filter using date_of_birth
+class AgeRangeFilter(admin.SimpleListFilter):
+    title = 'Age Range'
+    parameter_name = 'age_range'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('under18', 'Under 18'),
+            ('18-30', '18 to 30'),
+            ('31-50', '31 to 50'),
+            ('51+', '51 and above'),
+        ]
+
+    def queryset(self, request, queryset):
+        today = date.today()
+
+        def calc_birthdate(years):
+            return date(today.year - years, today.month, today.day)
+
+        if self.value() == 'under18':
+            return queryset.filter(user__date_of_birth__gt=calc_birthdate(18))
+        elif self.value() == '18-30':
+            return queryset.filter(user__date_of_birth__lte=calc_birthdate(18),
+                                   user__date_of_birth__gt=calc_birthdate(30))
+        elif self.value() == '31-50':
+            return queryset.filter(user__date_of_birth__lte=calc_birthdate(30),
+                                   user__date_of_birth__gt=calc_birthdate(50))
+        elif self.value() == '51+':
+            return queryset.filter(user__date_of_birth__lte=calc_birthdate(50))
+
+        return queryset
 
 # Inline admin for Choices, nested within Question
 class ChoiceInline(nested_admin.NestedTabularInline):
@@ -67,13 +103,44 @@ class ChoiceAdmin(admin.ModelAdmin):
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):
     list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at', 'submission')
-    list_filter = ('survey', 'question', 'submitted_at', 'submission', 'survey__groups', 'submitted_at')
+    list_filter = ('survey',
+                   'question',
+                   'submitted_at',
+                   'submission',
+                   'survey__groups',
+                   'submitted_at',
+                   'user__gender',
+                   AgeRangeFilter,)
     search_fields = ('user__username', 'survey__title', 'question__text', 'text_answer')
     ordering = ('-submitted_at',)
     readonly_fields = ('submitted_at',)
 
+    actions = ['export_as_csv']
+
+    def export_as_csv(self, request, queryset):
+        meta = self.model._meta
+        field_names = ['user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at']
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename=responses.csv'
+        writer = csv.writer(response)
+
+        writer.writerow(field_names)
+        for obj in queryset:
+            writer.writerow([
+                obj.user.username,
+                obj.survey.title,
+                obj.question.text,
+                obj.choice.text if obj.choice else '',
+                obj.text_answer,
+                obj.submitted_at,
+            ])
+        return response
+
+    export_as_csv.short_description = "Export selected responses as CSV"
+
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin):
     list_display = ('user', 'survey', 'submitted_at')
-    list_filter = ('survey', 'submitted_at')
+    list_filter = ('user', 'survey', 'submitted_at')
     search_fields = ('user__username', 'survey__title')
