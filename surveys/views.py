@@ -105,6 +105,23 @@ def survey_question(request, survey_id, question_id=None):
                     choice=choice,
                 )
                 next_q = choice.next_question
+
+            elif question.question_type == 'MATRIX':
+                for row in question.matrix_rows.all():
+                    column_id = request.POST.get(f'matrix_{row.id}')
+                    if column_id:
+                        try:
+                            column = question.matrix_columns.get(id=column_id)
+                            Response.objects.create(
+                                user=request.user,
+                                survey=survey,
+                                question=question,
+                                matrix_row=row,
+                                matrix_column=column
+                            )
+                        except MatrixColumn.DoesNotExist:
+                            continue
+
             elif question.question_type == 'TEXT':
                 Response.objects.create(
                     user=request.user,
@@ -115,10 +132,12 @@ def survey_question(request, survey_id, question_id=None):
                 next_q = None
 
         else:
+            print('-----------------ok')
             next_q = None
 
+
         # Get next question in order if not defined
-        if question.question_type == 'MC' and choice.next_question:
+        if question.question_type in ['MC', 'RATING', 'DROPDOWN'] and choice.next_question:
             next_q = choice.next_question
         elif question.next_question:
             next_q = question.next_question
@@ -140,12 +159,20 @@ def survey_question(request, survey_id, question_id=None):
                 # request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
+    # Get previous response for the current question (if any)
+    previous_response = Response.objects.filter(
+        user=request.user,
+        survey=survey,
+        question=question
+    ).first()
+
     return render(request, 'surveys/survey_question.html', {
         'survey': survey,
         'question': question,
         'current_index': current_index,
         'total_questions': total_questions,
         'progress_percent': progress_percent,
+        'previous_response': previous_response,
     })
 
 

@@ -25,7 +25,10 @@ QUESTION_TYPES = [
     ('TEXT', 'Text'),
     ('RATING', 'Rating Scale'),
     ('DROPDOWN', 'Dropdown'),
+    ('MATRIX', 'Matrix'),
+
 ]
+
 
 # Model for survey questions, linked to a survey
 class Question(models.Model):
@@ -35,6 +38,22 @@ class Question(models.Model):
     next_question = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
     def __str__(self):
         return self.text  # String representation for admin
+
+class MatrixRow(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_rows')
+    text = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.text
+
+class MatrixColumn(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_columns')
+    label = models.CharField(max_length=50)
+    value = models.IntegerField()  # e.g., 1–5
+
+    def __str__(self):
+        return f"{self.label} ({self.value})"
+
 
 # Model for multiple-choice options, linked to a question
 class Choice(models.Model):
@@ -68,12 +87,14 @@ class Response(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='responses', null=True, blank=True)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # User who submitted response
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE)  # Associated survey
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)  # Associated question
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='responses')  # Associated question
     choice = models.ForeignKey(Choice, null=True, blank=True, on_delete=models.CASCADE)  # Selected choice (for MC questions)
     text_answer = models.TextField(blank=True)  # Text answer (for text questions)
     submitted_at = models.DateTimeField(auto_now_add=True)  # Timestamp of submission
+    matrix_row = models.ForeignKey(MatrixRow, null=True, blank=True, on_delete=models.CASCADE)
+    matrix_column = models.ForeignKey(MatrixColumn, null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('user', 'survey', 'question')  # Ensure one response per user per question per survey
+        unique_together = ('user', 'survey', 'question', 'matrix_row')  # Ensure one response per user per question per survey
 
 

@@ -36,6 +36,34 @@
 
         {% elif question.question_type == 'TEXT' %}
             <textarea class="form-control" name="answer" rows="4" required></textarea>
+
+
+        {% elif question.question_type == 'MATRIX' %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th></th>
+                        {% for column in question.matrix_columns.all %}
+                            <th class="text-center">{{ column.label }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in question.matrix_rows.all %}
+                        <tr>
+                            <td>{{ row.text }}</td>
+                            {% for column in question.matrix_columns.all %}
+                                <td class="text-center">
+                                    <input type="radio"
+                                           name="matrix_{{ row.id }}"
+                                           value="{{ column.id }}"
+                                           required>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% endif %}
 
         <button type="submit" class="btn btn-primary mt-3">Next</button>

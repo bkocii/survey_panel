@@ -3,7 +3,7 @@ import nested_admin
 from datetime import date
 import csv
 from django.http import HttpResponse
-from .models import Survey, Question, Choice, Response, Submission
+from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn
 from notifications.tasks import send_survey_notification
 
 
@@ -39,6 +39,14 @@ class AgeRangeFilter(admin.SimpleListFilter):
 
         return queryset
 
+class MatrixRowInline(nested_admin.NestedTabularInline):
+    model = MatrixRow
+    extra = 1
+
+class MatrixColumnInline(nested_admin.NestedTabularInline):
+    model = MatrixColumn
+    extra = 1
+
 # Inline admin for Choices, nested within Question
 class ChoiceInline(nested_admin.NestedTabularInline):
     model = Choice
@@ -53,7 +61,7 @@ class QuestionInline(nested_admin.NestedTabularInline):
     extra = 1  # One empty question form
     fields = ('text', 'question_type', 'next_question')
     show_change_link = True
-    inlines = [ChoiceInline]  # Nest ChoiceInline here
+    inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]  # Nest ChoiceInline here
 
 # Inline admin for Responses, within Question (for QuestionAdmin)
 class ResponseInline(nested_admin.NestedTabularInline):
