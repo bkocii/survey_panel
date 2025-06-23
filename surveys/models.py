@@ -10,6 +10,7 @@ class Survey(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)  # Auto-set creation timestamp
     is_active = models.BooleanField(default=True)  # Flag to show/hide survey
     points_reward = models.PositiveIntegerField(default=10)  # Points awarded for completion
+    time_limit_minutes = models.PositiveIntegerField(null=True, blank=True)  # e.g. 10 mins
     groups = models.ManyToManyField(
         Group,
         related_name='surveys',
@@ -26,7 +27,7 @@ QUESTION_TYPES = [
     ('RATING', 'Rating Scale'),
     ('DROPDOWN', 'Dropdown'),
     ('MATRIX', 'Matrix'),
-
+    ('MEDIA_UPLOAD', 'Photo/Video Upload'),
 ]
 
 
@@ -74,6 +75,8 @@ class Choice(models.Model):
 class Submission(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     survey = models.ForeignKey('Survey', on_delete=models.CASCADE)
+    started_at = models.DateTimeField(auto_now_add=True)
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)  # Time taken to complete
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -93,6 +96,7 @@ class Response(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True)  # Timestamp of submission
     matrix_row = models.ForeignKey(MatrixRow, null=True, blank=True, on_delete=models.CASCADE)
     matrix_column = models.ForeignKey(MatrixColumn, null=True, blank=True, on_delete=models.CASCADE)
+    media_upload = models.FileField(upload_to='uploads/', null=True, blank=True)
 
     class Meta:
         unique_together = ('user', 'survey', 'question', 'matrix_row')  # Ensure one response per user per question per survey

@@ -5,19 +5,19 @@
     <h2>{{ survey.title }}</h2>
     <p>{{ question.text }}</p>
 
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
         {% if question.question_type == 'MC' %}
             {% for choice in question.choices.all %}
                 <label class="form-label">
-                    <input type="radio" name="answer" value="{{ choice.id }}" required>
+                    <input type="radio" name="answer" value="{{ choice.id }}" required onchange="toggleOther(this)">
                     {{ choice.text }}
                 </label><br>
             {% endfor %}
 
         {% elif question.question_type == 'DROPDOWN' %}
-            <select name="answer" class="form-select" required>
+            <select name="answer" class="form-select" required onchange="toggleOther(this)">
                 <option value="" disabled selected>-- Select an option --</option>
                 {% for choice in question.choices.all %}
                     <option value="{{ choice.id }}">{{ choice.text }}</option>
@@ -28,11 +28,16 @@
             <div class="form-check form-check-inline">
                 {% for choice in question.choices.all %}
                     <label class="form-check-label me-3">
-                        <input type="radio" name="answer" value="{{ choice.id }}" required>
+                        <input type="radio" name="answer" value="{{ choice.id }}" required onchange="toggleOther(this)">
                         {{ choice.text }}
                     </label>
                 {% endfor %}
             </div>
+
+        {% elif question.question_type == 'MEDIA_UPLOAD' %}
+            <label for="upload">Upload your photo or video:</label>
+            <input type="file" name="answer_file" class="form-control" required>
+
 
         {% elif question.question_type == 'TEXT' %}
             <textarea class="form-control" name="answer" rows="4" required></textarea>
@@ -66,6 +71,30 @@
             </table>
         {% endif %}
 
+                <!-- “Other” input field -->
+        <div id="other-input" style="display: none;" class="mt-3">
+            <label for="other_text">Please specify:</label>
+            <input type="text" name="other_text" id="other_text" class="form-control">
+        </div>
+
+        <script>
+        function toggleOther(input) {
+            const otherDiv = document.getElementById('other-input');
+            const selectedText = (
+                input.tagName === 'SELECT'
+                    ? input.options[input.selectedIndex].text
+                    : input.nextSibling.textContent || ''
+            ).trim().toLowerCase();
+
+            if (selectedText === 'other') {
+                otherDiv.style.display = 'block';
+            } else {
+                otherDiv.style.display = 'none';
+                document.getElementById('other_text').value = '';
+            }
+        }
+        </script>
+
         <button type="submit" class="btn btn-primary mt-3">Next</button>
     </form>
     <div class="progress mb-3">
@@ -75,6 +104,24 @@
         {{ current_index }} of {{ total_questions }}
         </div>
     </div>
+    {% if time_left %}
+        <div id="survey-timer" class="alert alert-warning">
+            Time left: <span id="survey-time">{{ time_left }}</span> seconds
+        </div>
+        <script>
+          let surveyTime = {{ time_left }};
+          const surveyInterval = setInterval(() => {
+            surveyTime--;
+            document.getElementById("survey-time").innerText = surveyTime;
+            if (surveyTime <= 0) {
+              clearInterval(surveyInterval);
+              alert("Time is up! Submitting your survey.");
+              window.location.href = "{% url 'surveys:survey_submit' survey.id %}";
+            }
+          }, 1000);
+        </script>
+    {% endif %}
+
 </div>
 
 

@@ -1,7 +1,8 @@
-
+from django.utils.timezone import now
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import Survey, Response, Choice, Question, Submission
 from .forms import SurveyResponseForm
 from django.db import models
@@ -66,6 +67,31 @@ def survey_question(request, survey_id, question_id=None):
     if survey.groups.exists() and not survey.groups.filter(id__in=request.user.groups.all()).exists():
         return HttpResponseForbidden("Access denied.")
 
+        # ⏱ Store or retrieve survey start time
+    session_key = f"survey_{survey.id}_start_time"
+    if session_key not in request.session:
+        request.session[session_key] = now().isoformat()
+    start_time = now().fromisoformat(request.session[session_key])
+
+    # ⏳ Enforce time limit
+    if survey.time_limit_minutes:
+        time_passed = (now() - start_time).total_seconds()
+        max_time = survey.time_limit_minutes * 60
+        time_left = int(max(0, max_time - time_passed))
+
+        if time_left <= 0:
+            # Clear session start time
+            request.session.pop(session_key, None)
+            # Submit survey early
+            if not Submission.objects.filter(user=request.user, survey=survey).exists():
+                submission = Submission.objects.create(user=request.user, survey=survey)
+                Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(
+                    submission=submission)
+                request.user.add_points(survey.points_reward)
+            return redirect('surveys:survey_submit', survey_id=survey.id)
+    else:
+        time_left = None
+
     # All ordered questions
     all_questions = list(survey.questions.order_by('id'))
 
@@ -98,11 +124,15 @@ def survey_question(request, survey_id, question_id=None):
                     choice = Choice.objects.get(id=answer)
                 except Choice.DoesNotExist:
                     return HttpResponseBadRequest("Invalid choice selected.")
+
+                custom_other = request.POST.get('other_text', '').strip()
+
                 Response.objects.create(
                     user=request.user,
                     survey=survey,
                     question=question,
                     choice=choice,
+                    text_answer=custom_other if choice.text.lower() == 'other' else '',
                 )
                 next_q = choice.next_question
 
@@ -121,6 +151,19 @@ def survey_question(request, survey_id, question_id=None):
                             )
                         except MatrixColumn.DoesNotExist:
                             continue
+
+            elif question.question_type == 'MEDIA_UPLOAD':
+                uploaded_file = request.FILES.get('answer_file')
+                allowed_types = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime']
+                if uploaded_file.content_type not in allowed_types:
+                    return HttpResponseBadRequest("Invalid file type.")
+                if uploaded_file:
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        media_upload=uploaded_file,
+                    )
 
             elif question.question_type == 'TEXT':
                 Response.objects.create(
@@ -154,9 +197,12 @@ def survey_question(request, survey_id, question_id=None):
         else:
             # Last question answered → create submission & link responses
             if not Submission.objects.filter(user=request.user, survey=survey).exists():
-                submission = Submission.objects.create(user=request.user, survey=survey)
+                duration = int((now() - start_time).total_seconds())
+                submission = Submission.objects.create(user=request.user, survey=survey, duration_seconds=duration)
                 Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(submission=submission)
                 # request.user.add_points(survey.points_reward)
+                # Clean up session key
+                request.session.pop(session_key, None)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
     # Get previous response for the current question (if any)
@@ -173,6 +219,7 @@ def survey_question(request, survey_id, question_id=None):
         'total_questions': total_questions,
         'progress_percent': progress_percent,
         'previous_response': previous_response,
+        'time_left': time_left,
     })
 
 

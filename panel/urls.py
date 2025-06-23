@@ -17,6 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
+
 
 # Project-level URL configuration
 urlpatterns = [
@@ -27,4 +30,5 @@ urlpatterns = [
     path('surveys/', include('surveys.urls')),
     # Include users app URLs (optional, for future user-related views)
     path('users/', include('users.urls')),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

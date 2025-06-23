@@ -2,9 +2,14 @@ from django.contrib import admin
 import nested_admin
 from datetime import date
 import csv
+from django.utils.html import format_html
 from django.http import HttpResponse
 from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn
 from notifications.tasks import send_survey_notification
+import os
+import zipfile
+from django.utils.text import slugify
+from io import BytesIO, StringIO
 
 
 # Age range filter using date_of_birth
@@ -39,13 +44,15 @@ class AgeRangeFilter(admin.SimpleListFilter):
 
         return queryset
 
+class MatrixColumnInline(nested_admin.NestedTabularInline):
+    model = MatrixColumn
+    extra = 1
+
+
 class MatrixRowInline(nested_admin.NestedTabularInline):
     model = MatrixRow
     extra = 1
 
-class MatrixColumnInline(nested_admin.NestedTabularInline):
-    model = MatrixColumn
-    extra = 1
 
 # Inline admin for Choices, nested within Question
 class ChoiceInline(nested_admin.NestedTabularInline):
@@ -110,7 +117,7 @@ class ChoiceAdmin(admin.ModelAdmin):
 # Admin configuration for Response model
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):
-    list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at', 'submission')
+    list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'media_preview', 'submitted_at')
     list_filter = ('survey',
                    'question',
                    'submitted_at',
@@ -121,9 +128,9 @@ class ResponseAdmin(admin.ModelAdmin):
                    AgeRangeFilter,)
     search_fields = ('user__username', 'survey__title', 'question__text', 'text_answer')
     ordering = ('-submitted_at',)
-    readonly_fields = ('submitted_at',)
+    readonly_fields = ('submitted_at', 'media_preview')
 
-    actions = ['export_as_csv']
+    actions = ['export_as_csv', 'download_media_zip']
 
     def export_as_csv(self, request, queryset):
         meta = self.model._meta
@@ -147,8 +154,68 @@ class ResponseAdmin(admin.ModelAdmin):
 
     export_as_csv.short_description = "Export selected responses as CSV"
 
+    def media_preview(self, obj):
+        if obj.media_upload:
+            url = obj.media_upload.url
+            if obj.media_upload.name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                return format_html(f'<img src="{url}" width="100" />')
+            elif obj.media_upload.name.lower().endswith(('.mp4', '.mov', '.webm')):
+                return format_html(f'''
+                    <video width="200" controls>
+                        <source src="{url}">
+                        Your browser does not support the video tag.
+                    </video>
+                ''')
+            else:
+                return format_html(f'<a href="{url}">Download</a>')
+        return "-"
+
+    media_preview.short_description = "Media"
+
+    def download_media_zip(self, request, queryset):
+        zip_buffer = BytesIO()
+        zip_file = zipfile.ZipFile(zip_buffer, 'w')
+
+        # Prepare CSV metadata
+        csv_text_io  = StringIO()
+        csv_writer = csv.writer(csv_text_io)
+        csv_writer.writerow(['User', 'Survey', 'Question', 'Filename', 'Timestamp'])
+
+        for response in queryset:
+            if response.media_upload:
+                path = response.media_upload.path
+                filename = os.path.basename(path)
+
+                # Add file to ZIP
+                try:
+                    zip_file.write(path, arcname=f"{response.user.username}_{slugify(filename)}")
+                except FileNotFoundError:
+                    continue  # Skip if file missing
+                # Add CSV row
+                csv_writer.writerow([
+                    response.user.username,
+                    response.survey.title,
+                    response.question.text,
+                    filename,
+                    response.submitted_at,
+                ])
+
+            # Add CSV file to ZIP
+            zip_file.writestr("metadata.csv", csv_text_io.getvalue())
+
+            zip_file.close()
+            zip_buffer.seek(0)
+
+            return HttpResponse(
+                zip_buffer.getvalue(),
+                content_type='application/zip',
+                headers={'Content-Disposition': 'attachment; filename="media_responses.zip"'},
+            )
+
+        download_media_zip.short_description = "Download selected media + metadata as ZIP"
+
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'survey', 'submitted_at')
-    list_filter = ('user', 'survey', 'submitted_at')
+    list_display = ('user', 'survey', 'submitted_at', 'duration_seconds')
+    list_filter = ('user', 'survey', 'submitted_at', 'duration_seconds')
     search_fields = ('user__username', 'survey__title')
