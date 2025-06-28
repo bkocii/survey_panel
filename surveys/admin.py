@@ -1,5 +1,6 @@
 from django.contrib import admin
 import nested_admin
+from django import forms
 from datetime import date
 import csv
 from django.utils.html import format_html
@@ -44,8 +45,23 @@ class AgeRangeFilter(admin.SimpleListFilter):
 
         return queryset
 
+class MatrixColumnInlineForm(forms.ModelForm):
+    class Meta:
+        model = MatrixColumn
+        fields = ['label', 'input_type', 'dropdown_choices', 'group', 'value']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        input_type = cleaned_data.get('input_type')
+        dropdown_choices = cleaned_data.get('dropdown_choices')
+
+        if input_type == 'dropdown' and not dropdown_choices:
+            raise forms.ValidationError("Dropdown choices are required if input type is 'dropdown'.")
+        return cleaned_data
+
 class MatrixColumnInline(nested_admin.NestedTabularInline):
     model = MatrixColumn
+    form = MatrixColumnInlineForm
     extra = 1
 
 
@@ -66,7 +82,7 @@ class ChoiceInline(nested_admin.NestedTabularInline):
 class QuestionInline(nested_admin.NestedTabularInline):
     model = Question
     extra = 1  # One empty question form
-    fields = ('text', 'question_type', 'next_question')
+    fields = ('text', 'question_type', 'matrix_mode', 'next_question')
     show_change_link = True
     inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]  # Nest ChoiceInline here
 
@@ -99,8 +115,8 @@ class SurveyAdmin(nested_admin.NestedModelAdmin):
 # Admin configuration for Question model
 @admin.register(Question)
 class QuestionAdmin(nested_admin.NestedModelAdmin):
-    list_display = ('text', 'survey', 'question_type')
-    list_filter = ('survey', 'question_type')
+    list_display = ('text', 'survey', 'question_type', 'matrix_mode')
+    list_filter = ('survey', 'question_type', 'matrix_mode')
     search_fields = ('text',)
     inlines = [ChoiceInline, ResponseInline]
     ordering = ('survey',)

@@ -28,6 +28,7 @@ QUESTION_TYPES = [
     ('DROPDOWN', 'Dropdown'),
     ('MATRIX', 'Matrix'),
     ('MEDIA_UPLOAD', 'Photo/Video Upload'),
+    ('DATE', 'Date Picker'),
 ]
 
 
@@ -36,6 +37,14 @@ class Question(models.Model):
     survey = models.ForeignKey(Survey, related_name='questions', on_delete=models.CASCADE)  # Link to parent survey
     text = models.CharField(max_length=500)  # Question text
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
+    matrix_mode = models.CharField(max_length=20,choices=[
+            ('single', 'Single Select'),
+            ('multi', 'Multi Select'),
+            ('side_by_side', 'Side-by-Side Matrix'),
+        ],
+        blank=True,
+        null=True,
+        help_text="Only for MATRIX type")
     next_question = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
     def __str__(self):
         return self.text  # String representation for admin
@@ -48,12 +57,25 @@ class MatrixRow(models.Model):
         return self.text
 
 class MatrixColumn(models.Model):
+    INPUT_TYPES = [
+        ('text', 'Text Input'),
+        ('select', 'Dropdown'),
+        ('radio', 'Radio Button'),
+        ('checkbox', 'Checkbox'),
+    ]
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_columns')
     label = models.CharField(max_length=50)
     value = models.IntegerField()  # e.g., 1–5
+    input_type = models.CharField(max_length=20, choices=INPUT_TYPES, default='text')  # New field
+    dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
+    group = models.CharField(max_length=100, blank=True, null=True, help_text="E.g. 'Importance', 'Satisfaction'")
+
+    @property
+    def dropdown_options(self):
+        return [opt.strip() for opt in self.dropdown_choices.split(',')] if self.input_type == 'select' else []
 
     def __str__(self):
-        return f"{self.label} ({self.value})"
+        return f"{self.label} ({self.group})"
 
 
 # Model for multiple-choice options, linked to a question
@@ -99,6 +121,6 @@ class Response(models.Model):
     media_upload = models.FileField(upload_to='uploads/', null=True, blank=True)
 
     class Meta:
-        unique_together = ('user', 'survey', 'question', 'matrix_row')  # Ensure one response per user per question per survey
+        unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey
 
 

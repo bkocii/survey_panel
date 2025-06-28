@@ -17,3 +17,4 @@ class SurveyResponseForm(forms.Form):
             else:
                 # Add textarea field for text questions
                 self.fields[f'question_{question.id}'] = forms.CharField(widget=forms.Textarea, required=True)
+

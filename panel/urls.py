@@ -23,6 +23,7 @@ from django.conf.urls.static import static
 
 # Project-level URL configuration
 urlpatterns = [
+    path('nested_admin/', include('nested_admin.urls')),  # ✅ Required for nested admin
     # Admin interface at /admin/
     path('', views.home, name='home'),
     path('admin/', admin.site.urls),
