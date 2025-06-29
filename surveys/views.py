@@ -1,4 +1,5 @@
 from django.utils.timezone import now
+import datetime
 from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -222,6 +223,59 @@ def survey_question(request, survey_id, question_id=None):
                         survey=survey,
                         question=question,
                         media_upload=uploaded_file,
+                    )
+
+            elif question.question_type == 'YESNO':
+                if answer.lower() in ['yes', 'no']:
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        text_answer=answer.lower()
+                    )
+
+            elif question.question_type == 'NUMBER':
+                try:
+                    number_value = float(answer)
+                except (TypeError, ValueError):
+                    return HttpResponseBadRequest("Invalid number input.")
+
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=str(number_value)
+                )
+
+            elif question.question_type == 'SLIDER':
+                try:
+                    slider_value = int(answer)
+                except (TypeError, ValueError):
+                    return HttpResponseBadRequest("Invalid slider value.")
+                if question.min_value is not None and slider_value < question.min_value:
+                    return HttpResponseBadRequest("Slider value below minimum.")
+                if question.max_value is not None and slider_value > question.max_value:
+                    return HttpResponseBadRequest("Slider value above maximum.")
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=str(slider_value)
+                )
+
+            elif question.question_type == 'DATE':
+                if answer:
+                    try:
+                        # Validate and normalize format
+                        parsed_date = datetime.datetime.strptime(answer, '%Y-%m-%d').date()
+                    except ValueError:
+                        return HttpResponseBadRequest("Invalid date format. Please use YYYY-MM-DD.")
+
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        text_answer=parsed_date.isoformat(),  # Save as 'YYYY-MM-DD'
                     )
 
             elif question.question_type == 'TEXT':

@@ -1,4 +1,4 @@
 .matrix-error {
-    border: 2px solid red;
-    padding: 5px;
+    background-color: #ffe6e6 !important;
+    border: 1px solid #cc0000;
 }

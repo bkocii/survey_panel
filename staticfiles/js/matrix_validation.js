@@ -3,15 +3,65 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) return;
 
     form.addEventListener('submit', function (e) {
-        const matrixQuestions = document.querySelectorAll('[data-matrix-required="true"]');
         let valid = true;
 
-        matrixQuestions.forEach(matrix => {
-            const rows = matrix.querySelectorAll('[data-matrix-row]');
+        const matrixBlocks = document.querySelectorAll('.matrix-block');
+
+        matrixBlocks.forEach(matrix => {
+            const matrixIsRequired = matrix.dataset.matrixRequired === 'true';
+            const rows = matrix.querySelectorAll('.matrix-row');
+
+            // Map: column index → isRequired
+            const columnRequiredMap = {};
+            const columnHeaders = matrix.querySelectorAll('thead th[data-required]');
+            columnHeaders.forEach((th, index) => {
+                if (th.dataset.required === 'true') {
+                    columnRequiredMap[index] = true;
+                }
+            });
+
+            // Column validation per index
+            Object.keys(columnRequiredMap).forEach(colIndex => {
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const cell = cells[colIndex];
+                    if (!cell) return;
+
+                    const input = cell.querySelector('input, select');
+                    if (!input) return;
+
+                    const filled =
+                        (input.type === 'checkbox' || input.type === 'radio') ? input.checked :
+                        (input.tagName === 'SELECT') ? input.value.trim() !== '' :
+                        (input.type === 'text') ? input.value.trim() !== '' :
+                        false;
+
+                    if (!filled) {
+                        valid = false;
+                        input.classList.add('matrix-error');
+                    } else {
+                        input.classList.remove('matrix-error');
+                    }
+                });
+            });
+
+            // Row-level validation
             rows.forEach(row => {
-                const checkboxes = row.querySelectorAll('input[type="radio"], input[type="checkbox"]');
-                const oneChecked = Array.from(checkboxes).some(input => input.checked);
-                if (!oneChecked) {
+                const rowIsRequired = row.dataset.required === 'true' || matrixIsRequired;
+                const inputs = row.querySelectorAll('input, select');
+                let rowValid = false;
+
+                inputs.forEach(input => {
+                    const filled =
+                        (input.type === 'checkbox' || input.type === 'radio') ? input.checked :
+                        (input.tagName === 'SELECT') ? input.value.trim() !== '' :
+                        (input.type === 'text') ? input.value.trim() !== '' :
+                        false;
+
+                    if (filled) rowValid = true;
+                });
+
+                if (rowIsRequired && !rowValid) {
                     valid = false;
                     row.classList.add('matrix-error');
                 } else {
@@ -22,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!valid) {
             e.preventDefault();
-            alert("Please complete all required matrix rows.");
+            alert('Please complete all required matrix fields.');
         }
     });
 });

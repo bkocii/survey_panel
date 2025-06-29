@@ -29,6 +29,9 @@ QUESTION_TYPES = [
     ('MATRIX', 'Matrix'),
     ('MEDIA_UPLOAD', 'Photo/Video Upload'),
     ('DATE', 'Date Picker'),
+    ("YESNO", "Yes / No"),
+    ("NUMBER", "Number Input"),
+    ("SLIDER", "Slider"),
 ]
 
 
@@ -37,6 +40,10 @@ class Question(models.Model):
     survey = models.ForeignKey(Survey, related_name='questions', on_delete=models.CASCADE)  # Link to parent survey
     text = models.CharField(max_length=500)  # Question text
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
+    required = models.BooleanField(default=False)
+    min_value = models.IntegerField(null=True, blank=True, help_text="Minimum value (for sliders)")
+    max_value = models.IntegerField(null=True, blank=True, help_text="Maximum value (for sliders)")
+    step_value = models.IntegerField(null=True, blank=True, help_text="Step value (for sliders)")
     matrix_mode = models.CharField(max_length=20,choices=[
             ('single', 'Single Select'),
             ('multi', 'Multi Select'),
@@ -52,6 +59,7 @@ class Question(models.Model):
 class MatrixRow(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_rows')
     text = models.CharField(max_length=255)
+    required = models.BooleanField(default=False)
 
     def __str__(self):
         return self.text
@@ -67,12 +75,17 @@ class MatrixColumn(models.Model):
     label = models.CharField(max_length=50)
     value = models.IntegerField()  # e.g., 1–5
     input_type = models.CharField(max_length=20, choices=INPUT_TYPES, default='text')  # New field
+    required = models.BooleanField(default=False)
     dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
     group = models.CharField(max_length=100, blank=True, null=True, help_text="E.g. 'Importance', 'Satisfaction'")
 
     @property
     def dropdown_options(self):
         return [opt.strip() for opt in self.dropdown_choices.split(',')] if self.input_type == 'select' else []
+
+    # @property
+    # def dropdown_options_list(self):
+    #     return [opt.strip() for opt in self.dropdown_options_list.split(',')] if self.dropdown_options_list else []
 
     def __str__(self):
         return f"{self.label} ({self.group})"

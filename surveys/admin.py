@@ -48,7 +48,7 @@ class AgeRangeFilter(admin.SimpleListFilter):
 class MatrixColumnInlineForm(forms.ModelForm):
     class Meta:
         model = MatrixColumn
-        fields = ['label', 'input_type', 'dropdown_choices', 'group', 'value']
+        fields = ['label', 'input_type', 'dropdown_choices', 'group', 'value', 'required']
 
     def clean(self):
         cleaned_data = super().clean()
@@ -64,10 +64,10 @@ class MatrixColumnInline(nested_admin.NestedTabularInline):
     form = MatrixColumnInlineForm
     extra = 1
 
-
 class MatrixRowInline(nested_admin.NestedTabularInline):
     model = MatrixRow
     extra = 1
+    fields = ('text', 'required')
 
 
 # Inline admin for Choices, nested within Question
@@ -82,7 +82,7 @@ class ChoiceInline(nested_admin.NestedTabularInline):
 class QuestionInline(nested_admin.NestedTabularInline):
     model = Question
     extra = 1  # One empty question form
-    fields = ('text', 'question_type', 'matrix_mode', 'next_question')
+    fields = ('text', 'question_type', 'matrix_mode', 'next_question', 'required', 'min_value', 'max_value', 'step_value')
     show_change_link = True
     inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]  # Nest ChoiceInline here
 

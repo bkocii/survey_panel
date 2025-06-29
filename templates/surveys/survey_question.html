@@ -37,6 +37,32 @@ survey
                 </button>
             </div>
 
+        {% elif question.question_type == 'YESNO' %}
+            <label class="form-label me-3">
+                <input type="radio" name="answer" value="yes" required>
+                Yes
+            </label>
+            <label class="form-label">
+                <input type="radio" name="answer" value="no" required>
+                No
+            </label>
+
+        {% elif question.question_type == 'NUMBER' %}
+            <input type="number" name="answer" class="form-control" required>
+
+        {% elif question.question_type == 'SLIDER' %}
+            <label for="slider">Value: <span id="slider-value">{{ question.min_value|default:0 }}</span></label>
+            <input type="range"
+                   name="answer"
+                   id="slider"
+                   class="form-range"
+                   min="{{ question.min_value|default:0 }}"
+                   max="{{ question.max_value|default:100 }}"
+                   step="{{ question.step_value|default:1 }}"
+                   value="{{ question.min_value|default:0 }}"
+                   oninput="document.getElementById('slider-value').textContent = this.value">
+
+
         {% elif question.question_type == 'RATING' %}
             <div class="form-check form-check-inline">
                 {% for choice in question.choices.all %}
@@ -57,64 +83,82 @@ survey
 
 
         {% elif question.question_type == 'MATRIX' %}
-            <div class="matrix-block" data-matrix-required="true">
+            <div class="matrix-block"
+                 data-matrix-required="{{ question.required|yesno:'true,false' }}">
+
                 {% if question.matrix_mode == 'side_by_side' %}
                     <table class="table table-bordered">
                         <thead>
                             <tr>
                                 <th>Item</th>
                                 {% for col in question.matrix_columns.all %}
-                                    <th>{{ col.label }}</th>
+                                    <th data-required="{{ col.required|yesno:'true,false' }}" data-col-index="{{ forloop.counter0 }}">
+                                        {{ col.label }}
+                                    </th>
                                 {% endfor %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in question.matrix_rows.all %}
-                                <tr class="matrix-row" data-matrix-row>
+                                <tr class="matrix-row"
+                                    data-matrix-row
+                                    data-required="{{ row.required|yesno:'true,false' }}">
                                     <td>{{ row.text }}</td>
                                     {% for col in question.matrix_columns.all %}
-                                        <td class="text-center">
+                                        <td class="text-center" data-col-index="{{ forloop.counter0 }}">
                                             {% if col.input_type == 'text' %}
-                                            <input type="text" name="matrix_{{ row.id }}_{{ col.id }}" class="form-control">
-                                        {% elif col.input_type == 'select' %}
-                                            <select name="matrix_{{ row.id }}_{{ col.id }}" class="form-select">
-                                                <option value="">-- Choose --</option>
+                                                <input type="text" name="matrix_{{ row.id }}_{{ col.id }}"
+                                                       class="form-control"
+                                                       data-required="{{ col.required|yesno:'true,false' }}">
+                                            {% elif col.input_type == 'select' %}
+                                                <select name="matrix_{{ row.id }}_{{ col.id }}"
+                                                        class="form-select"
+                                                        data-required="{{ col.required|yesno:'true,false' }}">
+                                                    <option value="">-- Choose --</option>
                                                     {% for option in col.dropdown_options %}
                                                         <option value="{{ option }}">{{ option }}</option>
                                                     {% endfor %}
-                                            </select>
-                                        {% elif col.input_type == 'radio' %}
-                                            <input type="radio" name="matrix_{{ row.id }}_{{ col.id }}" value="yes">
-                                        {% elif col.input_type == 'checkbox' %}
-                                            <input type="checkbox" name="matrix_{{ row.id }}_{{ col.id }}">
-                                        {% elif question.question_type == 'DATE' %}
-                                            <label for="answer">Select a date:</label>
-                                            <input type="date" name="answer" class="form-control" required>
-                                        {% endif %}
+
+                                                </select>
+                                            {% elif col.input_type == 'radio' %}
+                                                <input type="radio"
+                                                       name="matrix_{{ row.id }}_{{ col.id }}"
+                                                       value="yes"
+                                                       data-required="{{ col.required|yesno:'true,false' }}">
+                                            {% elif col.input_type == 'checkbox' %}
+                                                <input type="checkbox"
+                                                       name="matrix_{{ row.id }}_{{ col.id }}"
+                                                       data-required="{{ col.required|yesno:'true,false' }}">
+                                            {% endif %}
                                         </td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-
                 {% elif question.matrix_mode == 'multi' %}
                     <table class="table">
                         <thead>
                             <tr>
                                 <th></th>
                                 {% for col in question.matrix_columns.all %}
-                                    <th>{{ col.label }}</th>
+                                    <th data-required="{{ col.required|yesno:'true,false' }}">{{ col.label }}</th>
                                 {% endfor %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in question.matrix_rows.all %}
-                                <tr class="matrix-row" data-matrix-row>
+                                <tr class="matrix-row"
+                                    data-matrix-row
+                                    data-required="{{ row.required|yesno:'true,false' }}">
                                     <td>{{ row.text }}</td>
                                     {% for col in question.matrix_columns.all %}
                                         <td>
-                                            <input type="checkbox" name="matrix_{{ row.id }}" value="{{ col.id }}" class="form-check-input">
+                                            <input type="checkbox"
+                                                   name="matrix_{{ row.id }}"
+                                                   value="{{ col.id }}"
+                                                   class="form-check-input"
+                                                   data-required="{{ col.required|yesno:'true,false' }}">
                                         </td>
                                     {% endfor %}
                                 </tr>
@@ -128,23 +172,29 @@ survey
                             <tr>
                                 <th></th>
                                 {% for col in question.matrix_columns.all %}
-                                    <th>{{ col.label }}</th>
+                                    <th data-required="{{ col.required|yesno:'true,false' }}">{{ col.label }}</th>
                                 {% endfor %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in question.matrix_rows.all %}
-                                <tr class="matrix-row" data-matrix-row>
+                                <tr class="matrix-row"
+                                    data-matrix-row
+                                    data-required="{{ row.required|yesno:'true,false' }}">
                                     <td>{{ row.text }}</td>
                                     {% for col in question.matrix_columns.all %}
                                         <td>
-                                            <input type="radio" name="matrix_{{ row.id }}" value="{{ col.id }}" class="form-check-input">
+                                            <input type="radio"
+                                                   name="matrix_{{ row.id }}"
+                                                   value="{{ col.id }}"
+                                                   class="form-check-input"
+                                                   data-required="{{ col.required|yesno:'true,false' }}">
                                         </td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
                         </tbody>
-                    </table>
+                      </table>
                 {% endif %}
             </div>
         {% endif %}
