@@ -212,17 +212,25 @@ def survey_question(request, survey_id, question_id=None):
                             except MatrixColumn.DoesNotExist:
                                 continue
 
-            elif question.question_type == 'MEDIA_UPLOAD':
-                uploaded_file = request.FILES.get('answer_file')
-                allowed_types = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime']
-                if uploaded_file.content_type not in allowed_types:
-                    return HttpResponseBadRequest("Invalid file type.")
-                if uploaded_file:
+            elif question.question_type in ['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD']:
+                files = request.FILES.getlist('answer_file') if question.allow_multiple_files else [
+                    request.FILES.get('answer_file')]
+                allowed_types = {
+                    'PHOTO_UPLOAD': ['image/jpeg', 'image/png'],
+                    'PHOTO_MULTI_UPLOAD': ['image/jpeg', 'image/png'],
+                    'VIDEO_UPLOAD': ['video/mp4', 'video/quicktime'],
+                    'AUDIO_UPLOAD': ['audio/mpeg', 'audio/wav', 'audio/ogg'],
+                }
+                for file in files:
+                    if not file:
+                        continue
+                    if file.content_type not in allowed_types[question.question_type]:
+                        return HttpResponseBadRequest("Invalid file type.")
                     Response.objects.create(
                         user=request.user,
                         survey=survey,
                         question=question,
-                        media_upload=uploaded_file,
+                        media_upload=file,
                     )
 
             elif question.question_type == 'YESNO':

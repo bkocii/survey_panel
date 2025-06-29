@@ -82,7 +82,7 @@ class ChoiceInline(nested_admin.NestedTabularInline):
 class QuestionInline(nested_admin.NestedTabularInline):
     model = Question
     extra = 1  # One empty question form
-    fields = ('text', 'question_type', 'matrix_mode', 'next_question', 'required', 'min_value', 'max_value', 'step_value')
+    fields = ('text', 'question_type', 'matrix_mode', 'next_question', 'required', 'min_value', 'max_value', 'step_value', 'allow_multiple_files')
     show_change_link = True
     inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]  # Nest ChoiceInline here
 
@@ -148,6 +148,25 @@ class ResponseAdmin(admin.ModelAdmin):
 
     actions = ['export_as_csv', 'download_media_zip']
 
+    def media_preview(self, obj):
+        if obj.media_upload:
+            url = obj.media_upload.url
+            name = obj.media_upload.name.lower()
+            if name.endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                return format_html(f'<img src="{url}" width="100" />')
+            elif name.endswith(('.mp4', '.mov', '.webm')):
+                return format_html(f'''
+                    <video width="200" controls>
+                        <source src="{url}">
+                        Your browser does not support the video tag.
+                    </video>
+                ''')
+            else:
+                return format_html(f'<a href="{url}">Download</a>')
+        return "-"
+
+    media_preview.short_description = "Media"
+
     def export_as_csv(self, request, queryset):
         meta = self.model._meta
         field_names = ['user', 'survey', 'question', 'choice', 'text_answer', 'submitted_at']
@@ -170,65 +189,53 @@ class ResponseAdmin(admin.ModelAdmin):
 
     export_as_csv.short_description = "Export selected responses as CSV"
 
-    def media_preview(self, obj):
-        if obj.media_upload:
-            url = obj.media_upload.url
-            if obj.media_upload.name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                return format_html(f'<img src="{url}" width="100" />')
-            elif obj.media_upload.name.lower().endswith(('.mp4', '.mov', '.webm')):
-                return format_html(f'''
-                    <video width="200" controls>
-                        <source src="{url}">
-                        Your browser does not support the video tag.
-                    </video>
-                ''')
-            else:
-                return format_html(f'<a href="{url}">Download</a>')
-        return "-"
-
-    media_preview.short_description = "Media"
-
     def download_media_zip(self, request, queryset):
         zip_buffer = BytesIO()
         zip_file = zipfile.ZipFile(zip_buffer, 'w')
 
         # Prepare CSV metadata
-        csv_text_io  = StringIO()
+        csv_text_io = StringIO()
         csv_writer = csv.writer(csv_text_io)
-        csv_writer.writerow(['User', 'Survey', 'Question', 'Filename', 'Timestamp'])
+        csv_writer.writerow(['User', 'Survey', 'Question', 'Filename', 'Timestamp', 'Media URL'])
 
         for response in queryset:
             if response.media_upload:
-                path = response.media_upload.path
-                filename = os.path.basename(path)
-
-                # Add file to ZIP
                 try:
-                    zip_file.write(path, arcname=f"{response.user.username}_{slugify(filename)}")
+                    path = response.media_upload.path
+                    filename = os.path.basename(path)
+                    url = response.media_upload.url
+
+                    # Clean folder name using slugified question text
+                    question_folder = slugify(response.question.text[:50])
+                    zip_path = f"{question_folder}/{response.user.username}_{slugify(filename)}"
+
+                    # Add file to ZIP under question folder
+                    zip_file.write(path, arcname=zip_path)
+
+                    # Add metadata row
+                    csv_writer.writerow([
+                        response.user.username,
+                        response.survey.title,
+                        response.question.text,
+                        filename,
+                        response.submitted_at,
+                        url
+                    ])
                 except FileNotFoundError:
-                    continue  # Skip if file missing
-                # Add CSV row
-                csv_writer.writerow([
-                    response.user.username,
-                    response.survey.title,
-                    response.question.text,
-                    filename,
-                    response.submitted_at,
-                ])
+                    continue  # skip missing file
 
-            # Add CSV file to ZIP
-            zip_file.writestr("metadata.csv", csv_text_io.getvalue())
+        # Add metadata CSV at root of ZIP
+        zip_file.writestr("metadata.csv", csv_text_io.getvalue())
+        zip_file.close()
+        zip_buffer.seek(0)
 
-            zip_file.close()
-            zip_buffer.seek(0)
+        return HttpResponse(
+            zip_buffer.getvalue(),
+            content_type='application/zip',
+            headers={'Content-Disposition': 'attachment; filename="media_responses_by_question.zip"'},
+        )
 
-            return HttpResponse(
-                zip_buffer.getvalue(),
-                content_type='application/zip',
-                headers={'Content-Disposition': 'attachment; filename="media_responses.zip"'},
-            )
-
-        download_media_zip.short_description = "Download selected media + metadata as ZIP"
+    download_media_zip.short_description = "Download selected media + metadata as ZIP"
 
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin):

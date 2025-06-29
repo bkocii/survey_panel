@@ -73,9 +73,22 @@ survey
                 {% endfor %}
             </div>
 
-        {% elif question.question_type == 'MEDIA_UPLOAD' %}
-            <label for="upload">Upload your photo or video:</label>
-            <input type="file" name="answer_file" class="form-control" required>
+        {% elif question.question_type == 'PHOTO_UPLOAD' %}
+            <label for="photo">Upload Photo:</label>
+            <input type="file" name="answer_file" class="form-control" accept="image/*" {% if question.allow_multiple_files %} multiple {% endif %}>
+
+        {% elif question.question_type == 'PHOTO_MULTI_UPLOAD' %}
+            <label for="photos">Upload Multiple Photos:</label>
+            <input type="file" name="answer_file" class="form-control" accept="image/*" multiple>
+
+        {% elif question.question_type == 'VIDEO_UPLOAD' %}
+            <label for="video">Upload Video:</label>
+            <input type="file" name="answer_file" class="form-control" accept="video/*">
+
+        {% elif question.question_type == 'AUDIO_UPLOAD' %}
+            <label for="audio">Upload Audio:</label>
+            <input type="file" name="answer_file" class="form-control" accept="audio/*">
+
 
 
         {% elif question.question_type == 'TEXT' %}

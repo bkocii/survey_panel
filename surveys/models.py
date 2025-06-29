@@ -27,7 +27,10 @@ QUESTION_TYPES = [
     ('RATING', 'Rating Scale'),
     ('DROPDOWN', 'Dropdown'),
     ('MATRIX', 'Matrix'),
-    ('MEDIA_UPLOAD', 'Photo/Video Upload'),
+    ('PHOTO_UPLOAD', 'Photo Upload'),
+    ('PHOTO_MULTI_UPLOAD', 'Multiple Photos'),
+    ('VIDEO_UPLOAD', 'Video Upload'),
+    ('AUDIO_UPLOAD', 'Audio Upload'),
     ('DATE', 'Date Picker'),
     ("YESNO", "Yes / No"),
     ("NUMBER", "Number Input"),
@@ -44,6 +47,7 @@ class Question(models.Model):
     min_value = models.IntegerField(null=True, blank=True, help_text="Minimum value (for sliders)")
     max_value = models.IntegerField(null=True, blank=True, help_text="Maximum value (for sliders)")
     step_value = models.IntegerField(null=True, blank=True, help_text="Step value (for sliders)")
+    allow_multiple_files = models.BooleanField(default=False, help_text="Allow multiple files (images only)")
     matrix_mode = models.CharField(max_length=20,choices=[
             ('single', 'Single Select'),
             ('multi', 'Multi Select'),
