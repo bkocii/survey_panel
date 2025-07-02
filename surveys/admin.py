@@ -74,15 +74,23 @@ class MatrixRowInline(nested_admin.NestedTabularInline):
 class ChoiceInline(nested_admin.NestedTabularInline):
     model = Choice
     extra = 2  # Two empty choice forms
-    fields = ('text', 'next_question')
+    fields = ('text', 'next_question', 'image', 'image_preview')
+    readonly_fields = ('image_preview',)
     fk_name = 'question'  # 🔧 Tells Django which FK relates to the parent
     show_change_link = True
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 60px;"/>', obj.image.url)
+        return "-"
+
+    image_preview.short_description = "Preview"
 
 # Inline admin for Questions, nested within Survey
 class QuestionInline(nested_admin.NestedTabularInline):
     model = Question
     extra = 1  # One empty question form
-    fields = ('text', 'question_type', 'matrix_mode', 'next_question', 'required', 'min_value', 'max_value', 'step_value', 'allow_multiple_files')
+    fields = ('text', 'question_type', 'matrix_mode', 'next_question', 'required', 'min_value', 'max_value', 'step_value', 'allow_multiple_files', 'allows_multiple')
     show_change_link = True
     inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]  # Nest ChoiceInline here
 
@@ -115,7 +123,7 @@ class SurveyAdmin(nested_admin.NestedModelAdmin):
 # Admin configuration for Question model
 @admin.register(Question)
 class QuestionAdmin(nested_admin.NestedModelAdmin):
-    list_display = ('text', 'survey', 'question_type', 'matrix_mode')
+    list_display = ('text', 'survey', 'question_type', 'matrix_mode', 'allows_multiple')
     list_filter = ('survey', 'question_type', 'matrix_mode')
     search_fields = ('text',)
     inlines = [ChoiceInline, ResponseInline]

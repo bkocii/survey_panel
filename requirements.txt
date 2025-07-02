@@ -10,3 +10,4 @@ python-decouple
 eventlet
 flower
 django-nested-admin
+pillow

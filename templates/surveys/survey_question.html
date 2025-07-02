@@ -10,6 +10,14 @@ survey
     <h2>{{ survey.title }}</h2>
     <p>{{ question.text }}</p>
 
+    {% if messages %}
+        <div class="alert alert-danger mt-3">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
@@ -31,7 +39,7 @@ survey
 
         {% elif question.question_type == 'DATE' %}
             <div class="input-group">
-                <input type="text" name="answer" class="form-control date-input" placeholder="Select a date">
+                <input type="text" name="answer" class="form-control date-input" placeholder="Select a date" required>
                 <button class="btn btn-outline-secondary calendar-btn" type="button">
                     <i class="bi bi-calendar"></i>
                 </button>
@@ -51,16 +59,44 @@ survey
             <input type="number" name="answer" class="form-control" required>
 
         {% elif question.question_type == 'SLIDER' %}
-            <label for="slider">Value: <span id="slider-value">{{ question.min_value|default:0 }}</span></label>
-            <input type="range"
-                   name="answer"
-                   id="slider"
-                   class="form-range"
-                   min="{{ question.min_value|default:0 }}"
-                   max="{{ question.max_value|default:100 }}"
-                   step="{{ question.step_value|default:1 }}"
-                   value="{{ question.min_value|default:0 }}"
-                   oninput="document.getElementById('slider-value').textContent = this.value">
+            <div class="mb-3">
+                <label for="slider">Value: <span id="slider-value">--</span></label>
+                <input type="range"
+                       name="answer"
+                       id="slider"
+                       class="form-range"
+                       min="{{ question.min_value|default:0 }}"
+                       max="{{ question.max_value|default:100 }}"
+                       step="{{ question.step_value|default:1 }}"
+                       value=""
+                       required
+                       oninput="document.getElementById('slider-value').textContent = this.value">
+
+                <div class="d-flex justify-content-between">
+                    <small>{{ question.min_value|default:0 }}</small>
+                    <small>{{ question.max_value|default:100 }}</small>
+                </div>
+            </div>
+            {% if question.required %}
+            <script>
+                document.addEventListener("DOMContentLoaded", function () {
+                    let slider = document.getElementById("slider");
+                    let touched = false;
+
+                    slider.addEventListener("input", function () {
+                        touched = true;
+                    });
+
+                    document.querySelector("form").addEventListener("submit", function (e) {
+                        if (!touched || slider.value === "") {
+                            alert("Please select a value with the slider.");
+                            e.preventDefault();
+                        }
+                    });
+                });
+            </script>
+            {% endif %}
+
 
 
         {% elif question.question_type == 'RATING' %}
@@ -73,26 +109,86 @@ survey
                 {% endfor %}
             </div>
 
+        {% elif question.question_type == 'IMAGE_RATING' %}
+            <div class="image-rating-container">
+                <p>{{ question.text }}</p>
+                <div class="row">
+                    {% for choice in question.choices.all %}
+                        <div class="col-md-4 text-center mb-4">
+                            <img src="{{ choice.image.url }}" class="img-thumbnail mb-2" alt="Image" style="max-width: 100%; height: auto;">
+                            <div class="mt-2 mb-2">
+                                {% for i in "12345" %}
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio"
+                                               name="rating_{{ choice.id }}"
+                                               id="rating_{{ choice.id }}_{{ i }}"
+                                               value="{{ i }}"
+                                               required="{{ question.required|yesno:'required,' }}">
+                                        <label class="form-check-label" for="rating_{{ choice.id }}_{{ i }}">{{ i }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div>{{ choice.text }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
         {% elif question.question_type == 'PHOTO_UPLOAD' %}
             <label for="photo">Upload Photo:</label>
-            <input type="file" name="answer_file" class="form-control" accept="image/*" {% if question.allow_multiple_files %} multiple {% endif %}>
+            <input type="file" name="answer_file" class="form-control" accept="image/*" {% if question.allow_multiple_files %} multiple {% endif %} required>
 
         {% elif question.question_type == 'PHOTO_MULTI_UPLOAD' %}
             <label for="photos">Upload Multiple Photos:</label>
-            <input type="file" name="answer_file" class="form-control" accept="image/*" multiple>
+            <input type="file" name="answer_file" class="form-control" accept="image/*" multiple required>
 
         {% elif question.question_type == 'VIDEO_UPLOAD' %}
             <label for="video">Upload Video:</label>
-            <input type="file" name="answer_file" class="form-control" accept="video/*">
+            <input type="file" name="answer_file" class="form-control" accept="video/*" required>
 
         {% elif question.question_type == 'AUDIO_UPLOAD' %}
             <label for="audio">Upload Audio:</label>
-            <input type="file" name="answer_file" class="form-control" accept="audio/*">
+            <input type="file" name="answer_file" class="form-control" accept="audio/*" required>
 
 
 
         {% elif question.question_type == 'TEXT' %}
             <textarea class="form-control" name="answer" rows="4" required></textarea>
+
+        {% elif question.question_type == 'IMAGE_CHOICE' %}
+            <div class="image-choice-container" >
+                <p>{{ question.text }}</p>
+                <div class="row">
+                    {% for choice in question.choices.all %}
+                        <div class="col-md-3 text-center mb-4">
+                            <label class="image-choice-label" style="cursor: pointer;">
+                                <div class="form-check">
+                                    <div class="form-check">
+                                    {% if question.allows_multiple == True %}
+                                        <input type="checkbox"
+                                               name="answer"
+                                               value="{{ choice.id }}"
+                                               class="form-check-input me-2"
+                                               onchange="highlightSelected(this)"
+                                               >
+                                    {% else %}
+                                        <input type="radio"
+                                               name="answer"
+                                               value="{{ choice.id }}"
+                                               class="form-check-input me-2"
+                                               onchange="highlightSelected(this)"
+                                               required>
+                                    {% endif %}
+                                </div>
+                                </div>
+                                <img src="{{ choice.image.url }}" class="img-thumbnail img-select mt-2" data-choice-id="{{ choice.id }}" alt="Option">
+                                <div class="mt-2">{{ choice.text }}</div>
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
 
 
         {% elif question.question_type == 'MATRIX' %}
@@ -236,6 +332,7 @@ survey
             }
         }
         </script>
+
 
         <script>
           document.addEventListener("DOMContentLoaded", function () {

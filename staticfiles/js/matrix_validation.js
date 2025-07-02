@@ -10,21 +10,37 @@ document.addEventListener('DOMContentLoaded', function () {
         matrixBlocks.forEach(matrix => {
             const matrixIsRequired = matrix.dataset.matrixRequired === 'true';
             const rows = matrix.querySelectorAll('.matrix-row');
+            const columnHeaders = matrix.querySelectorAll('thead th[data-col-index]');
 
-            // Map: column index → isRequired
-            const columnRequiredMap = {};
-            const columnHeaders = matrix.querySelectorAll('thead th[data-required]');
-            columnHeaders.forEach((th, index) => {
-                if (th.dataset.required === 'true') {
-                    columnRequiredMap[index] = true;
+            // Validate each row (if required)
+            rows.forEach(row => {
+                const rowIsRequired = row.dataset.required === 'true' || matrixIsRequired;
+                if (!rowIsRequired) return;
+
+                const inputs = row.querySelectorAll('input, select');
+                let rowValid = Array.from(inputs).some(input => {
+                    if (input.type === 'checkbox' || input.type === 'radio') return input.checked;
+                    if (input.tagName === 'SELECT') return input.value.trim() !== '';
+                    if (input.type === 'text') return input.value.trim() !== '';
+                    return false;
+                });
+
+                if (!rowValid) {
+                    valid = false;
+                    row.classList.add('matrix-error');
+                } else {
+                    row.classList.remove('matrix-error');
                 }
             });
 
-            // Column validation per index
-            Object.keys(columnRequiredMap).forEach(colIndex => {
+            // Validate each required column
+            columnHeaders.forEach(header => {
+                const colIndex = header.dataset.colIndex;
+                const isColRequired = header.dataset.required === 'true';
+                if (!isColRequired) return;
+
                 rows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    const cell = cells[colIndex];
+                    const cell = row.querySelector(`td[data-col-index="${colIndex}"]`);
                     if (!cell) return;
 
                     const input = cell.querySelector('input, select');
@@ -43,30 +59,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         input.classList.remove('matrix-error');
                     }
                 });
-            });
-
-            // Row-level validation
-            rows.forEach(row => {
-                const rowIsRequired = row.dataset.required === 'true' || matrixIsRequired;
-                const inputs = row.querySelectorAll('input, select');
-                let rowValid = false;
-
-                inputs.forEach(input => {
-                    const filled =
-                        (input.type === 'checkbox' || input.type === 'radio') ? input.checked :
-                        (input.tagName === 'SELECT') ? input.value.trim() !== '' :
-                        (input.type === 'text') ? input.value.trim() !== '' :
-                        false;
-
-                    if (filled) rowValid = true;
-                });
-
-                if (rowIsRequired && !rowValid) {
-                    valid = false;
-                    row.classList.add('matrix-error');
-                } else {
-                    row.classList.remove('matrix-error');
-                }
             });
         });
 

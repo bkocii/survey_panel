@@ -1,6 +1,7 @@
 from django.utils.timezone import now
 import datetime
 from datetime import timedelta
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
@@ -256,6 +257,17 @@ def survey_question(request, survey_id, question_id=None):
                 )
 
             elif question.question_type == 'SLIDER':
+                if question.required and not answer:
+                    messages.error(request, "Please move the slider to select a value.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })
                 try:
                     slider_value = int(answer)
                 except (TypeError, ValueError):
@@ -271,20 +283,85 @@ def survey_question(request, survey_id, question_id=None):
                     text_answer=str(slider_value)
                 )
 
-            elif question.question_type == 'DATE':
-                if answer:
-                    try:
-                        # Validate and normalize format
-                        parsed_date = datetime.datetime.strptime(answer, '%Y-%m-%d').date()
-                    except ValueError:
-                        return HttpResponseBadRequest("Invalid date format. Please use YYYY-MM-DD.")
+            elif question.question_type == 'IMAGE_CHOICE':
 
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        text_answer=parsed_date.isoformat(),  # Save as 'YYYY-MM-DD'
-                    )
+                selected_ids = request.POST.getlist('answer')
+
+                if question.required and not selected_ids:
+                    messages.error(request, "Please select at least one option.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,  # or pass a fallback
+                        'time_left': time_left,
+                    })
+
+                for choice_id in selected_ids:
+                    try:
+                        choice = Choice.objects.get(id=choice_id, question=question)
+                    except Choice.DoesNotExist:
+                        continue  # skip invalid choice
+
+                    if not Response.objects.filter(user=request.user, survey=survey, question=question,
+                                                   choice=choice).exists():
+                        Response.objects.create(
+                            user=request.user,
+                            survey=survey,
+                            question=question,
+                            choice=choice
+                        )
+
+            elif question.question_type == 'IMAGE_RATING':
+                if question.required and not any(request.POST.get(f'rating_{c.id}') for c in question.choices.all()):
+                    messages.error(request, "Please rate at least one image.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })
+                for choice in question.choices.all():
+                    rating = request.POST.get(f'rating_{choice.id}')
+                    if rating:
+                        Response.objects.create(
+                            user=request.user,
+                            survey=survey,
+                            question=question,
+                            choice=choice,
+                            text_answer=rating
+                        )
+
+            elif question.question_type == 'DATE':
+                if not answer and question.required:
+                    messages.error(request, "Please select a date.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })
+
+                try:
+                    # Validate and normalize format
+                    parsed_date = datetime.datetime.strptime(answer, '%Y-%m-%d').date()
+                except ValueError:
+                    return HttpResponseBadRequest("Invalid date format. Please use YYYY-MM-DD.")
+
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=parsed_date.isoformat(),  # Save as 'YYYY-MM-DD'
+                )
 
             elif question.question_type == 'TEXT':
                 Response.objects.create(
@@ -296,7 +373,6 @@ def survey_question(request, survey_id, question_id=None):
                 next_q = None
 
         else:
-            print('-----------------ok')
             next_q = None
 
 

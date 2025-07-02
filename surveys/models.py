@@ -35,6 +35,8 @@ QUESTION_TYPES = [
     ("YESNO", "Yes / No"),
     ("NUMBER", "Number Input"),
     ("SLIDER", "Slider"),
+    ('IMAGE_CHOICE', 'Image Choice'),
+    ('IMAGE_RATING', 'Image Rating'),
 ]
 
 
@@ -47,7 +49,8 @@ class Question(models.Model):
     min_value = models.IntegerField(null=True, blank=True, help_text="Minimum value (for sliders)")
     max_value = models.IntegerField(null=True, blank=True, help_text="Maximum value (for sliders)")
     step_value = models.IntegerField(null=True, blank=True, help_text="Step value (for sliders)")
-    allow_multiple_files = models.BooleanField(default=False, help_text="Allow multiple files (images only)")
+    allow_multiple_files = models.BooleanField(default=False, help_text="Allow multiple files upload (images only)")
+    allows_multiple = models.BooleanField(default=False, help_text="Allow multiple selections (for Image Choice only)?")
     matrix_mode = models.CharField(max_length=20,choices=[
             ('single', 'Single Select'),
             ('multi', 'Multi Select'),
@@ -99,6 +102,7 @@ class MatrixColumn(models.Model):
 class Choice(models.Model):
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)  # Link to parent question
     text = models.CharField(max_length=200)  # Choice text
+    image = models.ImageField(upload_to='choice_images/', null=True, blank=True)
     # Add this to your Choice model
     next_question = models.ForeignKey(
         'Question',

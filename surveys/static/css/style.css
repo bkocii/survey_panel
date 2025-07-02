@@ -2,3 +2,18 @@
     background-color: #ffe6e6 !important;
     border: 1px solid #cc0000;
 }
+
+.img-select {
+    transition: 0.3s;
+    border: 3px solid transparent;
+}
+.img-select.selected {
+    border-color: #007bff;  /* Bootstrap primary blue */
+    box-shadow: 0 0 10px rgba(0,123,255,0.5);
+}
+
+.image-rating-container .form-check-label {
+    cursor: pointer;
+    margin-right: 5px;
+}
+
