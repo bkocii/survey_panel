@@ -26,13 +26,17 @@ function highlightSelected(input) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-document.querySelector("form").addEventListener("submit", function (e) {
-  const dateInput = document.querySelector(".date-input");
-  if (dateInput && !dateInput.value.trim()) {
-    alert("Please select a date.");
-    e.preventDefault();
-  }
+    document.querySelector("form").addEventListener("submit", function (e) {
+      const dateInput = document.querySelector(".date-input");
+      if (dateInput && !dateInput.value.trim()) {
+        alert("Please select a date.");
+        e.preventDefault();
+      }
+    });
 });
-});
+
+function markSliderMoved() {
+    document.getElementById('slider_moved').value = "true";
+}
 
 

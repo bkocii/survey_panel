@@ -45,7 +45,7 @@ class Question(models.Model):
     survey = models.ForeignKey(Survey, related_name='questions', on_delete=models.CASCADE)  # Link to parent survey
     text = models.CharField(max_length=500)  # Question text
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
-    required = models.BooleanField(default=False)
+    required = models.BooleanField(default=True)
     min_value = models.IntegerField(null=True, blank=True, help_text="Minimum value (for sliders)")
     max_value = models.IntegerField(null=True, blank=True, help_text="Maximum value (for sliders)")
     step_value = models.IntegerField(null=True, blank=True, help_text="Step value (for sliders)")

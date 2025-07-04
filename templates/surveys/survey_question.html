@@ -24,13 +24,13 @@ survey
         {% if question.question_type == 'MC' %}
             {% for choice in question.choices.all %}
                 <label class="form-label">
-                    <input type="radio" name="answer" value="{{ choice.id }}" required onchange="toggleOther(this)">
+                    <input type="radio" name="answer" value="{{ choice.id }}" onchange="toggleOther(this)">
                     {{ choice.text }}
                 </label><br>
             {% endfor %}
 
         {% elif question.question_type == 'DROPDOWN' %}
-            <select name="answer" class="form-select" required onchange="toggleOther(this)">
+            <select name="answer" class="form-select" onchange="toggleOther(this)">
                 <option value="" disabled selected>-- Select an option --</option>
                 {% for choice in question.choices.all %}
                     <option value="{{ choice.id }}">{{ choice.text }}</option>
@@ -47,63 +47,37 @@ survey
 
         {% elif question.question_type == 'YESNO' %}
             <label class="form-label me-3">
-                <input type="radio" name="answer" value="yes" required>
+                <input type="radio" name="answer" value="yes">
                 Yes
             </label>
             <label class="form-label">
-                <input type="radio" name="answer" value="no" required>
+                <input type="radio" name="answer" value="no">
                 No
             </label>
 
         {% elif question.question_type == 'NUMBER' %}
-            <input type="number" name="answer" class="form-control" required>
+            <input type="number" name="answer" class="form-control">
 
         {% elif question.question_type == 'SLIDER' %}
-            <div class="mb-3">
-                <label for="slider">Value: <span id="slider-value">--</span></label>
-                <input type="range"
-                       name="answer"
-                       id="slider"
-                       class="form-range"
-                       min="{{ question.min_value|default:0 }}"
-                       max="{{ question.max_value|default:100 }}"
-                       step="{{ question.step_value|default:1 }}"
-                       value=""
-                       required
-                       oninput="document.getElementById('slider-value').textContent = this.value">
+            <label for="slider">Value: <span id="slider-value">{{ question.min_value|default:0 }}</span></label>
+            <input type="range"
+                   name="answer"
+                   id="slider"
+                   class="form-range"
+                   min="{{ question.min_value|default:0 }}"
+                   max="{{ question.max_value|default:100 }}"
+                   step="{{ question.step_value|default:1 }}"
+                   value="{{ question.min_value|default:0 }}"
+                   oninput="markSliderMoved(); document.getElementById('slider-value').textContent = this.value">
 
-                <div class="d-flex justify-content-between">
-                    <small>{{ question.min_value|default:0 }}</small>
-                    <small>{{ question.max_value|default:100 }}</small>
-                </div>
-            </div>
-            {% if question.required %}
-            <script>
-                document.addEventListener("DOMContentLoaded", function () {
-                    let slider = document.getElementById("slider");
-                    let touched = false;
-
-                    slider.addEventListener("input", function () {
-                        touched = true;
-                    });
-
-                    document.querySelector("form").addEventListener("submit", function (e) {
-                        if (!touched || slider.value === "") {
-                            alert("Please select a value with the slider.");
-                            e.preventDefault();
-                        }
-                    });
-                });
-            </script>
-            {% endif %}
-
-
+            <!-- Hidden field to track movement -->
+            <input type="hidden" name="slider_moved" id="slider_moved" value="false">
 
         {% elif question.question_type == 'RATING' %}
             <div class="form-check form-check-inline">
                 {% for choice in question.choices.all %}
                     <label class="form-check-label me-3">
-                        <input type="radio" name="answer" value="{{ choice.id }}" required onchange="toggleOther(this)">
+                        <input type="radio" name="answer" value="{{ choice.id }}" onchange="toggleOther(this)">
                         {{ choice.text }}
                     </label>
                 {% endfor %}
@@ -153,7 +127,7 @@ survey
 
 
         {% elif question.question_type == 'TEXT' %}
-            <textarea class="form-control" name="answer" rows="4" required></textarea>
+            <textarea class="form-control" name="answer" rows="4"></textarea>
 
         {% elif question.question_type == 'IMAGE_CHOICE' %}
             <div class="image-choice-container" >
@@ -177,7 +151,7 @@ survey
                                                value="{{ choice.id }}"
                                                class="form-check-input me-2"
                                                onchange="highlightSelected(this)"
-                                               required>
+                                               >
                                     {% endif %}
                                 </div>
                                 </div>

@@ -1,6 +1,7 @@
 from django.utils.timezone import now
 import datetime
 from datetime import timedelta
+from .services import get_next_question_in_sequence
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -23,38 +24,38 @@ def survey_list(request):
 
     return render(request, 'surveys/survey_list.html', {'surveys': surveys})
 #
-# # View to display and process a specific survey, requires login
-@login_required
-def survey_detail(request, survey_id):
-    survey = get_object_or_404(Survey, id=survey_id, is_active=True)  # Fetch survey or return 404
-    # Check if user has access (in survey's groups or no groups specified)
-    if survey.groups.exists() and not survey.groups.filter(id__in=request.user.groups.all()).exists():
-        return HttpResponseForbidden("You do not have permission to access this survey.")
-    # Check if user has already completed the survey
-    if Response.objects.filter(user=request.user, survey=survey).exists():
-        return render(request, 'surveys/survey_detail.html', {'survey': survey, 'completed': True})
-
-    # Handle form submission
-    if request.method == 'POST':
-        form = SurveyResponseForm(request.POST, survey=survey)  # Initialize form with POST data
-        if form.is_valid():
-            # Save responses for each question
-            for question in survey.questions.all():
-                answer = form.cleaned_data.get(f'question_{question.id}')
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    choice_id=answer.id if question.question_type == 'MC' else None,  # Use answer.id for MC questions
-                    text_answer=answer if question.question_type == 'TEXT' else ''  # Save text for text questions
-                )
-            request.user.add_points(survey.points_reward)  # Award points to user
-            return redirect('surveys:survey_list')  # Redirect to survey list using namespaced URL
-    else:
-        form = SurveyResponseForm(survey=survey)  # Initialize empty form
-
-    # Render survey detail template with form
-    return render(request, 'surveys/survey_detail.html', {'survey': survey, 'form': form})
+# View to display and process a specific survey, requires login
+# @login_required
+# def survey_detail(request, survey_id):
+#     survey = get_object_or_404(Survey, id=survey_id, is_active=True)  # Fetch survey or return 404
+#     # Check if user has access (in survey's groups or no groups specified)
+#     if survey.groups.exists() and not survey.groups.filter(id__in=request.user.groups.all()).exists():
+#         return HttpResponseForbidden("You do not have permission to access this survey.")
+#     # Check if user has already completed the survey
+#     if Response.objects.filter(user=request.user, survey=survey).exists():
+#         return render(request, 'surveys/survey_detail.html', {'survey': survey, 'completed': True})
+#
+#     # Handle form submission
+#     if request.method == 'POST':
+#         form = SurveyResponseForm(request.POST, survey=survey)  # Initialize form with POST data
+#         if form.is_valid():
+#             # Save responses for each question
+#             for question in survey.questions.all():
+#                 answer = form.cleaned_data.get(f'question_{question.id}')
+#                 Response.objects.create(
+#                     user=request.user,
+#                     survey=survey,
+#                     question=question,
+#                     choice_id=answer.id if question.question_type == 'MC' else None,  # Use answer.id for MC questions
+#                     text_answer=answer if question.question_type == 'TEXT' else ''  # Save text for text questions
+#                 )
+#             request.user.add_points(survey.points_reward)  # Award points to user
+#             return redirect('surveys:survey_list')  # Redirect to survey list using namespaced URL
+#     else:
+#         form = SurveyResponseForm(survey=survey)  # Initialize empty form
+#
+#     # Render survey detail template with form
+#     return render(request, 'surveys/survey_detail.html', {'survey': survey, 'form': form})
 
 
 @login_required
@@ -122,21 +123,46 @@ def survey_question(request, survey_id, question_id=None):
         # Avoid duplicate
         if not Response.objects.filter(user=request.user, survey=survey, question=question).exists():
             if question.question_type in ['MC', 'RATING', 'DROPDOWN']:
-                try:
-                    choice = Choice.objects.get(id=answer)
-                except Choice.DoesNotExist:
-                    return HttpResponseBadRequest("Invalid choice selected.")
+                if not answer:
+                    if question.required:
+                        messages.error(request, "Please select an option before continuing.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left,
+                        })
+                    else:
+                        # Not required and no answer — skip saving response
+                        pass
+                else:
+                    try:
+                        choice = Choice.objects.get(id=answer)
+                    except Choice.DoesNotExist:
+                        messages.error(request, "Invalid option selected. Please try again.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left,
+                        })
 
-                custom_other = request.POST.get('other_text', '').strip()
+                    custom_other = request.POST.get('other_text', '').strip()
 
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    choice=choice,
-                    text_answer=custom_other if choice.text.lower() == 'other' else '',
-                )
-                next_q = choice.next_question
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        choice=choice,
+                        text_answer=custom_other if choice.text.lower() == 'other' else '',
+                    )
+                    next_q = choice.next_question
 
             elif question.question_type == 'MATRIX':
                 if question.matrix_mode == 'side_by_side':
@@ -235,29 +261,66 @@ def survey_question(request, survey_id, question_id=None):
                     )
 
             elif question.question_type == 'YESNO':
-                if answer.lower() in ['yes', 'no']:
+                if question.required and not answer:
+                    messages.error(request, "This question is required. Please select Yes or No.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })
+                if answer and answer.lower() in ['yes', 'no']:
                     Response.objects.create(
                         user=request.user,
                         survey=survey,
                         question=question,
                         text_answer=answer.lower()
                     )
+                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
             elif question.question_type == 'NUMBER':
-                try:
-                    number_value = float(answer)
-                except (TypeError, ValueError):
-                    return HttpResponseBadRequest("Invalid number input.")
-
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    text_answer=str(number_value)
-                )
+                if question.required and not answer:
+                    messages.error(request, "This question is required. Please enter a number.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })
+                if answer:
+                    try:
+                        number_value = float(answer)
+                    except (TypeError, ValueError):
+                        messages.error(request, "Invalid number input.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left,
+                        })
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        text_answer=str(number_value)
+                    )
+                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
             elif question.question_type == 'SLIDER':
-                if question.required and not answer:
+
+                slider_moved = request.POST.get('slider_moved') == "true"
+                answer = request.POST.get('answer')
+                # Only validate movement if required
+                if question.required and not slider_moved:
                     messages.error(request, "Please move the slider to select a value.")
                     return render(request, 'surveys/survey_question.html', {
                         'survey': survey,
@@ -268,20 +331,50 @@ def survey_question(request, survey_id, question_id=None):
                         'previous_response': None,
                         'time_left': time_left,
                     })
-                try:
-                    slider_value = int(answer)
-                except (TypeError, ValueError):
-                    return HttpResponseBadRequest("Invalid slider value.")
-                if question.min_value is not None and slider_value < question.min_value:
-                    return HttpResponseBadRequest("Slider value below minimum.")
-                if question.max_value is not None and slider_value > question.max_value:
-                    return HttpResponseBadRequest("Slider value above maximum.")
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    text_answer=str(slider_value)
-                )
+                if answer:
+                    try:
+                        slider_value = int(answer)
+                    except (TypeError, ValueError):
+                        messages.error(request, "Invalid slider value.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left,
+                        })
+
+                    if question.min_value is not None and slider_value < question.min_value:
+                        messages.error(request, f"Value must be at least {question.min_value}.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left
+                        })
+                    if question.max_value is not None and slider_value > question.max_value:
+                        messages.error(request, f"Value must be at most {question.max_value}.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left
+                        })
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        text_answer=str(slider_value)
+                    )
+                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
             elif question.question_type == 'IMAGE_CHOICE':
 
@@ -313,6 +406,8 @@ def survey_question(request, survey_id, question_id=None):
                             question=question,
                             choice=choice
                         )
+
+                next_q = None
 
             elif question.question_type == 'IMAGE_RATING':
                 if question.required and not any(request.POST.get(f'rating_{c.id}') for c in question.choices.all()):
@@ -364,30 +459,43 @@ def survey_question(request, survey_id, question_id=None):
                 )
 
             elif question.question_type == 'TEXT':
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    text_answer=answer,
-                )
-                next_q = None
+                if question.required and not answer.strip():
+                    messages.error(request, "This question is required. Please enter your answer.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })
+                if answer.strip():  # Only save non-empty responses
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        text_answer=answer.strip(),
+                    )
+                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
         else:
             next_q = None
 
-
         # Get next question in order if not defined
-        if question.question_type in ['MC', 'RATING', 'DROPDOWN'] and choice.next_question:
-            next_q = choice.next_question
-        elif question.next_question:
-            next_q = question.next_question
-        else:
-            # fallback: next in sequence
-            try:
-                idx = all_questions.index(question)
-                next_q = all_questions[idx + 1]
-            except IndexError:
-                next_q = None
+        if not next_q:
+
+            if 'choice' in locals() and choice and question.question_type in ['MC', 'RATING',
+                                                                              'DROPDOWN', 'IMAGE_CHOICE'] and not question.allows_multiple and choice.next_question:
+                next_q = choice.next_question
+            elif question.next_question:
+                next_q = question.next_question
+            else:
+                try:
+                    idx = all_questions.index(question)
+                    next_q = all_questions[idx + 1]
+                except IndexError:
+                    next_q = None
 
         if next_q:
             return redirect('surveys:survey_question', survey_id=survey.id, question_id=next_q.id)
