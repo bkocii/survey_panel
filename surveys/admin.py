@@ -48,33 +48,37 @@ class AgeRangeFilter(admin.SimpleListFilter):
 class MatrixColumnInlineForm(forms.ModelForm):
     class Meta:
         model = MatrixColumn
-        fields = ['label', 'input_type', 'dropdown_choices', 'group', 'value', 'required']
+        fields = ['label', 'input_type', 'option_list', 'group', 'value', 'order', 'required', 'next_question']
+        list_editable = ['order']
+        ordering = ['group', 'order']
 
     def clean(self):
         cleaned_data = super().clean()
         input_type = cleaned_data.get('input_type')
-        dropdown_choices = cleaned_data.get('dropdown_choices')
+        option_list = cleaned_data.get('option_list')
 
-        if input_type == 'dropdown' and not dropdown_choices:
-            raise forms.ValidationError("Dropdown choices are required if input type is 'dropdown'.")
+        if input_type in ['select', 'radio', 'checkbox'] and not option_list:
+            raise forms.ValidationError("Option list is required for select, radio, or checkbox types.")
         return cleaned_data
 
 class MatrixColumnInline(nested_admin.NestedTabularInline):
     model = MatrixColumn
     form = MatrixColumnInlineForm
+    fk_name = 'question'
     extra = 1
+    fields = ['value', 'label', 'input_type', 'option_list', 'group', 'order', 'required', 'next_question']
 
 class MatrixRowInline(nested_admin.NestedTabularInline):
     model = MatrixRow
     extra = 1
-    fields = ('text', 'required')
+    fields = ('value', 'text', 'required')
 
 
 # Inline admin for Choices, nested within Question
 class ChoiceInline(nested_admin.NestedTabularInline):
     model = Choice
     extra = 2  # Two empty choice forms
-    fields = ('text', 'next_question', 'image', 'image_preview')
+    fields = ('value', 'text', 'next_question', 'image', 'image_preview')
     readonly_fields = ('image_preview',)
     fk_name = 'question'  # 🔧 Tells Django which FK relates to the parent
     show_change_link = True
@@ -132,7 +136,7 @@ class QuestionAdmin(nested_admin.NestedModelAdmin):
 # Admin configuration for Choice model
 @admin.register(Choice)
 class ChoiceAdmin(admin.ModelAdmin):
-    list_display = ('text', 'question')
+    list_display = ('text', 'question', 'value')
     list_filter = ('question__survey',)
     search_fields = ('text',)
     ordering = ('question',)

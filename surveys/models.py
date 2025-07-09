@@ -3,6 +3,7 @@ from django.db import models
 from users.models import CustomUser
 from django.contrib.auth.models import Group
 
+
 # Model for surveys, storing title, description, and status
 class Survey(models.Model):
     title = models.CharField(max_length=200)  # Survey title
@@ -20,6 +21,7 @@ class Survey(models.Model):
 
     def __str__(self):
         return self.title  # String representation for admin interface
+
 
 QUESTION_TYPES = [
     ('MC', 'Multiple Choice'),
@@ -60,12 +62,14 @@ class Question(models.Model):
         null=True,
         help_text="Only for MATRIX type")
     next_question = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+
     def __str__(self):
         return self.text  # String representation for admin
 
 class MatrixRow(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_rows')
     text = models.CharField(max_length=255)
+    value = models.IntegerField(default=0, help_text="Optional scoring weight or priority")
     required = models.BooleanField(default=False)
 
     def __str__(self):
@@ -81,18 +85,47 @@ class MatrixColumn(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_columns')
     label = models.CharField(max_length=50)
     value = models.IntegerField()  # e.g., 1–5
-    input_type = models.CharField(max_length=20, choices=INPUT_TYPES, default='text')  # New field
+    input_type = models.CharField(max_length=20, choices=INPUT_TYPES, default='radio')  # New field
     required = models.BooleanField(default=False)
-    dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
+    # dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
     group = models.CharField(max_length=100, blank=True, null=True, help_text="E.g. 'Importance', 'Satisfaction'")
+    option_list = models.TextField(
+        blank=True,
+        help_text="Comma- or newline-separated options. Format: `value:label` or just `label`"
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Order within the group")
+    next_question = models.ForeignKey(
+        'Question',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="If selected, go to this question next"
+    )
 
-    @property
-    def dropdown_options(self):
-        return [opt.strip() for opt in self.dropdown_choices.split(',')] if self.input_type == 'select' else []
+    class Meta:
+        ordering = ['group', 'order']  # Optional: default ordering at DB level
 
     # @property
-    # def dropdown_options_list(self):
-    #     return [opt.strip() for opt in self.dropdown_options_list.split(',')] if self.dropdown_options_list else []
+    # def dropdown_options(self):
+    #     return [opt.strip() for opt in self.dropdown_choices.split(',')] if self.input_type == 'select' else []
+
+    @property
+    def options(self):
+        if self.input_type not in ['select', 'radio', 'checkbox']:
+            return []
+
+        raw = self.option_list.replace('\r\n', '\n').replace('\r', '\n')  # Normalize newlines
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        options = []
+
+        for line in lines:
+            if ':' in line:
+                value, label = line.split(':', 1)
+            else:
+                value = label = line
+            options.append({'value': value.strip(), 'label': label.strip()})
+
+        return options
 
     def __str__(self):
         return f"{self.label} ({self.group})"
@@ -103,6 +136,7 @@ class Choice(models.Model):
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)  # Link to parent question
     text = models.CharField(max_length=200)  # Choice text
     image = models.ImageField(upload_to='choice_images/', null=True, blank=True)
+    value = models.IntegerField()  # Represents 1–5 etc.
     # Add this to your Choice model
     next_question = models.ForeignKey(
         'Question',
@@ -140,6 +174,7 @@ class Response(models.Model):
     matrix_row = models.ForeignKey(MatrixRow, null=True, blank=True, on_delete=models.CASCADE)
     matrix_column = models.ForeignKey(MatrixColumn, null=True, blank=True, on_delete=models.CASCADE)
     media_upload = models.FileField(upload_to='uploads/', null=True, blank=True)
+    value = models.FloatField(null=True, blank=True, help_text="Scoring or weighted value of the answer")
 
     class Meta:
         unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey
