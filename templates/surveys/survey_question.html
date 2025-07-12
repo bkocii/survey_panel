@@ -6,6 +6,8 @@ survey
 
 
 {% block content %}
+
+
 <div class="container mt-5">
     <h2>{{ survey.title }}</h2>
     <p>{{ question.text }}</p>
@@ -195,46 +197,58 @@ survey
                                         {% for col in cols %}
                                             <td class="text-center">
                                                 {% if col.input_type == 'text' %}
-                                                    <input type="text" name="matrix_{{ row.id }}_{{ col.id }}"
-                                                           value="{{ submitted_data|get_item:"matrix_"|add:row.id|add:"_"|add:col.id }}"
-                                                           class="form-control">
+                                                    {% with row.id|concat_ids:col.id as field_name %}
+                                                        <input type="text"
+                                                               name="{{ field_name }}"
+                                                               value="{% if submitted_data %}{{ submitted_data|get_item:field_name }}{% endif %}"
+                                                               class="form-control">
+                                                    {% endwith %}
                                                 {% elif col.input_type == 'select' %}
                                                     <select name="matrix_{{ row.id }}_{{ col.id }}" class="form-select">
                                                         <option value="">-- Choose --</option>
-                                                        {% for val, label in col.options %}
-                                                            <option value="{{ val }}"
-                                                            {% if submitted_data and submitted_data|get_item:"matrix_"|add:row.id|add:"_"|add:col.id == val %}selected{% endif %}>
-                                                                {{ label }}
-                                                            </option>
-                                                        {% endfor %}
+                                                        {% with row.id|concat_ids:col.id as field_name %}
+                                                            {% for option in col.options %}
+                                                                <option value="{{ option.value }}"
+                                                                    {% if submitted_data|get_item:field_name == option.value %}selected{% endif %}>
+                                                                    {{ option.label }}
+                                                                </option>
+                                                            {% endfor %}
+                                                        {% endwith %}
                                                     </select>
+
                                                 {% elif col.input_type == 'radio' %}
-                                                    {% for option in col.options %}
-                                                        <div class="form-check form-check-inline">
-                                                            <input type="radio"
-                                                                   name="matrix_{{ row.id }}_{{ col.id }}"
-                                                                   value="{{ option.value }}"
-                                                                   {% if submitted_data and submitted_data|get_item:"matrix_"|add:row.id|add:"_"|add:col.id == val %}checked{% endif %}
-                                                                   class="form-check-input"
-                                                                   id="radio_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
-                                                            <label class="form-check-label" for="radio_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
-                                                                {{ option.label }}
-                                                            </label>
-                                                        </div>
-                                                    {% endfor %}
+                                                    {% with row.id|concat_ids:col.id as field_name %}
+                                                        {% for option in col.options %}
+                                                            <div class="form-check form-check-inline">
+                                                                <input type="radio"
+                                                                       name="{{ field_name }}"
+                                                                       value="{{ option.value }}"
+                                                                       {% if submitted_data|get_item:field_name == option.value %}checked{% endif %}
+                                                                       class="form-check-input"
+                                                                       id="radio_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                <label class="form-check-label" for="radio_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                    {{ option.label }}
+                                                                </label>
+                                                            </div>
+                                                        {% endfor %}
+                                                    {% endwith %}
                                                 {% elif col.input_type == 'checkbox' %}
                                                     {% for option in col.options %}
-                                                        <div class="form-check form-check-inline">
-                                                            <input type="checkbox"
-                                                                   name="matrix_{{ row.id }}_{{ col.id }}_{{ val }}"
-                                                                   value="{{ option.value }}"
-                                                                   {% if submitted_data and submitted_data|get_item:"matrix_"|add:row.id|add:"_"|add:col.id|add:"_"|add:val %}checked{% endif %}>
-                                                                   class="form-check-input"
-                                                                   id="checkbox_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
-                                                            <label class="form-check-label" for="checkbox_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
-                                                                {{ option.label }}
-                                                            </label>
-                                                        </div>
+                                                        {% with row.id|concat_ids:col.id as base_name %}
+                                                            {% with base_name|add:"_"|add:option.value as field_name %}
+                                                                <div class="form-check form-check-inline">
+                                                                    <input type="checkbox"
+                                                                           name="{{ field_name }}"
+                                                                           value="{{ option.value }}"
+                                                                           {% if submitted_data|get_item:field_name == option.value %}checked{% endif %}
+                                                                           class="form-check-input"
+                                                                           id="checkbox_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                    <label class="form-check-label" for="checkbox_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                        {{ option.label }}
+                                                                    </label>
+                                                                </div>
+                                                            {% endwith %}
+                                                        {% endwith %}
                                                     {% endfor %}
                                                 {% endif %}
                                             </td>
@@ -261,23 +275,36 @@ survey
                                     <td>{{ row.text }}</td>
                                     {% for col in question.matrix_columns.all %}
                                         <td>
-                                            {% if col.option_list %}
+                                            {% if col.options %}
                                                 {% for option in col.options %}
-                                                    <div class="form-check">
-                                                        <input type="checkbox"
-                                                               name="matrix_{{ row.id }}_{{ col.id }}"
-                                                               value="{{ option.value }}"
-                                                               class="form-check-input"
-                                                        >
-                                                        <label class="form-check-label">{{ option.label }}</label>
-                                                    </div>
+                                                    {% with row.id|concat_ids:col.id as base_name %}
+                                                        {% with base_name|add:"_"|add:option.value as field_name %}
+                                                            <div class="form-check form-check-inline">
+                                                                <input type="checkbox"
+                                                                       name="{{ field_name }}"
+                                                                       value="{{ option.value }}"
+                                                                       {% if submitted_data|get_item:field_name == option.value %}checked{% endif %}
+                                                                       class="form-check-input"
+                                                                       id="checkbox_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                <label class="form-check-label" for="checkbox_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                    {{ option.label }}
+                                                                </label>
+                                                            </div>
+                                                        {% endwith %}
+                                                    {% endwith %}
                                                 {% endfor %}
                                             {% else %}
-                                                <input type="checkbox"
-                                                       name="matrix_{{ row.id }}_{{ col.id }}"
-                                                       value="yes"
-                                                       class="form-check-input"
-                                                >
+                                                {% with row.id|concat_ids:col.id as field_name %}
+                                                    <div class="form-check">
+                                                        <input type="checkbox"
+                                                           name="{{ field_name }}"
+                                                           value="{{ col.value }}"
+                                                           {% if submitted_data|get_item:field_name == col.value|stringformat:"s" %}checked{% endif %}
+                                                           class="form-check-input"
+                                                           id="checkbox_{{ row.id }}_{{ col.id }}_default">
+                                                    <label class="form-check-label" for="checkbox_{{ row.id }}_{{ col.id }}_default">{{ col.label }}</label>
+                                                    </div>
+                                                {% endwith %}
                                             {% endif %}
                                         </td>
                                     {% endfor %}
@@ -303,20 +330,31 @@ survey
                                     {% for col in question.matrix_columns.all %}
                                         <td>
                                             {% if col.option_list %}
-                                                {% for option in col.options %}
-                                                    <div class="form-check">
-                                                        <input type="radio"
-                                                               name="matrix_{{ row.id }}_{{ col.id }}"
-                                                               value="{{ option.value }}"
-                                                               class="form-check-input">
-                                                        <label class="form-check-label">{{ option.label }}</label>
-                                                    </div>
-                                                {% endfor %}
+                                                {% with row.id|concat_ids:col.id as field_name %}
+                                                    {% for option in col.options %}
+                                                        <div class="form-check form-check-inline">
+                                                            <input type="radio"
+                                                                   name="{{ field_name }}"
+                                                                   value="{{ option.value }}"
+                                                                   {% if submitted_data|get_item:field_name == option.value %}checked{% endif %}
+                                                                   class="form-check-input"
+                                                                   id="radio_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                            <label class="form-check-label" for="radio_{{ row.id }}_{{ col.id }}_{{ forloop.counter }}">
+                                                                {{ option.label }}
+                                                            </label>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% endwith %}
                                             {% else %}
-                                                <input type="radio"
-                                                       name="matrix_{{ row.id }}_{{ col.id }}"
-                                                       value="{{ col.id }}"
-                                                       class="form-check-input">
+                                                {% with row.id|concat_ids:col.id as field_name %}
+                                                    <input type="radio"
+                                                           name="{{ field_name }}"
+                                                           value="{{ col.value }}"
+                                                           {% if submitted_data|get_item:field_name == col.value|stringformat:"s" %}checked{% endif %}
+                                                           class="form-check-input"
+                                                           id="radio_{{ row.id }}_{{ col.id }}_default">
+                                                    <label class="form-check-label" for="radio_{{ row.id }}_{{ col.id }}_default">{{ col.label }}</label>
+                                                {% endwith %}
                                             {% endif %}
                                         </td>
                                     {% endfor %}

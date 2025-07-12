@@ -70,7 +70,7 @@ class MatrixRow(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_rows')
     text = models.CharField(max_length=255)
     value = models.IntegerField(default=0, help_text="Optional scoring weight or priority")
-    required = models.BooleanField(default=False)
+    required = models.BooleanField(default=True)
 
     def __str__(self):
         return self.text
@@ -86,7 +86,7 @@ class MatrixColumn(models.Model):
     label = models.CharField(max_length=50)
     value = models.IntegerField()  # e.g., 1–5
     input_type = models.CharField(max_length=20, choices=INPUT_TYPES, default='radio')  # New field
-    required = models.BooleanField(default=False)
+    required = models.BooleanField(default=True)
     # dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
     group = models.CharField(max_length=100, blank=True, null=True, help_text="E.g. 'Importance', 'Satisfaction'")
     option_list = models.TextField(
@@ -176,7 +176,7 @@ class Response(models.Model):
     media_upload = models.FileField(upload_to='uploads/', null=True, blank=True)
     value = models.FloatField(null=True, blank=True, help_text="Scoring or weighted value of the answer")
 
-    class Meta:
-        unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey
+    # class Meta:
+    #     unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey
 
 

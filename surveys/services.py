@@ -14,6 +14,7 @@ def validate_and_collect_matrix_responses(request, survey, question):
     next_q = None
 
     for row in question.matrix_rows.all():
+        print("POST KEYS:", list(request.POST.keys()))
         for column in question.matrix_columns.all():
             field_base = f"matrix_{row.id}_{column.id}"
             is_required = column.required or row.required

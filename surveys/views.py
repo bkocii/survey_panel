@@ -2,7 +2,7 @@ from django.utils.timezone import now
 import datetime
 from collections import defaultdict
 from datetime import timedelta
-from .services import validate_and_collect_matrix_responses
+from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -10,99 +10,14 @@ from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn
 from .forms import SurveyResponseForm
 from django.db import models
-
-
 from django.utils.html import escape
-
-# Here's the updated block for side_by_side matrix in your view:
-def process_side_by_side_matrix(request, survey, question, grouped_matrix_columns, current_index, total_questions, progress_percent, time_left):
-    for row in question.matrix_rows.all():
-        row_has_response = False  # Track if any response was saved in this row
-
-        for column in question.matrix_columns.all():
-            field_base = f"matrix_{row.id}_{column.id}"
-
-            if column.input_type == 'checkbox':
-                selected_values = []
-                for key in request.POST:
-                    if key.startswith(f"{field_base}_"):
-                        selected_values.append(request.POST[key])
-
-                if column.required and not selected_values:
-                    messages.error(request, f"Please select at least one option for '{escape(row.text)}' under '{escape(column.label)}'.")
-                    return False
-
-                for val in selected_values:
-                    if val:
-                        option_entry = next((opt for opt in column.options if opt['value'] == val), None)
-                        matched_value = option_entry.get('value') if option_entry else column.value
-                        label = option_entry.get('label') if option_entry else val
-
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            matrix_row=row,
-                            matrix_column=column,
-                            text_answer=label,
-                            value=matched_value
-                        )
-                        row_has_response = True
-
-            elif column.input_type in ['radio', 'select']:
-                field_name = f"{field_base}"
-                selected_value = request.POST.get(field_name, '').strip()
-
-                if column.required and not selected_value:
-                    messages.error(request, f"Please select a value for '{escape(row.text)}' under '{escape(column.label)}'.")
-                    return False
-
-                if selected_value:
-                    option_entry = next((opt for opt in column.options if opt['value'] == selected_value), None)
-                    matched_value = option_entry.get('value') if option_entry else column.value
-                    label = option_entry.get('label') if option_entry else selected_value
-
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        matrix_row=row,
-                        matrix_column=column,
-                        text_answer=label,
-                        value=matched_value
-                    )
-                    row_has_response = True
-
-            elif column.input_type == 'text':
-                value = request.POST.get(field_base, '').strip()
-
-                if column.required and not value:
-                    messages.error(request, f"Please complete '{escape(row.text)}' under '{escape(column.label)}'.")
-                    return False
-
-                if value:
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        matrix_row=row,
-                        matrix_column=column,
-                        text_answer=value
-                    )
-                    row_has_response = True
-
-        if row.required and not row_has_response:
-            messages.error(request, f"Please complete at least one entry in the required row '{escape(row.text)}'.")
-            return False
-
-    return True
 
 
 # # View to list all active surveys, requires login
 @login_required
 def survey_list(request):
     # IDs of surveys the user has already responded to
-    completed_ids = Response.objects.filter(user=request.user).values_list('survey_id', flat=True)
+    completed_ids = Submission.objects.filter(user=request.user).values_list('survey_id', flat=True)
 
     # Surveys the user is allowed to access and hasn't completed yet
     surveys = Survey.objects.filter(is_active=True).filter(
@@ -249,6 +164,75 @@ def survey_question(request, survey_id, question_id=None):
                         })
 
                     for r in result:
+
+                        is_checkbox = r['col'].input_type == 'checkbox'
+
+                        # Only prevent duplicates for non-checkbox input types
+                        if not is_checkbox:
+                            exists = Response.objects.filter(
+                                user=request.user,
+                                survey=survey,
+                                question=question,
+                                matrix_row=r['row'],
+                                matrix_column=r['col']
+                            ).exists()
+                            if exists:
+                                continue  # skip duplicate save
+
+                        Response.objects.create(
+                            user=request.user,
+                            survey=survey,
+                            question=question,
+                            matrix_row=r['row'],
+                            matrix_column=r['col'],
+                            text_answer=r['answer'],
+                            value=r['value'],
+                        )
+
+                elif question.matrix_mode == 'multi':
+                    collected_responses = []
+                    next_q = None
+
+                    for row in question.matrix_rows.all():
+                        for col in question.matrix_columns.all():
+                            field_name = f"matrix_{row.id}_{col.id}"
+                            is_required = col.required or row.required
+
+                            submitted_values = request.POST.getlist(field_name)
+
+                            # Required check
+                            if is_required and not submitted_values:
+                                messages.error(
+                                    request,
+                                    f"Please select at least one option for '{row.text}' under '{col.label}'."
+                                )
+                                return render(request, 'surveys/survey_question.html', {
+                                    'survey': survey,
+                                    'question': question,
+                                    'current_index': current_index,
+                                    'total_questions': total_questions,
+                                    'progress_percent': progress_percent,
+                                    'previous_response': None,
+                                    'time_left': time_left,
+                                    'submitted_data': request.POST,
+                                })
+
+                            for val in submitted_values:
+                                if val:
+                                    label = next((opt['label'] for opt in col.options if opt['value'] == val), val)
+
+                                    collected_responses.append({
+                                        'row': row,
+                                        'col': col,
+                                        'answer': label,
+                                        'value': val
+                                    })
+
+                                    if not next_q and col.next_question:
+                                        next_q = col.next_question
+
+                    # Save collected responses
+                    for r in collected_responses:
                         Response.objects.create(
                             user=request.user,
                             survey=survey,
@@ -260,11 +244,18 @@ def survey_question(request, survey_id, question_id=None):
                         )
 
                 else:  # single-select
+                    collected_responses = []
+                    next_q = None
                     for row in question.matrix_rows.all():
-                        selected_column_id = request.POST.get(f'matrix_{row.id}')
-                        if not selected_column_id:
-                            if row.required:
-                                messages.error(request, f"Please select an option for '{row.text}'.")
+                        for col in question.matrix_columns.all():
+                            field_name = f"matrix_{row.id}_{col.id}"
+                            is_required = col.required or row.required
+                            selected_val = request.POST.get(field_name)
+                            if is_required and not selected_val:
+                                messages.error(
+                                    request,
+                                    f"Please select an option for '{row.text}' under '{col.label}'."
+                                )
                                 return render(request, 'surveys/survey_question.html', {
                                     'survey': survey,
                                     'question': question,
@@ -273,25 +264,30 @@ def survey_question(request, survey_id, question_id=None):
                                     'progress_percent': progress_percent,
                                     'previous_response': None,
                                     'time_left': time_left,
+                                    'submitted_data': request.POST,
                                 })
-                            continue
-                        try:
-                            selected_column = question.matrix_columns.get(id=selected_column_id)
-                            Response.objects.create(
-                                user=request.user,
-                                survey=survey,
-                                question=question,
-                                matrix_row=row,
-                                matrix_column=selected_column,
-                                text_answer='',  # or could extend to save the radio value in future
-                                numeric_value=selected_column.value
-                            )
-                            # Optionally capture next_question if set on this column
-                            if not next_q and selected_column.next_question:
-                                next_q = selected_column.next_question
+                            if selected_val:
+                                label = next((opt['label'] for opt in col.options if opt['value'] == selected_val),
+                                             selected_val)
+                                collected_responses.append({
+                                    'row': row,
+                                    'col': col,
+                                    'answer': label,
+                                    'value': selected_val
+                                })
+                                if not next_q and col.next_question:
+                                    next_q = col.next_question
 
-                        except MatrixColumn.DoesNotExist:
-                            continue
+                    for r in collected_responses:
+                        Response.objects.create(
+                            user=request.user,
+                            survey=survey,
+                            question=question,
+                            matrix_row=r['row'],
+                            matrix_column=r['col'],
+                            text_answer=r['answer'],
+                            value=r['value'],
+                        )
 
             elif question.question_type in ['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD']:
                 files = request.FILES.getlist('answer_file') if question.allow_multiple_files else [
@@ -466,7 +462,7 @@ def survey_question(request, survey_id, question_id=None):
                             value=choice.value,
                         )
 
-                next_q = None
+                        next_q = choice.next_question
 
             elif question.question_type == 'IMAGE_RATING':
                 if question.required and not any(request.POST.get(f'rating_{c.id}') for c in question.choices.all()):
@@ -603,6 +599,7 @@ def survey_submit(request, survey_id):
         'survey': survey,
         'rewarded': survey.points_reward,
     })
+
 
 @login_required
 def already_submitted(request, survey_id):
