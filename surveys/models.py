@@ -41,6 +41,12 @@ QUESTION_TYPES = [
     ('IMAGE_RATING', 'Image Rating'),
 ]
 
+HELPER_MEDIA_TYPES = [
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+    ]
+
 
 # Model for survey questions, linked to a survey
 class Question(models.Model):
@@ -61,6 +67,19 @@ class Question(models.Model):
         blank=True,
         null=True,
         help_text="Only for MATRIX type")
+    helper_media = models.FileField(upload_to='question_helpers/', blank=True, null=True)
+    helper_media_type = models.CharField(
+        max_length=10,
+        choices=HELPER_MEDIA_TYPES,
+        blank=True,
+        null=True,
+        help_text="Specify type if helper media is provided."
+    )
+    helper_text = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Optional helper description to display under the question.'
+    )
     next_question = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
 
     def __str__(self):

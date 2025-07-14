@@ -2,6 +2,23 @@ from django import forms
 from .models import Survey, Question
 
 
+class QuestionAdminForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        media = cleaned_data.get("helper_media")
+        media_type = cleaned_data.get("helper_media_type")
+
+        if media and not media_type:
+            raise forms.ValidationError("Please select a media type if a helper media file is uploaded.")
+        if media_type and not media:
+            raise forms.ValidationError("You selected a media type but did not upload a helper media file.")
+        return cleaned_data
+
+
 # Dynamic form for survey responses, generated based on survey questions
 class SurveyResponseForm(forms.Form):
     def __init__(self, *args, **kwargs):

@@ -1,6 +1,7 @@
 from django.contrib import admin
 import nested_admin
 from django import forms
+from .forms import QuestionAdminForm
 from datetime import date
 import csv
 from django.utils.html import format_html
@@ -90,13 +91,21 @@ class ChoiceInline(nested_admin.NestedTabularInline):
 
     image_preview.short_description = "Preview"
 
+
 # Inline admin for Questions, nested within Survey
 class QuestionInline(nested_admin.NestedTabularInline):
     model = Question
+    form = QuestionAdminForm
     extra = 1  # One empty question form
-    fields = ('text', 'question_type', 'matrix_mode', 'next_question', 'required', 'min_value', 'max_value', 'step_value', 'allow_multiple_files', 'allows_multiple')
+    fields = (
+        'text', 'question_type', 'matrix_mode', 'next_question', 'required',
+        'min_value', 'max_value', 'step_value',
+        'allow_multiple_files', 'allows_multiple',
+        'helper_text', 'helper_media', 'helper_media_type',  # updated here
+    )
     show_change_link = True
-    inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]  # Nest ChoiceInline here
+    inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]
+
 
 # Inline admin for Responses, within Question (for QuestionAdmin)
 class ResponseInline(nested_admin.NestedTabularInline):
@@ -124,14 +133,30 @@ class SurveyAdmin(nested_admin.NestedModelAdmin):
         self.message_user(request, f"Notifications queued for {queryset.count()} survey(s).")
     send_notifications.short_description = "Send notifications to assigned groups"
 
+
 # Admin configuration for Question model
 @admin.register(Question)
 class QuestionAdmin(nested_admin.NestedModelAdmin):
-    list_display = ('text', 'survey', 'question_type', 'matrix_mode', 'allows_multiple')
+    list_display = (
+        'text', 'survey', 'question_type', 'matrix_mode', 'allows_multiple'
+    )
     list_filter = ('survey', 'question_type', 'matrix_mode')
+    form = QuestionAdminForm
     search_fields = ('text',)
     inlines = [ChoiceInline, ResponseInline]
     ordering = ('survey',)
+
+    fieldsets = (
+        (None, {
+            'fields': (
+                'survey', 'text', 'question_type', 'matrix_mode', 'next_question', 'required',
+                'min_value', 'max_value', 'step_value',
+                'allow_multiple_files', 'allows_multiple',
+                'helper_text', 'helper_media', 'helper_media_type',  # updated here
+            )
+        }),
+    )
+
 
 # Admin configuration for Choice model
 @admin.register(Choice)
