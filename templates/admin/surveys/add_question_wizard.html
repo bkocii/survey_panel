@@ -6,10 +6,11 @@
 {# HEAD BLOCK: Tailwind + JS includes #}
 {# ---------------------------------- #}
 {% block extrahead %}
-  {{ block.super }}
-  {% tailwind_css %}
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
-  <script src="{% static 'admin/js/question_wizard.js' %}" defer></script>
+    {{ block.super }}
+    {% tailwind_css %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="{% static 'admin/js/question_wizard.js' %}" defer></script>
+    <script src="{% static 'admin/js/bulk_add.js' %}"></script>
 {% endblock %}
 
 
@@ -93,6 +94,12 @@
           <button type="button" data-prefix="choices" class="add-form-btn mt-2 px-3 py-1 border rounded text-blue-600 border-blue-600 hover:bg-blue-100 transition">
             ➕ Add Choice
           </button>
+
+        <button type="button"
+                class="bulk-add-btn text-sm text-blue-700 underline ml-2"
+                data-prefix="choices">  <!-- or matrix_rows / matrix_cols -->
+          Bulk Add
+        </button>
         </div>
 
 
@@ -149,6 +156,13 @@
           </template>
 
           <button type="button" data-prefix="matrix_rows" class="add-form-btn mt-2 px-3 py-1 border rounded text-blue-600 border-blue-600 hover:bg-blue-100">➕ Add Row</button>
+
+        <button type="button"
+                class="bulk-add-btn text-sm text-blue-700 underline ml-2"
+                data-prefix="matrix_rows">  <!-- or matrix_rows / matrix_cols -->
+          Bulk Add
+        </button>
+
         </div>
 
 
@@ -226,6 +240,32 @@
           </template>
 
           <button type="button" data-prefix="matrix_cols" class="add-form-btn mt-2 px-3 py-1 border rounded text-blue-600 border-blue-600 hover:bg-blue-100">➕ Add Column</button>
+
+            <button type="button"
+                    class="bulk-add-btn text-sm text-blue-700 underline ml-2"
+                    data-prefix="matrix_cols">  <!-- or matrix_rows / matrix_cols -->
+              Bulk Add
+            </button>
+
+        </div>
+
+
+        <!-- Bulk Add Modal -->
+        <div id="bulk-add-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+          <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
+            <h3 class="text-lg font-semibold mb-4">➕ Bulk Add Items</h3>
+            <p class="text-sm text-gray-600 mb-2">Enter one item per line or comma-separated. Values will be assigned incrementally.</p>
+            <textarea id="bulk-add-input" rows="6" class="w-full border-gray-300 rounded shadow-sm p-2" placeholder="Item 1\nItem 2\nItem 3"></textarea>
+
+            <div class="flex justify-between items-center mt-4">
+              <button id="bulk-add-cancel" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">
+                ✖ Cancel
+              </button>
+              <button id="bulk-add-confirm" type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">
+                ➕ Add Items
+              </button>
+            </div>
+          </div>
         </div>
 
         {# ------------------ #}

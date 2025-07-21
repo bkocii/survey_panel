@@ -125,10 +125,6 @@ class MatrixColumn(models.Model):
     class Meta:
         ordering = ['group', 'order']  # Optional: default ordering at DB level
 
-    # @property
-    # def dropdown_options(self):
-    #     return [opt.strip() for opt in self.dropdown_choices.split(',')] if self.input_type == 'select' else []
-
     @property
     def options(self):
         if self.input_type not in ['select', 'radio', 'checkbox']:
