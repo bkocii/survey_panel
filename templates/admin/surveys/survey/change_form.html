@@ -1,0 +1,23 @@
+{% extends "admin/change_form.html" %}
+
+{% block content %}
+    {% if not original %}
+        <div class="messagelist">
+            <div class="info">
+                💡 Save the survey to start adding questions using the wizard.
+            </div>
+        </div>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if add_question_wizard_url %}
+        <li>
+            <a href="{{ add_question_wizard_url }}" class="addlink">
+                ➕ Add Question (Wizard)
+            </a>
+        </li>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,308 @@
+{% extends "admin/base_site.html" %}
+{% include 'base.html' %}
+{% load static %}
+{% load static tailwind_tags %}
+
+{% block extrahead %}
+  {{ block.super }}
+    {% tailwind_css %}
+
+
+{#  <!-- ✅ Bootstrap + Icons -->#}
+{#  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">#}
+{#  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">#}
+
+  <!-- ✅ Custom styles -->
+{#  <link rel="stylesheet" href="{% static 'css/style.css' %}">#}
+
+  <!-- ✅ Debug test for Bootstrap -->
+  <style>
+    body::before {
+      content: "✅ Bootstrap Loaded";
+      color: green;
+      font-size: 14px;
+      display: block;
+    }
+  </style>
+
+
+  <!-- ✅ Bootstrap JS if needed in head (usually safe to move to extrajs instead) -->
+{#  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>#}
+
+  <!-- ✅ Your JS (main + preview) -->
+  <script src="{% static 'admin/js/question_wizard.js' %}"></script>
+
+    <script>
+    console.log("✅ JS running");
+
+    function updatePreview() {
+      const preview = document.getElementById("question-preview");
+      const type = document.getElementById("id_question_type")?.value;
+      const text = document.getElementById("id_text")?.value || "";
+      const helper = document.getElementById("id_helper_text")?.value || "";
+
+      let html = `<h5>${text}</h5>`;
+      if (helper) html += `<p><small class="text-muted">${helper}</small></p>`;
+
+      if (["MC", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
+        html += "<ul>";
+        document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
+          const val = input.value.trim();
+          if (val) html += `<li>${val}</li>`;
+        });
+        html += "</ul>";
+      }
+
+      if (type === "MATRIX") {
+        const rows = document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]');
+        const cols = document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]');
+        html += "<table class='table table-bordered'><thead><tr><th></th>";
+        cols.forEach(col => {
+          if (col.value.trim()) html += `<th>${col.value}</th>`;
+        });
+        html += "</tr></thead><tbody>";
+        rows.forEach(row => {
+          if (row.value.trim()) {
+            html += `<tr><td><strong>${row.value}</strong></td>`;
+            cols.forEach(() => {
+              html += "<td><input type='radio' disabled></td>";
+            });
+            html += "</tr>";
+          }
+        });
+        html += "</tbody></table>";
+      }
+
+      preview.innerHTML = html || "<em class='text-muted'>Nothing to preview yet.</em>";
+    }
+
+    function addForm(prefix) {
+      const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      const container = document.getElementById(`${prefix}-forms`);
+      const template = document.getElementById(`${prefix}-template`);
+      const count = parseInt(totalForms.value);
+
+      const html = template.innerHTML.replaceAll('__prefix__', count);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const newForm = tempDiv.firstElementChild;
+
+      container.appendChild(newForm);
+      totalForms.value = count + 1;
+
+      newForm.querySelectorAll("input, select, textarea").forEach(input => {
+        input.addEventListener("input", updatePreview);
+        input.addEventListener("change", updatePreview);
+      });
+
+      updatePreview();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      console.log("✅ DOM loaded");
+      updatePreview();
+
+      document.querySelectorAll("input, select, textarea").forEach(input => {
+        input.addEventListener("input", updatePreview);
+        input.addEventListener("change", updatePreview);
+      });
+    });
+  </script>
+{% endblock %}
+
+
+{% block content %}
+
+<h1>{{ title }}</h1>
+
+<form method="post" enctype="multipart/form-data" id="question-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    {# Render Question fields with conditional wrapper classes #}
+    {% for field in form %}
+        <div class="form-group question-field {{ field.name }}-field">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.help_text %}
+                <small class="form-text text-muted">{{ field.help_text }}</small>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    {# CHOICES #}
+    <div id="choice-inline" class="formset-inline choices-formset d-none">
+      <h4>Choices</h4>
+      {{ choice_inline.management_form }}
+
+      <div id="choices-forms">
+        {% for form in choice_inline %}
+          <div class="formset-item mb-3 p-2 border rounded bg-light-subtle">
+            {% for field in form.visible_fields %}
+              <div class="form-group mb-2">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}
+                  <small class="form-text text-muted">{{ field.help_text }}</small>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Hidden template -->
+      <template id="choices-template">
+        <div class="formset-item mb-3 p-2 border rounded bg-light-subtle">
+          <div class="form-group mb-2">
+            <label for="id_choices-__prefix__-text">Text</label>
+            <input type="text" name="choices-__prefix__-text" id="id_choices-__prefix__-text" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_choices-__prefix__-value">Value</label>
+            <input type="number" name="choices-__prefix__-value" id="id_choices-__prefix__-value" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_choices-__prefix__-next_question">Next Question (ID)</label>
+            <input type="text" name="choices-__prefix__-next_question" id="id_choices-__prefix__-next_question" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_choices-__prefix__-image">Image</label>
+            <input type="file" name="choices-__prefix__-image" id="id_choices-__prefix__-image" class="form-control">
+          </div>
+        </div>
+      </template>
+
+      <button type="button" class="btn btn-outline-primary mt-2" onclick="addForm('choices')">➕ Add Choice</button>
+    </div>
+
+
+
+    {# MATRIX ROWS #}
+    <div id="matrix-row-inline" class="formset-inline matrix-rows-formset d-none">
+      <h4>Matrix Rows</h4>
+      {{ matrix_row_inline.management_form }}
+
+      <div id="matrix_rows-forms">
+        {% for form in matrix_row_inline %}
+          <div class="formset-item mb-3 p-2 border rounded bg-light-subtle">
+            {% for field in form.visible_fields %}
+              <div class="form-group mb-2">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}
+                  <small class="form-text text-muted">{{ field.help_text }}</small>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Template for new row -->
+      <template id="matrix_rows-template">
+        <div class="formset-item mb-3 p-2 border rounded bg-light-subtle">
+          <div class="form-group mb-2">
+            <label for="id_matrix_rows-__prefix__-text">Row Text</label>
+            <input type="text" name="matrix_rows-__prefix__-text" id="id_matrix_rows-__prefix__-text" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_rows-__prefix__-value">Value</label>
+            <input type="number" name="matrix_rows-__prefix__-value" id="id_matrix_rows-__prefix__-value" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label>
+              <input type="checkbox" name="matrix_rows-__prefix__-required" id="id_matrix_rows-__prefix__-required">
+              Required
+            </label>
+          </div>
+        </div>
+      </template>
+
+      <button type="button" class="btn btn-outline-primary mt-2" onclick="addForm('matrix_rows')">➕ Add Row</button>
+    </div>
+
+
+    {# MATRIX COLS #}
+    <div id="matrix-column-inline" class="formset-inline matrix-cols-formset d-none">
+  <h4>Matrix Columns</h4>
+  {{ matrix_column_inline.management_form }}
+
+  <div id="matrix_cols-forms">
+    {% for form in matrix_column_inline %}
+      <div class="formset-item mb-3 p-2 border rounded bg-light-subtle">
+        {% for field in form.visible_fields %}
+          <div class="form-group mb-2">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.help_text %}
+              <small class="form-text text-muted">{{ field.help_text }}</small>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Template for new column -->
+      <template id="matrix_cols-template">
+        <div class="formset-item mb-3 p-2 border rounded bg-light-subtle">
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-label">Label</label>
+            <input type="text" name="matrix_cols-__prefix__-label" id="id_matrix_cols-__prefix__-label" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-value">Value</label>
+            <input type="number" name="matrix_cols-__prefix__-value" id="id_matrix_cols-__prefix__-value" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-input_type">Input Type</label>
+            <select name="matrix_cols-__prefix__-input_type" id="id_matrix_cols-__prefix__-input_type" class="form-control">
+              <option value="text">Text</option>
+              <option value="select">Dropdown</option>
+              <option value="radio">Radio</option>
+              <option value="checkbox">Checkbox</option>
+            </select>
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-option_list">Options</label>
+            <textarea name="matrix_cols-__prefix__-option_list" id="id_matrix_cols-__prefix__-option_list" class="form-control"></textarea>
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-group">Group</label>
+            <input type="text" name="matrix_cols-__prefix__-group" id="id_matrix_cols-__prefix__-group" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-order">Order</label>
+            <input type="number" name="matrix_cols-__prefix__-order" id="id_matrix_cols-__prefix__-order" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label for="id_matrix_cols-__prefix__-next_question">Next Question (ID)</label>
+            <input type="text" name="matrix_cols-__prefix__-next_question" id="id_matrix_cols-__prefix__-next_question" class="form-control">
+          </div>
+          <div class="form-group mb-2">
+            <label>
+              <input type="checkbox" name="matrix_cols-__prefix__-required" id="id_matrix_cols-__prefix__-required">
+              Required
+            </label>
+          </div>
+        </div>
+      </template>
+
+      <button type="button" class="btn btn-outline-primary mt-2" onclick="addForm('matrix_cols')">➕ Add Column</button>
+    </div>
+
+    <hr>
+        <h3 class="mt-4">🔍 Live Preview</h3>
+        <div id="question-preview" class="border p-3 bg-light-subtle rounded">
+          <em class="text-muted">Start typing or adding options to see a live preview...</em>
+        </div>
+
+
+    <button type="submit" class="btn btn-primary mt-3">Save Question</button>
+</form>
+
+<p><a href="{% url 'admin:surveys_survey_change' survey.id %}">← Back to survey</a></p>
+
+{% endblock %}
+

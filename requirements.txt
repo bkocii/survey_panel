@@ -11,3 +11,5 @@ eventlet
 flower
 django-nested-admin
 pillow
+django-unfold
+django-tailwind

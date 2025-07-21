@@ -75,7 +75,8 @@ class Question(models.Model):
         null=True,
         help_text="Specify type if helper media is provided."
     )
-    helper_text = models.TextField(
+    helper_text = models.CharField(
+        max_length=100,
         blank=True,
         null=True,
         help_text='Optional helper description to display under the question.'

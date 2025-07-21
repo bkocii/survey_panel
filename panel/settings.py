@@ -33,6 +33,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'unfold',
+    'surveys',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,13 +43,22 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'nested_admin',
     'users',
-    'surveys',
     'notifications',
     'rest_framework',
     'celery',
     'corsheaders',
+    'tailwind',
+    'theme',
 ]
+TAILWIND_APP_NAME = 'theme'
 
+NPM_BIN_PATH = r"C:\Users\Admin\AppData\Roaming\npm\npm.cmd"
+INTERNAL_IPS = ["0.0.0.0",
+                "127.0.0.1"]
+
+UNFOLD = {'SITE_HEADER': 'Survey Panel',
+          'SITE_TITLE': 'Survey Panel',
+          'SHOW_FIELDSETS_AS_TABS': True}
 AUTH_USER_MODEL = 'users.CustomUser'
 LOGIN_REDIRECT_URL = 'surveys:survey_list'
 LOGIN_URL = 'users:login'
@@ -73,43 +84,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '{levelname} {asctime} {module} {message}',
-#             'style': '{',
-#         },
-#     },
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'verbose',
-#         },
-#         'file': {
-#             'class': 'logging.FileHandler',
-#             'filename': BASE_DIR / 'debug.log',
-#             'formatter': 'verbose',
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console', 'file'],
-#             'level': 'DEBUG',  # Capture detailed errors
-#             'propagate': False,
-#         },
-#         'users': {  # For users app
-#             'handlers': ['console', 'file'],
-#             'level': 'DEBUG',
-#             'propagate': False,
-#         },
-#         '': {  # Catch-all
-#             'handlers': ['console', 'file'],
-#             'level': 'INFO',
-#         },
-#     },
-# }
+if DEBUG:
+    # django-tailwind theme app
+    INSTALLED_APPS.append('django_browser_reload')
+    MIDDLEWARE.append('django_browser_reload.middleware.BrowserReloadMiddleware')
 
 ROOT_URLCONF = 'panel.urls'
 

@@ -1,7 +1,11 @@
 from django.contrib import admin
+from django.shortcuts import render, redirect, get_object_or_404, reverse
 import nested_admin
+from django.urls import path
+from unfold.sites import UnfoldAdminSite
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from django import forms
-from .forms import QuestionAdminForm
+from .forms import QuestionAdminForm, WizardQuestionForm
 from datetime import date
 import csv
 from django.utils.html import format_html
@@ -46,6 +50,7 @@ class AgeRangeFilter(admin.SimpleListFilter):
 
         return queryset
 
+
 class MatrixColumnInlineForm(forms.ModelForm):
     class Meta:
         model = MatrixColumn
@@ -62,21 +67,23 @@ class MatrixColumnInlineForm(forms.ModelForm):
             raise forms.ValidationError("Option list is required for select, radio, or checkbox types.")
         return cleaned_data
 
-class MatrixColumnInline(nested_admin.NestedTabularInline):
+
+class MatrixColumnInline(TabularInline):
     model = MatrixColumn
     form = MatrixColumnInlineForm
     fk_name = 'question'
     extra = 1
     fields = ['value', 'label', 'input_type', 'option_list', 'group', 'order', 'required', 'next_question']
 
-class MatrixRowInline(nested_admin.NestedTabularInline):
+
+class MatrixRowInline(TabularInline):
     model = MatrixRow
     extra = 1
     fields = ('value', 'text', 'required')
 
 
 # Inline admin for Choices, nested within Question
-class ChoiceInline(nested_admin.NestedTabularInline):
+class ChoiceInline(TabularInline):
     model = Choice
     extra = 2  # Two empty choice forms
     fields = ('value', 'text', 'next_question', 'image', 'image_preview')
@@ -93,37 +100,34 @@ class ChoiceInline(nested_admin.NestedTabularInline):
 
 
 # Inline admin for Questions, nested within Survey
-class QuestionInline(nested_admin.NestedTabularInline):
+class QuestionInline(TabularInline):
     model = Question
-    form = QuestionAdminForm
-    extra = 1  # One empty question form
-    fields = (
-        'text', 'question_type', 'matrix_mode', 'next_question', 'required',
-        'min_value', 'max_value', 'step_value',
-        'allow_multiple_files', 'allows_multiple',
-        'helper_text', 'helper_media', 'helper_media_type',  # updated here
-    )
+    extra = 1
+    fields = ('question_type', 'text')  # Step 1: Minimal visible fields only
     show_change_link = True
-    inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]
+    inlines = [MatrixColumnInline, MatrixRowInline]  # We'll add conditionally with JS later
+
+    class Media:
+        js = ('admin/js/question_wizard.js',)
 
 
 # Inline admin for Responses, within Question (for QuestionAdmin)
-class ResponseInline(nested_admin.NestedTabularInline):
+class ResponseInline(TabularInline):
     model = Response
-    extra = 1
+    # extra = 1
     fields = ('user', 'choice', 'text_answer', 'submitted_at')
     readonly_fields = ('submitted_at',)
     raw_id_fields = ('user',)
     show_change_link = True
     fk_name = 'question'
 
+
 # Admin configuration for Survey model
 @admin.register(Survey)
-class SurveyAdmin(nested_admin.NestedModelAdmin):
+class SurveyAdmin(ModelAdmin):
     list_display = ('title', 'is_active', 'points_reward', 'created_at')
     list_filter = ('is_active', 'created_at', 'groups')
     search_fields = ('title', 'description')
-    inlines = [QuestionInline]
     ordering = ('-created_at',)
     actions = ['send_notifications']
 
@@ -133,17 +137,108 @@ class SurveyAdmin(nested_admin.NestedModelAdmin):
         self.message_user(request, f"Notifications queued for {queryset.count()} survey(s).")
     send_notifications.short_description = "Send notifications to assigned groups"
 
+    def get_urls(self):
+        print("🔧 Custom admin URLs loaded for SurveyAdmin")
+        urls = super().get_urls()
+        custom_urls = [
+            path('<int:survey_id>/add-question-wizard/', self.admin_site.admin_view(self.add_question_wizard),
+                 name='survey_add_question_wizard'),
+        ]
+        return custom_urls + urls
+
+    def add_question_wizard(self, request, survey_id):
+        from django.forms import inlineformset_factory
+        from .models import Choice, MatrixRow, MatrixColumn
+        from .forms import WizardQuestionForm
+
+        survey = get_object_or_404(Survey, id=survey_id)
+        all_questions = Question.objects.filter(survey=survey).only('id', 'text')
+
+        ChoiceFormSet = inlineformset_factory(
+            Question,
+            Choice,
+            fields=('text', 'value', 'next_question', 'image'),
+            fk_name='question',
+            extra=1,
+            can_delete=True
+        )
+        MatrixRowFormSet = inlineformset_factory(Question, MatrixRow, fields=('text', 'value', 'required'), extra=1,
+                                                 can_delete=True)
+        MatrixColFormSet = inlineformset_factory(
+            Question,
+            MatrixColumn,
+            fields=('label', 'value', 'input_type', 'required', 'next_question'),
+            fk_name='question',
+            extra=1,
+            can_delete=True
+        )
+
+        if request.method == 'POST':
+            form = WizardQuestionForm(request.POST, request.FILES)
+            choice_formset = ChoiceFormSet(request.POST, request.FILES, prefix='choices')
+            row_formset = MatrixRowFormSet(request.POST, request.FILES, prefix='matrix_rows')
+            col_formset = MatrixColFormSet(request.POST, request.FILES, prefix='matrix_cols')
+
+            if form.is_valid():
+                question = form.save(commit=False)
+                question.survey = survey
+                question.save()
+                form.save_m2m()
+
+                choice_formset.instance = question
+                if choice_formset.is_valid():
+                    choice_formset.save()
+
+                row_formset.instance = question
+                if row_formset.is_valid():
+                    row_formset.save()
+
+                col_formset.instance = question
+                if col_formset.is_valid():
+                    col_formset.save()
+
+                return redirect('admin:surveys_survey_change', object_id=survey.id)
+        else:
+            fake_question = Question(survey=survey)
+            form = WizardQuestionForm()
+            choice_formset = ChoiceFormSet(instance=fake_question, prefix='choices')
+            row_formset = MatrixRowFormSet(instance=fake_question, prefix='matrix_rows')
+            col_formset = MatrixColFormSet(instance=fake_question, prefix='matrix_cols')
+
+        return render(request, 'admin/surveys/add_question_wizard.html', {
+            'form': form,
+            'survey': survey,
+            'title': f"Add Question Wizard for {survey.title}",
+            'choice_inline': choice_formset,
+            'matrix_row_inline': row_formset,
+            'matrix_column_inline': col_formset,
+            'all_questions': all_questions,
+        })
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['add_question_wizard_url'] = reverse('admin:survey_add_question_wizard', args=[object_id])
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+
+    def response_add(self, request, obj, post_url_continue=None):
+        """After creating a new survey, redirect to the question wizard."""
+        if "_addanother" not in request.POST:
+            return redirect(
+                f"/admin/surveys/survey/{obj.pk}/add-question-wizard/"
+            )
+        return super().response_add(request, obj, post_url_continue)
+
 
 # Admin configuration for Question model
 @admin.register(Question)
-class QuestionAdmin(nested_admin.NestedModelAdmin):
+class QuestionAdmin(ModelAdmin):
     list_display = (
         'text', 'survey', 'question_type', 'matrix_mode', 'allows_multiple'
     )
     list_filter = ('survey', 'question_type', 'matrix_mode')
     form = QuestionAdminForm
     search_fields = ('text',)
-    inlines = [ChoiceInline, ResponseInline]
+    inlines = [ChoiceInline, MatrixRowInline, MatrixColumnInline]
     ordering = ('survey',)
 
     fieldsets = (
@@ -157,10 +252,13 @@ class QuestionAdmin(nested_admin.NestedModelAdmin):
         }),
     )
 
+    class Media:
+        js = ('admin/js/question_wizard.js',)  # Create this file next
+
 
 # Admin configuration for Choice model
 @admin.register(Choice)
-class ChoiceAdmin(admin.ModelAdmin):
+class ChoiceAdmin(ModelAdmin):
     list_display = ('text', 'question', 'value')
     list_filter = ('question__survey',)
     search_fields = ('text',)
@@ -169,7 +267,7 @@ class ChoiceAdmin(admin.ModelAdmin):
 
 # Admin configuration for Response model
 @admin.register(Response)
-class ResponseAdmin(admin.ModelAdmin):
+class ResponseAdmin(ModelAdmin):
     list_display = ('user', 'survey', 'question', 'choice', 'text_answer', 'media_preview', 'submitted_at')
     list_filter = ('survey',
                    'question',
@@ -274,8 +372,9 @@ class ResponseAdmin(admin.ModelAdmin):
 
     download_media_zip.short_description = "Download selected media + metadata as ZIP"
 
+
 @admin.register(Submission)
-class SubmissionAdmin(admin.ModelAdmin):
+class SubmissionAdmin(ModelAdmin):
     list_display = ('user', 'survey', 'submitted_at', 'duration_seconds')
     list_filter = ('user', 'survey', 'submitted_at', 'duration_seconds')
     search_fields = ('user__username', 'survey__title')

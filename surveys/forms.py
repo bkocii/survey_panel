@@ -19,6 +19,17 @@ class QuestionAdminForm(forms.ModelForm):
         return cleaned_data
 
 
+class WizardQuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = [
+            'question_type', 'text', 'matrix_mode', 'required',
+            'min_value', 'max_value', 'step_value',
+            'allow_multiple_files', 'allows_multiple',
+            'helper_text', 'helper_media', 'helper_media_type',
+        ]
+
+
 # Dynamic form for survey responses, generated based on survey questions
 class SurveyResponseForm(forms.Form):
     def __init__(self, *args, **kwargs):

@@ -8,9 +8,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn
-from .forms import SurveyResponseForm
+from .forms import SurveyResponseForm, WizardQuestionForm
 from django.db import models
 from django.utils.html import escape
+from django.forms import inlineformset_factory
 
 
 # # View to list all active surveys, requires login
@@ -605,6 +606,64 @@ def survey_submit(request, survey_id):
 def already_submitted(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
     return render(request, 'surveys/already_submitted.html', {'survey': survey})
+
+
+# This will be the view update to include inline formsets for choices, matrix rows, and matrix columns.
+
+def add_question_wizard(request, survey_id):
+    survey = get_object_or_404(Survey, id=survey_id)
+    all_questions = Question.objects.filter(survey=survey).only('id', 'text')
+
+    ChoiceFormSet = inlineformset_factory(Question, Choice, fields=('text', 'value'), extra=1, can_delete=True)
+    MatrixRowFormSet = inlineformset_factory(Question, MatrixRow, fields=('text', 'value', 'required'), extra=1, can_delete=True)
+    MatrixColFormSet = inlineformset_factory(Question, MatrixColumn, fields=('label', 'value', 'input_type', 'required'), extra=1, can_delete=True)
+
+    if request.method == 'POST':
+        form = WizardQuestionForm(request.POST, request.FILES)
+        choice_formset = ChoiceFormSet(request.POST, request.FILES, prefix='choices')
+        row_formset = MatrixRowFormSet(request.POST, request.FILES, prefix='matrix_rows')
+        col_formset = MatrixColFormSet(request.POST, request.FILES, prefix='matrix_cols')
+
+        if form.is_valid():
+            question = form.save(commit=False)
+            question.survey = survey
+            question.save()
+            form.save_m2m()
+
+            choice_formset.instance = question
+            if choice_formset.is_valid():
+                choice_formset.save()
+
+            row_formset.instance = question
+            if row_formset.is_valid():
+                row_formset.save()
+
+            col_formset.instance = question
+            if col_formset.is_valid():
+                col_formset.save()
+
+            return redirect('admin:surveys_survey_change', object_id=survey.id)
+    else:
+        # Must bind to a dummy instance to make formsets render
+        fake_question = Question(survey=survey)
+        form = WizardQuestionForm()
+        choice_formset = ChoiceFormSet(instance=fake_question, prefix='choices')
+        row_formset = MatrixRowFormSet(instance=fake_question, prefix='matrix_rows')
+        col_formset = MatrixColFormSet(instance=fake_question, prefix='matrix_cols')
+        print("GET choice total forms:", choice_formset.total_form_count())
+        print("GET row total forms:", row_formset.total_form_count())
+        print("GET col total forms:", col_formset.total_form_count())
+
+    return render(request, 'admin/surveys/add_question_wizard.html', {
+        'form': form,
+        'survey': survey,
+        'title': f"Add Question Wizard for {survey.title}",
+        'choice_inline': choice_formset,
+        'matrix_row_inline': row_formset,
+        'matrix_column_inline': col_formset,
+        'all_questions': all_questions,
+    })
+
 
 
 
