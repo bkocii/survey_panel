@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "flowbite": "^3.1.2"
   }
 }

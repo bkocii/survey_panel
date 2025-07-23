@@ -11,10 +11,18 @@ module.exports = {
         // Include JavaScript files that might contain Tailwind CSS classes
         '../../**/*.js',
         // Include Python files that might contain Tailwind CSS classes
-        '../../**/*.py'
+        '../../**/*.py',
         // Include flowbite files
         "./node_modules/flowbite/**/*.js"
     ],
+    safelist: [
+    'grid-cols-2',
+    'grid-cols-3',
+    'grid-cols-4',
+    'grid-cols-5',
+    'grid-cols-6',
+    'place-items-center',
+  ],
       theme: {
     extend: {
       colors: {

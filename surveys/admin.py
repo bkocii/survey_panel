@@ -54,18 +54,9 @@ class AgeRangeFilter(admin.SimpleListFilter):
 class MatrixColumnInlineForm(forms.ModelForm):
     class Meta:
         model = MatrixColumn
-        fields = ['label', 'input_type', 'option_list', 'group', 'value', 'order', 'required', 'next_question']
+        fields = ['label', 'input_type','group', 'value', 'order', 'required', 'next_question']
         list_editable = ['order']
         ordering = ['group', 'order']
-
-    def clean(self):
-        cleaned_data = super().clean()
-        input_type = cleaned_data.get('input_type')
-        option_list = cleaned_data.get('option_list')
-
-        if input_type in ['select', 'radio', 'checkbox'] and not option_list:
-            raise forms.ValidationError("Option list is required for select, radio, or checkbox types.")
-        return cleaned_data
 
 
 class MatrixColumnInline(TabularInline):
@@ -73,7 +64,7 @@ class MatrixColumnInline(TabularInline):
     form = MatrixColumnInlineForm
     fk_name = 'question'
     extra = 1
-    fields = ['value', 'label', 'input_type', 'option_list', 'group', 'order', 'required', 'next_question']
+    fields = ['value', 'label', 'input_type', 'group', 'order', 'required', 'next_question']
 
 
 class MatrixRowInline(TabularInline):

@@ -109,10 +109,6 @@ class MatrixColumn(models.Model):
     required = models.BooleanField(default=True)
     # dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
     group = models.CharField(max_length=100, blank=True, null=True, help_text="E.g. 'Importance', 'Satisfaction'")
-    option_list = models.TextField(
-        blank=True,
-        help_text="Comma- or newline-separated options. Format: `value:label` or just `label`"
-    )
     order = models.PositiveIntegerField(default=0, help_text="Order within the group")
     next_question = models.ForeignKey(
         'Question',
@@ -125,26 +121,8 @@ class MatrixColumn(models.Model):
     class Meta:
         ordering = ['group', 'order']  # Optional: default ordering at DB level
 
-    @property
-    def options(self):
-        if self.input_type not in ['select', 'radio', 'checkbox']:
-            return []
-
-        raw = self.option_list.replace('\r\n', '\n').replace('\r', '\n')  # Normalize newlines
-        lines = [line.strip() for line in raw.splitlines() if line.strip()]
-        options = []
-
-        for line in lines:
-            if ':' in line:
-                value, label = line.split(':', 1)
-            else:
-                value = label = line
-            options.append({'value': value.strip(), 'label': label.strip()})
-
-        return options
-
     def __str__(self):
-        return f"{self.label} ({self.group})"
+        return self.label  # String representation for admin
 
 
 # Model for multiple-choice options, linked to a question
@@ -187,6 +165,7 @@ class Response(models.Model):
     choice = models.ForeignKey(Choice, null=True, blank=True, on_delete=models.CASCADE)  # Selected choice (for MC questions)
     text_answer = models.TextField(blank=True)  # Text answer (for text questions)
     submitted_at = models.DateTimeField(auto_now_add=True)  # Timestamp of submission
+    group_label = models.CharField(max_length=100, blank=True, null=True)
     matrix_row = models.ForeignKey(MatrixRow, null=True, blank=True, on_delete=models.CASCADE)
     matrix_column = models.ForeignKey(MatrixColumn, null=True, blank=True, on_delete=models.CASCADE)
     media_upload = models.FileField(upload_to='uploads/', null=True, blank=True)

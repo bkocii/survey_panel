@@ -91,7 +91,7 @@ def survey_question(request, survey_id, question_id=None):
     grouped_matrix_columns = defaultdict(list)
 
     if question.question_type == 'MATRIX' and question.matrix_mode == 'side_by_side':
-        columns = question.matrix_columns.all().order_by('group', 'order')  # Ensures proper order
+        columns = question.matrix_columns.all().order_by('group', 'value')  # Ensures proper order
         for col in columns:
             key = col.group or "Ungrouped"
             grouped_matrix_columns[key].append(col)
@@ -185,9 +185,10 @@ def survey_question(request, survey_id, question_id=None):
                             survey=survey,
                             question=question,
                             matrix_row=r['row'],
-                            matrix_column=r['col'],
+                            matrix_column= r['col'],
                             text_answer=r['answer'],
                             value=r['value'],
+                            group_label=r.get('group_label')
                         )
 
                 elif question.matrix_mode == 'multi':
@@ -195,17 +196,31 @@ def survey_question(request, survey_id, question_id=None):
                     next_q = None
 
                     for row in question.matrix_rows.all():
+                        row_has_any = False  # At least one checkbox selected in this row
+
                         for col in question.matrix_columns.all():
                             field_name = f"matrix_{row.id}_{col.id}"
-                            is_required = col.required or row.required
-
                             submitted_values = request.POST.getlist(field_name)
 
-                            # Required check
-                            if is_required and not submitted_values:
+                            if submitted_values:
+                                row_has_any = True  # ✅ checkbox selected in this row
+
+                                for val in submitted_values:
+                                    collected_responses.append({
+                                        'row': row,
+                                        'col': col,
+                                        'answer': col.label,
+                                        'value': val,
+                                    })
+
+                                    if not next_q and col.next_question:
+                                        next_q = col.next_question
+
+                            # ✅ Check per-column required
+                            elif col.required:
                                 messages.error(
                                     request,
-                                    f"Please select at least one option for '{row.text}' under '{col.label}'."
+                                    f"Please select at least one option for column '{col.label}' in row '{row.text}'."
                                 )
                                 return render(request, 'surveys/survey_question.html', {
                                     'survey': survey,
@@ -218,21 +233,24 @@ def survey_question(request, survey_id, question_id=None):
                                     'submitted_data': request.POST,
                                 })
 
-                            for val in submitted_values:
-                                if val:
-                                    label = next((opt['label'] for opt in col.options if opt['value'] == val), val)
+                        # ✅ Check per-row required
+                        if row.required and not row_has_any:
+                            messages.error(
+                                request,
+                                f"Please select at least one option in row '{row.text}'."
+                            )
+                            return render(request, 'surveys/survey_question.html', {
+                                'survey': survey,
+                                'question': question,
+                                'current_index': current_index,
+                                'total_questions': total_questions,
+                                'progress_percent': progress_percent,
+                                'previous_response': None,
+                                'time_left': time_left,
+                                'submitted_data': request.POST,
+                            })
 
-                                    collected_responses.append({
-                                        'row': row,
-                                        'col': col,
-                                        'answer': label,
-                                        'value': val
-                                    })
-
-                                    if not next_q and col.next_question:
-                                        next_q = col.next_question
-
-                    # Save collected responses
+                    # Save all collected responses
                     for r in collected_responses:
                         Response.objects.create(
                             user=request.user,
@@ -247,15 +265,32 @@ def survey_question(request, survey_id, question_id=None):
                 else:  # single-select
                     collected_responses = []
                     next_q = None
+
                     for row in question.matrix_rows.all():
+                        row_has_selection = False  # Track if any column is selected for this row
+
                         for col in question.matrix_columns.all():
                             field_name = f"matrix_{row.id}_{col.id}"
-                            is_required = col.required or row.required
                             selected_val = request.POST.get(field_name)
-                            if is_required and not selected_val:
+
+                            if selected_val:
+                                row_has_selection = True
+
+                                collected_responses.append({
+                                    'row': row,
+                                    'col': col,
+                                    'answer': col.label,
+                                    'value': selected_val,
+                                })
+
+                                if not next_q and col.next_question:
+                                    next_q = col.next_question
+
+                            # Check column-level required
+                            elif col.required:
                                 messages.error(
                                     request,
-                                    f"Please select an option for '{row.text}' under '{col.label}'."
+                                    f"Please select an option for column '{col.label}' in row '{row.text}'."
                                 )
                                 return render(request, 'surveys/survey_question.html', {
                                     'survey': survey,
@@ -267,17 +302,23 @@ def survey_question(request, survey_id, question_id=None):
                                     'time_left': time_left,
                                     'submitted_data': request.POST,
                                 })
-                            if selected_val:
-                                label = next((opt['label'] for opt in col.options if opt['value'] == selected_val),
-                                             selected_val)
-                                collected_responses.append({
-                                    'row': row,
-                                    'col': col,
-                                    'answer': label,
-                                    'value': selected_val
-                                })
-                                if not next_q and col.next_question:
-                                    next_q = col.next_question
+
+                        # Check row-level required
+                        if row.required and not row_has_selection:
+                            messages.error(
+                                request,
+                                f"Please select at least one option in row '{row.text}'."
+                            )
+                            return render(request, 'surveys/survey_question.html', {
+                                'survey': survey,
+                                'question': question,
+                                'current_index': current_index,
+                                'total_questions': total_questions,
+                                'progress_percent': progress_percent,
+                                'previous_response': None,
+                                'time_left': time_left,
+                                'submitted_data': request.POST,
+                            })
 
                     for r in collected_responses:
                         Response.objects.create(
@@ -289,6 +330,8 @@ def survey_question(request, survey_id, question_id=None):
                             text_answer=r['answer'],
                             value=r['value'],
                         )
+
+
 
             elif question.question_type in ['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD']:
                 files = request.FILES.getlist('answer_file') if question.allow_multiple_files else [
