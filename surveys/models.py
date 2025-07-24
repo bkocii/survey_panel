@@ -39,6 +39,7 @@ QUESTION_TYPES = [
     ("SLIDER", "Slider"),
     ('IMAGE_CHOICE', 'Image Choice'),
     ('IMAGE_RATING', 'Image Rating'),
+    ('GEOLOCATION', 'Geolocation'),
 ]
 
 HELPER_MEDIA_TYPES = [
@@ -170,6 +171,8 @@ class Response(models.Model):
     matrix_column = models.ForeignKey(MatrixColumn, null=True, blank=True, on_delete=models.CASCADE)
     media_upload = models.FileField(upload_to='uploads/', null=True, blank=True)
     value = models.FloatField(null=True, blank=True, help_text="Scoring or weighted value of the answer")
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     # class Meta:
     #     unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey

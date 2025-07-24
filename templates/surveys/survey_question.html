@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
-{% load tailwind_tags %}
 {% block head_title %}
 survey
 {% endblock head_title %}
@@ -64,6 +63,12 @@ survey
                     {{ choice.text }}
                 </label><br>
             {% endfor %}
+
+        {% elif question.question_type == 'GEOLOCATION' %}
+          <div id="map" style="height: 400px; width: 100%; margin-top: 1rem;"></div>
+            <input type="hidden" name="location" id="locationInput">
+          <input type="hidden" name="latitude" id="latitude">
+          <input type="hidden" name="longitude" id="longitude">
 
         {% elif question.question_type == 'DROPDOWN' %}
             <select name="answer" class="form-select" onchange="toggleOther(this)">
@@ -457,6 +462,53 @@ survey
           }, 1000);
         </script>
     {% endif %}
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const map = L.map('map').setView([41.3275, 19.8189], 13); // default to Tirana
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker = null;
+
+        function setLocation(lat, lng) {
+          document.getElementById('locationInput').value = `${lat},${lng}`;
+          document.getElementById('latitude').value = lat;
+          document.getElementById('longitude').value = lng;
+        }
+
+        function addMarker(lat, lng) {
+          if (marker) {
+            map.removeLayer(marker);
+          }
+          marker = L.marker([lat, lng]).addTo(map);
+          setLocation(lat, lng);
+        }
+
+        // Add marker on map click
+        map.on('click', function (e) {
+          const { lat, lng } = e.latlng;
+          addMarker(lat, lng);
+        });
+
+        // Add geocoder control
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "Search for a location…",  // ✅ this adds the text
+            collapsed: false  // ✅ Keep it always expanded
+        })
+        .on('markgeocode', function (e) {
+          const latlng = e.geocode.center;
+          map.setView(latlng, 15);
+          addMarker(latlng.lat, latlng.lng);
+        })
+        .addTo(map);
+      });
+      // Move to top-left
+    document.querySelector('.leaflet-control-geocoder').classList.add('leaflet-top', 'leaflet-left');
+    </script>
 
 </div>
 

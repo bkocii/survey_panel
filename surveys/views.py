@@ -354,6 +354,30 @@ def survey_question(request, survey_id, question_id=None):
                         media_upload=file,
                     )
 
+            elif question.question_type == 'GEOLOCATION':
+                lat = request.POST.get("latitude")
+                lng = request.POST.get("longitude")
+
+                if not lat or not lng:
+                    messages.error(request, "Please select a location on the map.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                    })  # return to the question page
+
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    latitude=lat,
+                    longitude=lng
+                )
+
             elif question.question_type == 'YESNO':
                 if question.required and not answer:
                     messages.error(request, "This question is required. Please select Yes or No.")

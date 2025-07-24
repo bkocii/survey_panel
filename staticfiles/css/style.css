@@ -24,4 +24,23 @@
   overflow-y: auto;
 }
 
+.leaflet-control-geocoder-form input {
+font-size: 1rem;
+padding: 0.5rem 1rem;
+width: 250px;  /* make it wider */
+border-radius: 4px;
+}
+
+.leaflet-control-geocoder {
+margin-top: 10px;
+margin-left: 10px;
+}
+
+/* Optional: make the label above the map */
+#geocoder-label {
+margin: 0.5rem 0;
+font-weight: bold;
+}
+
+
 
