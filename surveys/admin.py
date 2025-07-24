@@ -150,17 +150,22 @@ class SurveyAdmin(ModelAdmin):
             Choice,
             fields=('text', 'value', 'next_question', 'image'),
             fk_name='question',
-            extra=1,
+            extra=0,
             can_delete=True
         )
-        MatrixRowFormSet = inlineformset_factory(Question, MatrixRow, fields=('text', 'value', 'required'), extra=1,
-                                                 can_delete=True)
+        MatrixRowFormSet = inlineformset_factory(
+            Question,
+            MatrixRow,
+            fields=('text', 'value', 'required'),
+            extra=0,
+            can_delete=True
+        )
         MatrixColFormSet = inlineformset_factory(
             Question,
             MatrixColumn,
-            fields=('label', 'value', 'input_type', 'required', 'next_question'),
+            fields=('label', 'value', 'input_type', 'required', 'next_question', 'group', 'order'),
             fk_name='question',
-            extra=1,
+            extra=0,
             can_delete=True
         )
 
@@ -170,25 +175,31 @@ class SurveyAdmin(ModelAdmin):
             row_formset = MatrixRowFormSet(request.POST, request.FILES, prefix='matrix_rows')
             col_formset = MatrixColFormSet(request.POST, request.FILES, prefix='matrix_cols')
 
-            if form.is_valid():
+            if form.is_valid() and choice_formset.is_valid() and row_formset.is_valid() and col_formset.is_valid():
                 question = form.save(commit=False)
                 question.survey = survey
                 question.save()
                 form.save_m2m()
 
                 choice_formset.instance = question
-                if choice_formset.is_valid():
-                    choice_formset.save()
+                choice_formset.save()
 
                 row_formset.instance = question
-                if row_formset.is_valid():
-                    row_formset.save()
+                row_formset.save()
 
                 col_formset.instance = question
-                if col_formset.is_valid():
-                    col_formset.save()
+                col_formset.save()
 
                 return redirect('admin:surveys_survey_change', object_id=survey.id)
+
+            else:
+                print("❌ Form or formsets invalid")
+                print("Form errors:", form.errors)
+                print("Choice errors:", choice_formset.errors)
+                print("Matrix row errors:", row_formset.errors)
+                print("Matrix column errors:", col_formset.errors)
+                for idx, form in enumerate(col_formset.forms):
+                    print(f"Col form {idx} cleaned_data:", getattr(form, "cleaned_data", None))
         else:
             fake_question = Question(survey=survey)
             form = WizardQuestionForm()

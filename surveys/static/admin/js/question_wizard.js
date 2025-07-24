@@ -1,4 +1,5 @@
 // question_wizard.js
+let previousQuestionType = null;
 
 document.addEventListener("DOMContentLoaded", function () {
 
@@ -45,24 +46,67 @@ document.addEventListener("DOMContentLoaded", function () {
         if (type === "MATRIX") {
             document.querySelector(".matrix_mode-field")?.style.setProperty("display", "block");
         }
+        window.updatePreview = updatePreview;
+
     }
 
-    // 📦 Show/hide the inline form blocks (Choices, Matrix rows/cols)
+
+    // 📦 Show/hide and reset inline form blocks (Choices, Matrix rows/cols)
+    let previousQuestionType = null;
+
     function toggleInlinesByType() {
         const type = document.getElementById("id_question_type")?.value;
 
-        // Hide all initially
-        document.getElementById("choice-inline")?.classList.add("hidden");
-        document.getElementById("matrix-row-inline")?.classList.add("hidden");
-        document.getElementById("matrix-column-inline")?.classList.add("hidden");
+        const inlineBlocks = {
+            "choice-inline": {
+                prefix: "choices",
+                types: ["MC", "RATING", "DROPDOWN", "IMAGE_CHOICE", "IMAGE_RATING"]
+            },
+            "matrix-row-inline": {
+                prefix: "matrix_rows",
+                types: ["MATRIX"]
+            },
+            "matrix-column-inline": {
+                prefix: "matrix_cols",
+                types: ["MATRIX"]
+            },
+        };
 
-        // Show based on question type
-        if (["MC", "RATING", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
-            document.getElementById("choice-inline")?.classList.remove("hidden");
-        } else if (type === "MATRIX") {
-            document.getElementById("matrix-row-inline")?.classList.remove("hidden");
-            document.getElementById("matrix-column-inline")?.classList.remove("hidden");
-        }
+        const shouldShow = new Set();
+
+        // Determine which blocks to show
+        Object.entries(inlineBlocks).forEach(([inlineId, config]) => {
+            if (config.types.includes(type)) {
+                shouldShow.add(inlineId);
+            }
+        });
+
+        // Clear all and toggle visibility
+        Object.entries(inlineBlocks).forEach(([inlineId, config]) => {
+            const wrapper = document.getElementById(inlineId);
+            const container = document.getElementById(`${config.prefix}-forms`);
+            const totalForms = document.getElementById(`id_${config.prefix}-TOTAL_FORMS`);
+
+            const shouldForceClear =
+                previousQuestionType !== type || !shouldShow.has(inlineId);
+
+            if (shouldForceClear && container && totalForms) {
+                container.innerHTML = "";           // ✅ Actually removes DOM elements
+                totalForms.value = "0";
+            }
+
+            if (wrapper) {
+                if (shouldShow.has(inlineId)) {
+                    wrapper.classList.remove("hidden");
+                } else {
+                    wrapper.classList.add("hidden");
+                }
+            }
+        });
+
+        previousQuestionType = type;
+
+        if (typeof updatePreview === "function") updatePreview();
     }
 
     // 🧩 Add a new form to the specified formset (choices, rows, cols)
@@ -149,6 +193,12 @@ document.addEventListener("DOMContentLoaded", function () {
         preview.innerHTML = html || "<em class='text-gray-400'>Nothing to preview yet.</em>";
     }
 
+
+    previousQuestionType = document.getElementById("id_question_type")?.value;
+
+    // Initialize modal manager with the current question type
+    ModalManager.init(document.getElementById("id_question_type")?.value);
+
     // 🧠 Initial setup on page load
     toggleInlinesByType();
     updateFieldVisibility();
@@ -169,12 +219,25 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // 🧩 Re-run logic on question type change
-    document.getElementById("id_question_type")?.addEventListener("change", () => {
-        toggleInlinesByType();
-        updateFieldVisibility();
-        updatePreview();
+    document.getElementById("id_question_type")?.addEventListener("change", function () {
+        const newType = this.value;
+
+        ModalManager.handleQuestionTypeSwitch(
+            previousQuestionType,
+            newType,
+            function confirmedSwitch(type) {
+                document.getElementById("id_question_type").value = type;
+                toggleInlinesByType();
+                updateFieldVisibility();
+                updatePreview();
+                previousQuestionType = type;
+            }
+        );
     });
 
     // 🔓 Make `addForm` accessible globally (optional)
     window.addForm = addForm;
+
 });
+
+

@@ -107,10 +107,10 @@ class MatrixColumn(models.Model):
     label = models.CharField(max_length=50)
     value = models.IntegerField()  # e.g., 1–5
     input_type = models.CharField(max_length=20, choices=INPUT_TYPES, default='radio')  # New field
-    required = models.BooleanField(default=True)
+    required = models.BooleanField(default=False)
     # dropdown_choices = models.TextField(blank=True, help_text="Comma-separated values for dropdowns")
     group = models.CharField(max_length=100, blank=True, null=True, help_text="E.g. 'Importance', 'Satisfaction'")
-    order = models.PositiveIntegerField(default=0, help_text="Order within the group")
+    order = models.PositiveIntegerField(default=0, null=True, blank=True, help_text="Order within the group")
     next_question = models.ForeignKey(
         'Question',
         null=True,

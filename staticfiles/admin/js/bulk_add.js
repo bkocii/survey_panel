@@ -60,10 +60,30 @@ document.addEventListener("DOMContentLoaded", function () {
         const textInput = newForm.querySelector("input[type='text']");
         const valueInput = newForm.querySelector("input[type='number']");
 
-        if (textInput) textInput.value = label;
-        if (valueInput && !isNaN(value)) valueInput.value = value;
+        if (textInput) {
+            textInput.value = label;
+            textInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (valueInput && !isNaN(value)) {
+            valueInput.value = value;
+            valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Hook preview on all inputs
+        newForm.querySelectorAll("input, select, textarea").forEach(input => {
+            input.addEventListener("input", () => {
+                if (typeof updatePreview === "function") updatePreview();
+            });
+            input.addEventListener("change", () => {
+                if (typeof updatePreview === "function") updatePreview();
+            });
+        });
 
         container.appendChild(newForm);
         totalForms.value = formCount + 1;
+
+        // Trigger preview after all
+        if (typeof updatePreview === "function") updatePreview();
     }
+
 });
