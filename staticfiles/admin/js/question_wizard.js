@@ -3,11 +3,6 @@ let previousQuestionType = null;
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    previousQuestionType = document.getElementById("id_question_type")?.value;
-
-    // Initialize modal manager with the current question type
-    ModalManager.init(document.getElementById("id_question_type")?.value);
-
     // 🔄 Show/hide specific question field groups based on selected type
     function updateFieldVisibility() {
         const type = document.getElementById("id_question_type")?.value;
@@ -18,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Always-visible fields
         const alwaysFields = [
-            "text-field", "question_type-field", "required-field",
+            "code-field", "text-field", "question_type-field", "required-field",
             "helper_text-field", "helper_media-field", "helper_media_type-field", "next_question"
         ];
         alwaysFields.forEach(cls => {
@@ -54,6 +49,7 @@ document.addEventListener("DOMContentLoaded", function () {
         window.updatePreview = updatePreview;
 
     }
+
 
     // 📦 Show/hide and reset inline form blocks (Choices, Matrix rows/cols)
     let previousQuestionType = null;
@@ -197,6 +193,12 @@ document.addEventListener("DOMContentLoaded", function () {
         preview.innerHTML = html || "<em class='text-gray-400'>Nothing to preview yet.</em>";
     }
 
+
+    previousQuestionType = document.getElementById("id_question_type")?.value;
+
+    // Initialize modal manager with the current question type
+    ModalManager.init(document.getElementById("id_question_type")?.value);
+
     // 🧠 Initial setup on page load
     toggleInlinesByType();
     updateFieldVisibility();
@@ -232,6 +234,80 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         );
     });
+
+    document.getElementById("question_lookup")?.addEventListener("change", async function () {
+        const selectedId = this.value;
+        if (!selectedId) return;
+
+        const response = await fetch(`/admin/surveys/api/question-data/${selectedId}/`);
+        const data = await response.json();
+
+        // Populate fields
+        document.getElementById("id_text").value = data.text || "";
+        document.getElementById("id_question_type").value = data.question_type || "";
+        document.getElementById("id_helper_text").value = data.helper_text || "";
+
+        // Force type refresh
+        updateFieldVisibility();
+        toggleInlinesByType();
+
+        // Clear any existing inlines
+        clearInlineForms();
+
+        // Add choices
+        if (data.choices && data.choices.length > 0) {
+            data.choices.forEach(choice => {
+                addForm("choices");
+                const prefix = `id_choices-${document.getElementById("id_choices-TOTAL_FORMS").value - 1}`;
+                document.getElementById(`${prefix}-text`).value = choice.text;
+                document.getElementById(`${prefix}-value`).value = choice.value;
+                if (choice.next_question_id) {
+                    document.getElementById(`${prefix}-next_question`).value = choice.next_question_id;
+                }
+            });
+        }
+
+        // Add matrix rows
+        if (data.matrix_rows) {
+            data.matrix_rows.forEach(row => {
+                addForm("matrix_rows");
+                const prefix = `id_matrix_rows-${document.getElementById("id_matrix_rows-TOTAL_FORMS").value - 1}`;
+                document.getElementById(`${prefix}-text`).value = row.text;
+                document.getElementById(`${prefix}-value`).value = row.value;
+                document.getElementById(`${prefix}-required`).checked = row.required;
+            });
+        }
+
+        // Add matrix columns
+        if (data.matrix_cols) {
+            data.matrix_cols.forEach(col => {
+                addForm("matrix_cols");
+                const prefix = `id_matrix_cols-${document.getElementById("id_matrix_cols-TOTAL_FORMS").value - 1}`;
+                document.getElementById(`${prefix}-label`).value = col.label;
+                document.getElementById(`${prefix}-value`).value = col.value;
+                document.getElementById(`${prefix}-input_type`).value = col.input_type;
+                document.getElementById(`${prefix}-required`).checked = col.required;
+                document.getElementById(`${prefix}-group`).value = col.group || "";
+                document.getElementById(`${prefix}-order`).value = col.order || "";
+            });
+        }
+
+        updatePreview();
+    });
+
+    // Helper to clear current inlines
+    function clearInlineForms() {
+        const inlinePrefixes = ["choices", "matrix_rows", "matrix_cols"];
+        inlinePrefixes.forEach(prefix => {
+            const container = document.getElementById(`${prefix}-forms`);
+            const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+            if (container && totalForms) {
+                container.innerHTML = "";
+                totalForms.value = "0";
+            }
+        });
+    }
+
 
     // 🔓 Make `addForm` accessible globally (optional)
     window.addForm = addForm;

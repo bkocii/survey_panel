@@ -23,11 +23,21 @@ class WizardQuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         fields = [
-            'question_type', 'text', 'matrix_mode', 'required',
+            'question_type', 'code', 'text', 'matrix_mode', 'required',
             'min_value', 'max_value', 'step_value',
             'allow_multiple_files', 'allows_multiple',
             'helper_text', 'helper_media', 'helper_media_type',
         ]
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'question_type': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'required': forms.CheckboxInput(attrs={'class': 'rounded'}),
+            'helper_text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'helper_media': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'helper_media_type': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'next_question': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+        }
 
 
 # Dynamic form for survey responses, generated based on survey questions

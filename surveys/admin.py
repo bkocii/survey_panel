@@ -144,6 +144,7 @@ class SurveyAdmin(ModelAdmin):
 
         survey = get_object_or_404(Survey, id=survey_id)
         all_questions = Question.objects.filter(survey=survey).only('id', 'text')
+        all_questions_full = Question.objects.all()
 
         ChoiceFormSet = inlineformset_factory(
             Question,
@@ -215,6 +216,7 @@ class SurveyAdmin(ModelAdmin):
             'matrix_row_inline': row_formset,
             'matrix_column_inline': col_formset,
             'all_questions': all_questions,
+            'all_questions_full': all_questions_full,
         })
 
     def change_view(self, request, object_id, form_url='', extra_context=None):

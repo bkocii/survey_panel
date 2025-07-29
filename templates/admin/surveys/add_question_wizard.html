@@ -1,4 +1,5 @@
-{% extends "admin/base_site.html" %}
+{#{% extends "admin/base_site.html" %}#}
+{% extends "unfold/layouts/base.html" %}
 {% load static %}
 {% load tailwind_tags %}
 
@@ -29,261 +30,45 @@
         {% csrf_token %}
         {{ form.non_field_errors }}
 
+        {# Question look up #}
+      <div class="space-y-1 mb-6">
+      <label for="question_lookup" class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+        Clone Existing Question
+      </label>
+      <select id="question_lookup"
+              class="w-full border-gray-300 rounded shadow-sm text-sm">
+        <option value="">-- Select a question to copy --</option>
+        {% for q in all_questions_full %}
+          <option value="{{ q.id }}">{{ q.code|default:"(no code)" }} — {{ q.text|truncatewords:10 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+
         {# Main question fields with field-level divs for dynamic hiding #}
         {% for field in form %}
-          <div class="question-field {{ field.name }}-field space-y-1">
-            <label class="block font-medium text-sm text-gray-700">{{ field.label }}</label>
-            {{ field }}
-            {% if field.help_text %}
-              <p class="text-xs text-gray-500">{{ field.help_text }}</p>
-            {% endif %}
+          <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-2 question-field {{ field.name }}-field">
+            <div class="space-y-1">
+              <label for="{{ field.id_for_label }}" class="block text-sm font-medium dark:text-gray-200">
+                {{ field.label }}
+              </label>
+              {{ field }}
+              {% if field.help_text %}
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ field.help_text }}</p>
+              {% endif %}
+              {% for error in field.errors %}
+                <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+              {% endfor %}
+            </div>
           </div>
         {% endfor %}
 
-        {# ------------------------------- #}
-        {# CHOICE INLINE FOR MULTIPLE TYPES #}
-        {# ------------------------------- #}
-        <div id="choice-inline" class="space-y-4 hidden">
-          <h2 class="text-lg font-medium text-gray-800">Choices</h2>
-          {{ choice_inline.management_form }}
-
-          <div id="choices-forms" class="space-y-4">
-            {% for form in choice_inline %}
-              <div class="bg-gray-50 border rounded p-4 space-y-3">
-                {% for field in form.visible_fields %}
-                  <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                      <p class="text-xs text-gray-500">{{ field.help_text }}</p>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-            {% endfor %}
-          </div>
-
-          {# Template for dynamically added choices #}
-          <template id="choices-template">
-          <div class="bg-gray-50 border rounded p-4 space-y-3">
-            <div class="space-y-1">
-              <label class="block text-sm font-medium text-gray-700" for="id_choices-__prefix__-text">Text</label>
-              <input type="text" name="choices-__prefix__-text" id="id_choices-__prefix__-text" class="w-full border-gray-300 rounded shadow-sm">
-            </div>
-            <div class="space-y-1">
-              <label class="block text-sm font-medium text-gray-700" for="id_choices-__prefix__-value">Value</label>
-              <input type="number" name="choices-__prefix__-value" id="id_choices-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">
-            </div>
-            <div class="space-y-1">
-              <label class="block text-sm font-medium text-gray-700" for="id_choices-__prefix__-next_question">Next Question</label>
-              <select name="choices-__prefix__-next_question" id="id_choices-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">
-                <option value="">---------</option>
-                {% for q in all_questions %}
-                  <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
-                {% endfor %}
-              </select>
-              <p class="text-xs text-gray-500">Select the next question to jump to (optional).</p>
-            </div>
-            <div class="space-y-1">
-              <label class="block text-sm font-medium text-gray-700" for="id_choices-__prefix__-image">Image</label>
-              <input type="file" name="choices-__prefix__-image" id="id_choices-__prefix__-image" class="w-full">
-            </div>
-          </div>
-        </template>
-
-
-          <button type="button" data-prefix="choices" class="add-form-btn mt-2 px-3 py-1 border rounded text-blue-600 border-blue-600 hover:bg-blue-100 transition">
-            ➕ Add Choice
-          </button>
-
-        <button type="button"
-                class="bulk-add-btn text-sm text-blue-700 underline ml-2"
-                data-prefix="choices">  <!-- or matrix_rows / matrix_cols -->
-          Bulk Add
-        </button>
-        </div>
-
 
         {# ------------------------------- #}
-        {# MATRIX ROWS FORMSET             #}
+        {#  INLINES #}
         {# ------------------------------- #}
-        <div id="matrix-row-inline" class="hidden">
-          <h2 class="text-lg font-semibold mt-6 mb-2">Matrix Rows</h2>
-          {{ matrix_row_inline.management_form }}
+        {% include 'admin/surveys/includes/inlines.html' %}
 
-          <div id="matrix_rows-forms" class="space-y-4">
-            {% for form in matrix_row_inline %}
-              <div class="bg-gray-50 border rounded p-4 space-y-3">
-                {% for field in form.visible_fields %}
-                  <div class="space-y-1">
-                    {{ field.label_tag }}
-                    {{ field }}
-                    {% if field.help_text %}
-                      <p class="text-sm text-gray-500">{{ field.help_text }}</p>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-            {% endfor %}
-          </div>
-
-          <template id="matrix_rows-template">
-            <div class="bg-gray-50 border rounded p-4 space-y-3">
-              <div class="space-y-1">
-                <label for="id_matrix_rows-__prefix__-text" class="block text-sm font-medium text-gray-700">Row Text</label>
-                <input type="text" name="matrix_rows-__prefix__-text" id="id_matrix_rows-__prefix__-text" class="w-full rounded border-gray-300 shadow-sm">
-              </div>
-              <div class="space-y-1">
-                <label for="id_matrix_rows-__prefix__-value" class="block text-sm font-medium text-gray-700">Value</label>
-                <input type="number" name="matrix_rows-__prefix__-value" id="id_matrix_rows-__prefix__-value" class="w-full rounded border-gray-300 shadow-sm">
-              </div>
-              <div class="space-y-1">
-                <label class="inline-flex items-center">
-                  <input type="checkbox" name="matrix_rows-__prefix__-required" id="id_matrix_rows-__prefix__-required" class="mr-2">
-                  Required
-                </label>
-              </div>
-            <div class="space-y-1">
-              <label class="block text-sm font-medium text-gray-700" for="id_matrix_rows-__prefix__-next_question">Next Question</label>
-              <select name="matrix_rows-__prefix__-next_question" id="id_matrix_rows-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">
-                <option value="">---------</option>
-                {% for q in all_questions %}
-                  <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
-                {% endfor %}
-              </select>
-              <p class="text-xs text-gray-500">Optional: branch logic for this matrix row.</p>
-            </div>
-            </div>
-          </template>
-
-          <button type="button" data-prefix="matrix_rows" class="add-form-btn mt-2 px-3 py-1 border rounded text-blue-600 border-blue-600 hover:bg-blue-100">➕ Add Row</button>
-
-        <button type="button"
-                class="bulk-add-btn text-sm text-blue-700 underline ml-2"
-                data-prefix="matrix_rows">  <!-- or matrix_rows / matrix_cols -->
-          Bulk Add
-        </button>
-
-        </div>
-
-
-        {# ------------------------------- #}
-        {# MATRIX COLUMNS FORMSET          #}
-        {# ------------------------------- #}
-        <div id="matrix-column-inline" class="hidden">
-          <h2 class="text-lg font-semibold mt-6 mb-2">Matrix Columns</h2>
-          {{ matrix_column_inline.management_form }}
-
-          <div id="matrix_cols-forms" class="space-y-4">
-            {% for form in matrix_column_inline %}
-              <div class="bg-gray-50 border rounded p-4 space-y-3">
-                {% for field in form.visible_fields %}
-                  <div class="space-y-1">
-                    {{ field.label_tag }}
-                    {{ field }}
-                    {% if field.help_text %}
-                      <p class="text-sm text-gray-500">{{ field.help_text }}</p>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-            {% endfor %}
-          </div>
-
-          <template id="matrix_cols-template">
-            <div class="bg-gray-50 border rounded p-4 space-y-3">
-                <div class="space-y-1">
-                <label for="id_matrix_cols-__prefix__-label" class="block text-sm font-medium text-gray-700">Label</label>
-                <input type="text" name="matrix_cols-__prefix__-label" id="id_matrix_cols-__prefix__-label" class="w-full border-gray-300 rounded shadow-sm">
-              </div>
-              <div class="space-y-1">
-                <label for="id_matrix_cols-__prefix__-value" class="block text-sm font-medium text-gray-700">Value</label>
-                <input type="number" name="matrix_cols-__prefix__-value" id="id_matrix_cols-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">
-              </div>
-              <div class="space-y-1">
-                <label for="id_matrix_cols-__prefix__-input_type" class="block text-sm font-medium text-gray-700">Input Type</label>
-                <select name="matrix_cols-__prefix__-input_type" id="id_matrix_cols-__prefix__-input_type" class="w-full border-gray-300 rounded shadow-sm">
-                  <option value="text">Text</option>
-                  <option value="select">Dropdown</option>
-                  <option value="radio">Radio</option>
-                  <option value="checkbox">Checkbox</option>
-                </select>
-              </div>
-              <div class="space-y-1">
-                <label for="id_matrix_cols-__prefix__-group" class="block text-sm font-medium text-gray-700">Group</label>
-                <input type="text" name="matrix_cols-__prefix__-group" id="id_matrix_cols-__prefix__-group" class="w-full border-gray-300 rounded shadow-sm">
-              </div>
-              <div class="space-y-1">
-                <label for="id_matrix_cols-__prefix__-order" class="block text-sm font-medium text-gray-700">Order</label>
-                <input type="number" name="matrix_cols-__prefix__-order" id="id_matrix_cols-__prefix__-order" class="w-full border-gray-300 rounded shadow-sm">
-              </div>
-              <div class="space-y-1">
-                  <label class="block text-sm font-medium text-gray-700" for="id_matrix_cols-__prefix__-next_question">Next Question</label>
-                  <select name="matrix_cols-__prefix__-next_question" id="id_matrix_cols-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">
-                    <option value="">---------</option>
-                    {% for q in all_questions %}
-                      <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
-                    {% endfor %}
-                  </select>
-                  <p class="text-xs text-gray-500">Optional: navigate to a specific question if this column is selected.</p>
-                </div>
-              <div class="space-y-1">
-                <label class="inline-flex items-center">
-                  <input type="checkbox" name="matrix_cols-__prefix__-required" id="id_matrix_cols-__prefix__-required" class="mr-2">
-                  Required
-                </label>
-              </div>
-            </div>
-          </template>
-
-          <button type="button" data-prefix="matrix_cols" class="add-form-btn mt-2 px-3 py-1 border rounded text-blue-600 border-blue-600 hover:bg-blue-100">➕ Add Column</button>
-
-            <button type="button"
-                    class="bulk-add-btn text-sm text-blue-700 underline ml-2"
-                    data-prefix="matrix_cols">  <!-- or matrix_rows / matrix_cols -->
-              Bulk Add
-            </button>
-
-        </div>
-
-        <!-- Confirm Switch Modal -->
-        <div id="confirm-switch-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-              <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">⚠️ Change Question Type?</h3>
-                <p class="text-sm text-gray-700 mb-4">
-                  Changing the question type will <strong>remove any added choices, matrix rows, or columns</strong>.
-                  Are you sure you want to continue?
-                </p>
-
-                <div class="flex justify-end gap-4 mt-4">
-                  <button id="cancel-switch-type" type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded">
-                    Cancel
-                  </button>
-                  <button id="confirm-switch-type" type="button" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
-                    Yes, Change Type
-                  </button>
-                </div>
-              </div>
-            </div>
-
-
-        <!-- Bulk Add Modal -->
-        <div id="bulk-add-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-          <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
-            <h3 class="text-lg font-semibold mb-4">➕ Bulk Add Items</h3>
-            <p class="text-sm text-gray-600 mb-2">Enter one item per line or comma-separated. Values will be assigned incrementally.</p>
-            <textarea id="bulk-add-input" rows="6" class="w-full border-gray-300 rounded shadow-sm p-2" placeholder="Item 1\nItem 2\nItem 3"></textarea>
-
-            <div class="flex justify-between items-center mt-4">
-              <button id="bulk-add-cancel" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">
-                ✖ Cancel
-              </button>
-              <button id="bulk-add-confirm" type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">
-                ➕ Add Items
-              </button>
-            </div>
-          </div>
-        </div>
 
         {# ------------------ #}
         {# SUBMIT BUTTON     #}
@@ -291,7 +76,17 @@
         <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
           💾 Save Question
         </button>
+      <button type="submit"
+        class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-white text-blue-700 text-sm font-medium rounded-md shadow-sm transition">
+          💾 Save Question
+        </button>
+
       </form>
+
+    <!-- Bulk Add Modal -->
+    {% include "admin/surveys/includes/partials/bulk_add_modal.html" %}
+    <!-- Confirm Switch Modal -->
+    {% include "admin/surveys/includes/partials/confirm_switch_modal.html" %}
 
       <p class="mt-4 text-sm text-gray-600">
         <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="text-blue-600 hover:underline">← Back to survey</a>

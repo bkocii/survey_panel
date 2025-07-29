@@ -6,7 +6,7 @@ from .services import validate_and_collect_matrix_responses, get_next_question_i
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden, HttpResponseBadRequest
+from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, Http404
 from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn
 from .forms import SurveyResponseForm, WizardQuestionForm
 from django.db import models
@@ -673,6 +673,50 @@ def survey_submit(request, survey_id):
 def already_submitted(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
     return render(request, 'surveys/already_submitted.html', {'survey': survey})
+
+
+def get_question_data(request, question_id):
+    print("🔍 API HIT:", question_id)
+    try:
+        question = Question.objects.get(pk=question_id)
+    except Question.DoesNotExist:
+        raise Http404("Question not found")
+
+    # Serialize choices
+    choices = list(
+        Choice.objects.filter(question=question).values("text", "value", "next_question_id")
+    )
+
+    # Serialize matrix rows and columns
+    matrix_rows = list(
+        MatrixRow.objects.filter(question=question).values("text", "value", "required")
+    )
+    matrix_cols = list(
+        MatrixColumn.objects.filter(question=question).values(
+            "label", "value", "input_type", "required", "next_question_id", "group", "order"
+        )
+    )
+
+    return JsonResponse({
+        "code": question.code,
+        "text": question.text,
+        "question_type": question.question_type,
+        "required": question.required,
+        "helper_text": question.helper_text,
+        "matrix_mode": question.matrix_mode,
+        "min_value": question.min_value,
+        "max_value": question.max_value,
+        "step_value": question.step_value,
+        "allow_multiple_files": question.allow_multiple_files,
+        "allows_multiple": question.allows_multiple,
+        "helper_media": question.helper_media.url if question.helper_media else None,
+        "helper_media_type": question.helper_media_type,
+        "next_question_id": question.next_question.id if question.next_question else None,
+
+        "choices": choices,
+        "matrix_rows": matrix_rows,
+        "matrix_cols": matrix_cols,
+    })
 
 
 # This will be the view update to include inline formsets for choices, matrix rows, and matrix columns.
