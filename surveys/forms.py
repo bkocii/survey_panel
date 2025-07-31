@@ -30,11 +30,11 @@ class WizardQuestionForm(forms.ModelForm):
         ]
         widgets = {
             'code': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
-            'text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm '}),
             'question_type': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
             'required': forms.CheckboxInput(attrs={'class': 'rounded'}),
             'helper_text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
-            'helper_media': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'helper_media': forms.ClearableFileInput(attrs={'class': 'w-full text-white'}),
             'helper_media_type': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
             'next_question': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
         }

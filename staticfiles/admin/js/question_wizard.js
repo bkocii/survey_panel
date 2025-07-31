@@ -11,6 +11,13 @@ document.addEventListener("DOMContentLoaded", function () {
         // Hide all custom fields by default
         fieldGroups.forEach(group => group.style.display = "none");
 
+
+        // Explicitly hide slider-only fields unless type is SLIDER
+        ["min_value-field", "max_value-field", "step_value-field"].forEach(cls => {
+            document.querySelector("." + cls)?.style.setProperty("display", "none");
+        });
+
+
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
@@ -235,67 +242,104 @@ document.addEventListener("DOMContentLoaded", function () {
         );
     });
 
+    // Handle question lookup and auto-fill form
     document.getElementById("question_lookup")?.addEventListener("change", async function () {
         const selectedId = this.value;
-        if (!selectedId) return;
 
-        const response = await fetch(`/admin/surveys/api/question-data/${selectedId}/`);
-        const data = await response.json();
-
-        // Populate fields
-        document.getElementById("id_text").value = data.text || "";
-        document.getElementById("id_question_type").value = data.question_type || "";
-        document.getElementById("id_helper_text").value = data.helper_text || "";
-
-        // Force type refresh
-        updateFieldVisibility();
-        toggleInlinesByType();
-
-        // Clear any existing inlines
-        clearInlineForms();
-
-        // Add choices
-        if (data.choices && data.choices.length > 0) {
-            data.choices.forEach(choice => {
-                addForm("choices");
-                const prefix = `id_choices-${document.getElementById("id_choices-TOTAL_FORMS").value - 1}`;
-                document.getElementById(`${prefix}-text`).value = choice.text;
-                document.getElementById(`${prefix}-value`).value = choice.value;
-                if (choice.next_question_id) {
-                    document.getElementById(`${prefix}-next_question`).value = choice.next_question_id;
-                }
-            });
+        // If no question is selected, reset form
+        if (!selectedId) {
+            resetFormFields();
+            clearInlineForms();
+            updatePreview();
+            return;
         }
 
-        // Add matrix rows
-        if (data.matrix_rows) {
-            data.matrix_rows.forEach(row => {
-                addForm("matrix_rows");
-                const prefix = `id_matrix_rows-${document.getElementById("id_matrix_rows-TOTAL_FORMS").value - 1}`;
-                document.getElementById(`${prefix}-text`).value = row.text;
-                document.getElementById(`${prefix}-value`).value = row.value;
-                document.getElementById(`${prefix}-required`).checked = row.required;
-            });
-        }
+        try {
+            const response = await fetch(`/surveys/api/question-data/${selectedId}/`);
+            const data = await response.json();
 
-        // Add matrix columns
-        if (data.matrix_cols) {
-            data.matrix_cols.forEach(col => {
-                addForm("matrix_cols");
-                const prefix = `id_matrix_cols-${document.getElementById("id_matrix_cols-TOTAL_FORMS").value - 1}`;
-                document.getElementById(`${prefix}-label`).value = col.label;
-                document.getElementById(`${prefix}-value`).value = col.value;
-                document.getElementById(`${prefix}-input_type`).value = col.input_type;
-                document.getElementById(`${prefix}-required`).checked = col.required;
-                document.getElementById(`${prefix}-group`).value = col.group || "";
-                document.getElementById(`${prefix}-order`).value = col.order || "";
-            });
-        }
+            // === Fill basic fields ===
+            document.getElementById("id_text").value = data.text || "";
+            document.getElementById("id_code").value = '';
+            document.getElementById("id_question_type").value = data.question_type || "";
+            document.getElementById("id_helper_text").value = data.helper_text || "";
+            document.getElementById("id_matrix_mode").value = data.matrix_mode || "";
 
-        updatePreview();
+            document.getElementById("id_min_value").value = data.min_value ?? "";
+            document.getElementById("id_max_value").value = data.max_value ?? "";
+            document.getElementById("id_step_value").value = data.step_value ?? "";
+
+            document.getElementById("id_allows_multiple").checked = !!data.allows_multiple;
+            document.getElementById("id_allow_multiple_files").checked = !!data.allow_multiple_files;
+
+            // Media (if applicable)
+            if (data.helper_media) {
+                const existingLabel = document.getElementById("helper-media-label");
+                if (existingLabel) existingLabel.remove();
+
+                const label = document.createElement("div");
+                label.id = "helper-media-label";
+                label.className = "mt-2 text-sm text-gray-500";
+                label.innerHTML = `Existing media: <a href="${data.helper_media}" target="_blank" class="text-blue-600 underline">View File</a>`;
+                document.getElementById("id_helper_media").parentElement.appendChild(label);
+            }
+
+            // Set media type
+            document.getElementById("id_helper_media_type").value = data.helper_media_type || "";
+
+            // === Trigger logic based on type ===
+            updateFieldVisibility();
+            toggleInlinesByType();
+
+            // === Clear any existing inline forms ===
+            clearInlineForms();
+
+            // === Add choices ===
+            if (data.choices?.length > 0) {
+                data.choices.forEach(choice => {
+                    addForm("choices");
+                    const prefix = `id_choices-${document.getElementById("id_choices-TOTAL_FORMS").value - 1}`;
+                    document.getElementById(`${prefix}-text`).value = choice.text;
+                    document.getElementById(`${prefix}-value`).value = choice.value;
+                    if (choice.next_question_id) {
+                        document.getElementById(`${prefix}-next_question`).value = choice.next_question_id;
+                    }
+                });
+            }
+
+            // === Add matrix rows ===
+            if (data.matrix_rows) {
+                data.matrix_rows.forEach(row => {
+                    addForm("matrix_rows");
+                    const prefix = `id_matrix_rows-${document.getElementById("id_matrix_rows-TOTAL_FORMS").value - 1}`;
+                    document.getElementById(`${prefix}-text`).value = row.text;
+                    document.getElementById(`${prefix}-value`).value = row.value;
+                    document.getElementById(`${prefix}-required`).checked = row.required;
+                });
+            }
+
+            // === Add matrix columns ===
+            if (data.matrix_cols) {
+                data.matrix_cols.forEach(col => {
+                    addForm("matrix_cols");
+                    const prefix = `id_matrix_cols-${document.getElementById("id_matrix_cols-TOTAL_FORMS").value - 1}`;
+                    document.getElementById(`${prefix}-label`).value = col.label;
+                    document.getElementById(`${prefix}-value`).value = col.value;
+                    document.getElementById(`${prefix}-input_type`).value = col.input_type;
+                    document.getElementById(`${prefix}-required`).checked = col.required;
+                    document.getElementById(`${prefix}-group`).value = col.group || "";
+                    document.getElementById(`${prefix}-order`).value = col.order || "";
+                });
+            }
+
+            updatePreview();
+        } catch (error) {
+            console.error("Failed to load question data:", error);
+            alert("Error loading question data. Please try again.");
+        }
     });
 
-    // Helper to clear current inlines
+    // === Helper to clear inline formsets ===
     function clearInlineForms() {
         const inlinePrefixes = ["choices", "matrix_rows", "matrix_cols"];
         inlinePrefixes.forEach(prefix => {
@@ -307,6 +351,30 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+    // === Helper to reset all input fields to blank/default ===
+    function resetFormFields() {
+        const fieldsToReset = [
+            "id_text", "id_code", "id_question_type", "id_helper_text", "id_matrix_mode",
+            "id_min_value", "id_max_value", "id_step_value", "id_helper_media_type"
+        ];
+
+        fieldsToReset.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+
+        document.getElementById("id_allows_multiple").checked = false;
+        document.getElementById("id_allow_multiple_files").checked = false;
+
+        const mediaInput = document.getElementById("id_helper_media");
+        if (mediaInput) mediaInput.value = "";
+
+        const existingLabel = document.getElementById("helper-media-label");
+        if (existingLabel) existingLabel.remove();
+    }
+
+
 
 
     // 🔓 Make `addForm` accessible globally (optional)

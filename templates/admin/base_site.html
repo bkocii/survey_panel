@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% load i18n %}
+{% load static %}
 
 
 {% block title %}
@@ -11,3 +12,8 @@
 {% endblock %}
 
 {% block nav-global %}{% endblock %}
+{% block content %}
+  <main class="min-h-screen bg-gray-100 dark:bg-gray-900">
+    {{ block.super }}
+  </main>
+{% endblock %}

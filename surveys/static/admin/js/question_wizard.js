@@ -11,10 +11,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // Hide all custom fields by default
         fieldGroups.forEach(group => group.style.display = "none");
 
+
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field", "next_question"
+            "helper_text-field", "helper_media-field", "helper_media_type-field", "next_question-field"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");
@@ -253,7 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // === Fill basic fields ===
             document.getElementById("id_text").value = data.text || "";
-            document.getElementById("id_code").value = data.code || "";
+            document.getElementById("id_code").value = '';
             document.getElementById("id_question_type").value = data.question_type || "";
             document.getElementById("id_helper_text").value = data.helper_text || "";
             document.getElementById("id_matrix_mode").value = data.matrix_mode || "";

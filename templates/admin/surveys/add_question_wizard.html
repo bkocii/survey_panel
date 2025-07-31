@@ -1,109 +1,83 @@
-{#{% extends "admin/base_site.html" %}#}
-{% extends "unfold/layouts/base.html" %}
+{% extends "admin/wizard_base.html" %}
 {% load static %}
 {% load tailwind_tags %}
 
-{# ---------------------------------- #}
-{# HEAD BLOCK: Tailwind + JS includes #}
-{# ---------------------------------- #}
 {% block extrahead %}
     {{ block.super }}
     {% tailwind_css %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="{% static 'admin/js/modal_manager.js' %}" defer></script>
     <script src="{% static 'admin/js/question_wizard.js' %}" defer></script>
-    <script src="{% static 'admin/js/bulk_add.js' %}"></script>
+    <script src="{% static 'admin/js/bulk_add.js' %}" defer></script>
 {% endblock %}
 
-
 {% block content %}
-<div class="px-6 py-6">
-  <div class="flex flex-col lg:flex-row gap-8">
+<section class="min-h-screen w-full px-6 py-8 bg-white dark:bg-gray-900">
+  <div class="flex flex-col lg:flex-row gap-8 max-w-screen-xl mx-auto">
 
-    {# -------------------------------------- #}
-    {# LEFT COLUMN: QUESTION FORM MAIN PANEL #}
-    {# -------------------------------------- #}
-    <div class="lg:w-2/3 w-full">
-      <h1 class="text-2xl font-semibold mb-6">{{ title }}</h1>
+      <!-- LEFT: FORM (spans 2 cols) -->
+      <div class="lg:w-2/3 w-full">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ title }}</h1>
 
-      <form method="post" enctype="multipart/form-data" id="question-form" class="space-y-4">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
+        <form method="post" enctype="multipart/form-data" id="question-form" class="space-y-6">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
 
-        {# Question look up #}
-      <div class="space-y-1 mb-6">
-      <label for="question_lookup" class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-        Clone Existing Question
-      </label>
-      <select id="question_lookup"
-              class="w-full border-gray-300 rounded shadow-sm text-sm">
-        <option value="">-- Select a question to copy --</option>
-        {% for q in all_questions_full %}
-          <option value="{{ q.id }}">{{ q.code|default:"(no code)" }} — {{ q.text|truncatewords:10 }}</option>
-        {% endfor %}
-      </select>
-    </div>
+          <!-- CLONE EXISTING -->
+          <div>
+            <label for="question_lookup" class="block text-sm font-medium text-white dark:text-gray-300">
+              Clone Existing Question
+            </label>
+            <select id="question_lookup" class="mt-1 block w-full rounded border-gray-300 shadow-sm dark:bg-gray-800 dark:text-gray-100">
+              <option value="">-- Select a question to copy --</option>
+              {% for q in all_questions_full %}
+                <option value="{{ q.id }}">{{ q.code|default:"(no code)" }} — {{ q.text|truncatewords:10 }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-
-        {# Main question fields with field-level divs for dynamic hiding #}
-        {% for field in form %}
-          <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-2 question-field {{ field.name }}-field">
-            <div class="space-y-1">
-              <label for="{{ field.id_for_label }}" class="block text-sm font-medium dark:text-gray-200">
+          <!-- DYNAMIC FORM FIELDS -->
+          {% for field in form %}
+            <div class="space-y-2 question-field {{ field.name }}-field">
+              <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">
                 {{ field.label }}
               </label>
               {{ field }}
               {% if field.help_text %}
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ field.help_text }}</p>
+                <p class="text-xs text-white dark:text-gray-400">{{ field.help_text }}</p>
               {% endif %}
               {% for error in field.errors %}
-                <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+                <p class="text-sm text-red-600">{{ error }}</p>
               {% endfor %}
             </div>
-          </div>
-        {% endfor %}
+          {% endfor %}
 
+          {% include 'admin/surveys/includes/inlines.html' %}
 
-        {# ------------------------------- #}
-        {#  INLINES #}
-        {# ------------------------------- #}
-        {% include 'admin/surveys/includes/inlines.html' %}
+          <button type="submit" class="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded">
+            💾 Save Question
+          </button>
+        </form>
 
+        {% include "admin/surveys/includes/partials/bulk_add_modal.html" %}
+        {% include "admin/surveys/includes/partials/confirm_switch_modal.html" %}
 
-        {# ------------------ #}
-        {# SUBMIT BUTTON     #}
-        {# ------------------ #}
-        <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-          💾 Save Question
-        </button>
-      <button type="submit"
-        class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-white text-blue-700 text-sm font-medium rounded-md shadow-sm transition">
-          💾 Save Question
-        </button>
-
-      </form>
-
-    <!-- Bulk Add Modal -->
-    {% include "admin/surveys/includes/partials/bulk_add_modal.html" %}
-    <!-- Confirm Switch Modal -->
-    {% include "admin/surveys/includes/partials/confirm_switch_modal.html" %}
-
-      <p class="mt-4 text-sm text-gray-600">
-        <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="text-blue-600 hover:underline">← Back to survey</a>
-      </p>
-    </div>
-
-
-    {# ------------------------------ #}
-    {# RIGHT PANEL: LIVE PREVIEW     #}
-    {# ------------------------------ #}
-    <div class="lg:w-1/3 w-full border-l lg:pl-6 mt-8 lg:mt-0">
-      <h2 class="text-xl font-semibold mb-4">🔍 Live Preview</h2>
-      <div id="question-preview" class="bg-gray-50 p-4 rounded border text-sm text-gray-700">
-        <em class="text-gray-400">Start typing or adding options to see a live preview...</em>
+        <div class="mt-6">
+          <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="text-sm text-white hover:underline">
+            ← Back to survey
+          </a>
+        </div>
       </div>
-    </div>
 
+      <!-- RIGHT: LIVE PREVIEW (1 col) -->
+      <div class="lg:w-1/3 w-full border-l lg:pl-6 mt-8 lg:mt-0">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">🔍 Live Preview</h2>
+        <div id="question-preview" class="bg-gray-50 dark:bg-gray-800 border rounded p-4 text-sm text-gray-700 dark:text-gray-200">
+          <em class="text-gray-400 dark:text-gray-500">Start typing or adding options to see a live preview...</em>
+        </div>
+      </div>
   </div>
-</div>
+</section>
+
+
 {% endblock %}

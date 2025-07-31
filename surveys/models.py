@@ -52,7 +52,7 @@ HELPER_MEDIA_TYPES = [
 # Model for survey questions, linked to a survey
 class Question(models.Model):
     survey = models.ForeignKey(Survey, related_name='questions', on_delete=models.CASCADE)  # Link to parent survey
-    code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    code = models.CharField(max_length=20, unique=True)
     text = models.CharField(max_length=500)  # Question text
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     required = models.BooleanField(default=True)

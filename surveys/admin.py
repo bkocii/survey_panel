@@ -208,7 +208,8 @@ class SurveyAdmin(ModelAdmin):
             row_formset = MatrixRowFormSet(instance=fake_question, prefix='matrix_rows')
             col_formset = MatrixColFormSet(instance=fake_question, prefix='matrix_cols')
 
-        return render(request, 'admin/surveys/add_question_wizard.html', {
+        # ✅ Add Unfold-compatible context
+        context = {
             'form': form,
             'survey': survey,
             'title': f"Add Question Wizard for {survey.title}",
@@ -217,7 +218,16 @@ class SurveyAdmin(ModelAdmin):
             'matrix_column_inline': col_formset,
             'all_questions': all_questions,
             'all_questions_full': all_questions_full,
-        })
+
+            # 🌀 Unfold admin context
+            "site_title": "Survey Wizard",
+            "site_header": "Survey Builder",
+            "has_permission": True,
+            "available_apps": [],
+            "current_app": "surveys",
+        }
+
+        return render(request, 'admin/surveys/add_question_wizard.html', context)
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
