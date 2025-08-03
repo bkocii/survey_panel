@@ -56,6 +56,7 @@ def validate_and_collect_matrix_responses(request, survey, question):
                         group_slug = slugify(group_label)
                         field_name = f"matrix_{row.id}_{group_slug}"
                         selected_values = request.POST.getlist(field_name)
+                        print(selected_values)
 
                         group_required = any(col.required for col in cols) or row.required
                         if group_required and not selected_values:
@@ -101,8 +102,9 @@ def validate_and_collect_matrix_responses(request, survey, question):
                             if not next_q and selected_col.next_question:
                                 next_q = selected_col.next_question
 
-                    elif column.input_type == 'text':
-                        val = request.POST.get(field_base, '').strip()
+                    elif cols[0].input_type == 'text':
+                        field_name = f"matrix_{row.id}_{cols[0].id}"
+                        val = request.POST.get(field_name, '').strip()
                         if is_required and not val:
                             return False, f"Please complete '{escape(row.text)}' under '{escape(group_label)}'.", None
 
@@ -116,7 +118,7 @@ def validate_and_collect_matrix_responses(request, survey, question):
                             })
                             if not next_q and column.next_question:
                                 next_q = column.next_question
-
+    print(collected_responses)
     return True, collected_responses, next_q
 
 

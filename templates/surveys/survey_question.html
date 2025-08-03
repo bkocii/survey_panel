@@ -308,7 +308,7 @@ survey
                                                           <input type="checkbox"
                                                                  name="{{ checkbox_name }}"
                                                                  value="{{ col.value }}"
-                                                                 {% if col.value|stringformat:"s" in submitted_data|get_item:checkbox_name %}checked{% endif %}
+                                                                 {% if col.value|stringformat:"s" in submitted_data|get_list:checkbox_name %}checked{% endif %}
                                                                  class="form-check-input"
                                                                  id="checkbox_{{ row.id }}_{{ col.id }}">
                                                         </div>
@@ -373,26 +373,27 @@ survey
                             {% for row in question.matrix_rows.all %}
                                 <tr>
                                     <td>{{ row.text }}</td>
-                                    {% for col in question.matrix_columns.all %}
-                                        <td>
-                                            {% with row.id|concat_ids:col.id as field_name %}
-                                                <input type="radio"
-                                                       name="{{ field_name }}"
-                                                       value="{{ col.value }}"
-                                                       {% if submitted_data|get_item:field_name == col.value|stringformat:"s" %}checked{% endif %}
-                                                       class="form-check-input"
-                                                       id="radio_{{ row.id }}_{{ col.id }}_default">
+                                        {% with row_id_str=row.id|stringformat:"s" %}
+                                            {% with row_name="matrix_"|add:row_id_str %}
+                                              {% for col in question.matrix_columns.all %}
+                                                <td>
+                                                  <input type="radio"
+                                                         name="{{ row_name }}"
+                                                         value="{{ col.value }}"
+                                                         {% if submitted_data|get_item:row_name == col.value|stringformat:"s" %}checked{% endif %}
+                                                         class="form-check-input"
+                                                         id="radio_{{ row.id }}_{{ col.id }}">
+                                                </td>
+                                              {% endfor %}
                                             {% endwith %}
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% endif %}
-            </div>
-        {% endif %}
-
+                                          {% endwith %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+                </div>
+            {% endif %}
 
                 <!-- “Other” input field -->
         <div id="other-input" style="display: none;" class="mt-3">

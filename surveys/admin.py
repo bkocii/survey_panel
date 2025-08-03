@@ -258,7 +258,7 @@ class QuestionAdmin(ModelAdmin):
     fieldsets = (
         (None, {
             'fields': (
-                'survey', 'text', 'question_type', 'matrix_mode', 'next_question', 'required',
+                'survey', 'code', 'text', 'question_type', 'matrix_mode', 'next_question', 'required',
                 'min_value', 'max_value', 'step_value',
                 'allow_multiple_files', 'allows_multiple',
                 'helper_text', 'helper_media', 'helper_media_type',  # updated here

@@ -1,4 +1,6 @@
 {# admin/surveys/includes/inlines.html #}
+{% load static %}
+{% load tailwind_tags %}
 
 {# ------- CHOICES ------- #}
 <div id="choice-inline" class="space-y-4 hidden">
@@ -9,7 +11,7 @@
     {% for form in choice_inline %}
       <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
         {% for field in form.visible_fields %}
-          <div class="space-y-1">
+          <div class="w-full border-gray-300 rounded shadow-sm">
             <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>
             {{ field }}
             {% if field.help_text %}

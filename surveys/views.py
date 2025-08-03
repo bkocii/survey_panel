@@ -267,30 +267,14 @@ def survey_question(request, survey_id, question_id=None):
                     next_q = None
 
                     for row in question.matrix_rows.all():
-                        row_has_selection = False  # Track if any column is selected for this row
+                        field_name = f"matrix_{row.id}"
+                        selected_val = request.POST.get(field_name)
 
-                        for col in question.matrix_columns.all():
-                            field_name = f"matrix_{row.id}_{col.id}"
-                            selected_val = request.POST.get(field_name)
-
-                            if selected_val:
-                                row_has_selection = True
-
-                                collected_responses.append({
-                                    'row': row,
-                                    'col': col,
-                                    'answer': col.label,
-                                    'value': selected_val,
-                                })
-
-                                if not next_q and col.next_question:
-                                    next_q = col.next_question
-
-                            # Check column-level required
-                            elif col.required:
+                        if not selected_val:
+                            if row.required:
                                 messages.error(
                                     request,
-                                    f"Please select an option for column '{col.label}' in row '{row.text}'."
+                                    f"Please select an option in row '{row.text}'."
                                 )
                                 return render(request, 'surveys/survey_question.html', {
                                     'survey': survey,
@@ -302,12 +286,18 @@ def survey_question(request, survey_id, question_id=None):
                                     'time_left': time_left,
                                     'submitted_data': request.POST,
                                 })
+                            continue  # No selection and not required, skip
 
-                        # Check row-level required
-                        if row.required and not row_has_selection:
+                        # Find the matching column for the selected value
+                        matching_col = next(
+                            (col for col in question.matrix_columns.all() if str(col.value) == selected_val),
+                            None
+                        )
+
+                        if not matching_col:
                             messages.error(
                                 request,
-                                f"Please select at least one option in row '{row.text}'."
+                                f"Invalid selection in row '{row.text}'."
                             )
                             return render(request, 'surveys/survey_question.html', {
                                 'survey': survey,
@@ -320,6 +310,17 @@ def survey_question(request, survey_id, question_id=None):
                                 'submitted_data': request.POST,
                             })
 
+                        collected_responses.append({
+                            'row': row,
+                            'col': matching_col,
+                            'answer': matching_col.label,
+                            'value': matching_col.value,
+                        })
+
+                        if not next_q and matching_col.next_question:
+                            next_q = matching_col.next_question
+
+                    # ✅ Save only submitted (selected) responses
                     for r in collected_responses:
                         Response.objects.create(
                             user=request.user,
@@ -330,8 +331,6 @@ def survey_question(request, survey_id, question_id=None):
                             text_answer=r['answer'],
                             value=r['value'],
                         )
-
-
 
             elif question.question_type in ['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD']:
                 files = request.FILES.getlist('answer_file') if question.allow_multiple_files else [
