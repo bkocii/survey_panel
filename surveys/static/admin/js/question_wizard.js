@@ -134,6 +134,12 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // ✅ Pre-check "required" on dynamically added matrix rows
+        if (prefix === 'matrix_rows') {
+        const req = newForm.querySelector("input[type='checkbox'][name$='-required']");
+        if (req) req.checked = true;
+        }
+
         // Add new form and increment total count
         container.appendChild(newForm);
         totalForms.value = formCount + 1;

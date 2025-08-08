@@ -56,6 +56,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const doc = parser.parseFromString(html, "text/html");
         const newForm = doc.body.firstElementChild;
 
+        // ✅ Pre-check required if this is a matrix row
+        if (prefix === 'matrix_rows') {
+            const req = newForm.querySelector("input[type='checkbox'][name$='-required']");
+            if (req) req.checked = true;
+}
         // Fill first text input and value input if present
         const textInput = newForm.querySelector("input[type='text']");
         const valueInput = newForm.querySelector("input[type='number']");

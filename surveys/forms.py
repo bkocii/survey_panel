@@ -26,7 +26,7 @@ class WizardQuestionForm(forms.ModelForm):
             'question_type', 'code', 'text', 'matrix_mode', 'required',
             'min_value', 'max_value', 'step_value',
             'allow_multiple_files', 'allows_multiple',
-            'helper_text', 'helper_media', 'helper_media_type',
+            'helper_text', 'helper_media', 'helper_media_type', 'next_question'
         ]
         widgets = {
             'code': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),

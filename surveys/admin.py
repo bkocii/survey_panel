@@ -63,20 +63,20 @@ class MatrixColumnInline(TabularInline):
     model = MatrixColumn
     form = MatrixColumnInlineForm
     fk_name = 'question'
-    extra = 1
+    extra = 0
     fields = ['value', 'label', 'input_type', 'group', 'order', 'required', 'next_question']
 
 
 class MatrixRowInline(TabularInline):
     model = MatrixRow
-    extra = 1
+    extra = 0
     fields = ('value', 'text', 'required')
 
 
 # Inline admin for Choices, nested within Question
 class ChoiceInline(TabularInline):
     model = Choice
-    extra = 2  # Two empty choice forms
+    extra = 0  # Two empty choice forms
     fields = ('value', 'text', 'next_question', 'image', 'image_preview')
     readonly_fields = ('image_preview',)
     fk_name = 'question'  # 🔧 Tells Django which FK relates to the parent
@@ -93,7 +93,7 @@ class ChoiceInline(TabularInline):
 # Inline admin for Questions, nested within Survey
 class QuestionInline(TabularInline):
     model = Question
-    extra = 1
+    extra = 0
     fields = ('question_type', 'text')  # Step 1: Minimal visible fields only
     show_change_link = True
     inlines = [MatrixColumnInline, MatrixRowInline]  # We'll add conditionally with JS later
@@ -121,6 +121,7 @@ class SurveyAdmin(ModelAdmin):
     search_fields = ('title', 'description')
     ordering = ('-created_at',)
     actions = ['send_notifications']
+    inlines = [QuestionInline]
 
     def send_notifications(self, request, queryset):
         for survey in queryset:
