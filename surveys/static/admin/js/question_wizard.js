@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // Show choices-related fields
-        if (["MC", "DROPDOWN", "RATING", "IMAGE_CHOICE", "IMAGE_RATING"].includes(type)) {
+        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "RATING", "IMAGE_CHOICE", "IMAGE_RATING"].includes(type)) {
             document.querySelector(".choices-field")?.style.setProperty("display", "block");
         }
 
@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const inlineBlocks = {
             "choice-inline": {
                 prefix: "choices",
-                types: ["MC", "RATING", "DROPDOWN", "IMAGE_CHOICE", "IMAGE_RATING"]
+                types: ["SINGLE_CHOICE", "MULTI_CHOICE", "RATING", "DROPDOWN", "IMAGE_CHOICE", "IMAGE_RATING"]
             },
             "matrix-row-inline": {
                 prefix: "matrix_rows",
@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (helper) html += `<p class="text-sm text-gray-500">${helper}</p>`;
 
         // Show choices
-        if (["MC", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
+        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
             html += "<ul class='list-disc list-inside'>";
             document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
                 if (input.value.trim()) html += `<li>${input.value}</li>`;

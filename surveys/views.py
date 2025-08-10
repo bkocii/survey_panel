@@ -104,7 +104,7 @@ def survey_question(request, survey_id, question_id=None):
 
         # Avoid duplicate
         if not Response.objects.filter(user=request.user, survey=survey, question=question).exists():
-            if question.question_type in ['MC', 'RATING', 'DROPDOWN']:
+            if question.question_type in ['SINGLE_CHOICE', 'RATING', 'DROPDOWN']:
                 if not answer:
                     if question.required:
                         messages.error(request, "Please select an option before continuing.")
@@ -146,6 +146,48 @@ def survey_question(request, survey_id, question_id=None):
                         value=choice.value if choice.value is not None else None,
                     )
                     next_q = choice.next_question
+
+            elif question.question_type == 'MULTI_CHOICE':
+                answers = request.POST.getlist('answer')  # <-- same "answer" name, but getlist
+                if not answers:
+                    if question.required:
+                        messages.error(request, "Please select at least one option before continuing.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left,
+                        })
+                    # not required & none selected: skip saving
+                else:
+                    seen = set()
+                    for ans_id in answers:
+                        if ans_id in seen:
+                            continue
+                        seen.add(ans_id)
+
+                        try:
+                            choice = Choice.objects.get(id=ans_id)
+                        except Choice.DoesNotExist:
+                            continue
+
+                        custom_other = request.POST.get('other_text', '').strip()
+                        Response.objects.create(
+                            user=request.user,
+                            survey=survey,
+                            question=question,
+                            choice=choice,
+                            text_answer=custom_other if choice.text.lower() == 'other' else '',
+                            value=choice.value if choice.value is not None else None,
+                        )
+
+                        # If you want branching: pick the first choice that has next_question
+                        if not next_q and choice.next_question:
+                            next_q = choice.next_question
+
 
             elif question.question_type == 'MATRIX':
                 if question.matrix_mode == 'side_by_side':
@@ -608,7 +650,7 @@ def survey_question(request, survey_id, question_id=None):
         # Get next question in order if not defined
         if not next_q:
 
-            if 'choice' in locals() and choice and question.question_type in ['MC', 'RATING',
+            if 'choice' in locals() and choice and question.question_type in ['SINGLE_CHOICE', 'RATING',
                                                                               'DROPDOWN', 'IMAGE_CHOICE'] and not question.allows_multiple and choice.next_question:
                 next_q = choice.next_question
             elif question.next_question:

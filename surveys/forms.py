@@ -47,7 +47,7 @@ class SurveyResponseForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Dynamically add fields for each question
         for question in survey.questions.all():
-            if question.question_type == 'MC':
+            if question.question_type == 'SINGLE_CHOICE':
                 # Add radio select field for multiple-choice questions
                 self.fields[f'question_{question.id}'] = forms.ModelChoiceField(
                     queryset=question.choices.all(), widget=forms.RadioSelect, required=True

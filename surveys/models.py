@@ -24,7 +24,8 @@ class Survey(models.Model):
 
 
 QUESTION_TYPES = [
-    ('MC', 'Multiple Choice'),
+    ('SINGLE_CHOICE', 'Single choice'),
+    ('MULTI_CHOICE', 'Multiple choice'),
     ('TEXT', 'Text'),
     ('RATING', 'Rating Scale'),
     ('DROPDOWN', 'Dropdown'),
