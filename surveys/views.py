@@ -1,4 +1,5 @@
 from django.utils.timezone import now
+from django.db import transaction
 import datetime
 from collections import defaultdict
 from datetime import timedelta
@@ -188,7 +189,6 @@ def survey_question(request, survey_id, question_id=None):
                         if not next_q and choice.next_question:
                             next_q = choice.next_question
 
-
             elif question.question_type == 'MATRIX':
                 if question.matrix_mode == 'side_by_side':
                     is_valid, result, next_q = validate_and_collect_matrix_responses(request, survey, question)
@@ -206,32 +206,37 @@ def survey_question(request, survey_id, question_id=None):
                             'submitted_data': request.POST,
                         })
 
-                    for r in result:
+                    # Save only selected values and clean up anything unselected
+                    with transaction.atomic():
+                        keep_keys = set()  # (row_id, col_id)
 
-                        is_checkbox = r['col'].input_type == 'checkbox'
+                        for r in result:
+                            key = (r['row'].id, r['col'].id)
+                            if key in keep_keys:
+                                continue
+                            keep_keys.add(key)
 
-                        # Only prevent duplicates for non-checkbox input types
-                        if not is_checkbox:
-                            exists = Response.objects.filter(
+                            # Idempotent write (covers checkbox/radio/select/text)
+                            Response.objects.update_or_create(
                                 user=request.user,
                                 survey=survey,
                                 question=question,
                                 matrix_row=r['row'],
-                                matrix_column=r['col']
-                            ).exists()
-                            if exists:
-                                continue  # skip duplicate save
+                                matrix_column=r['col'],
+                                defaults={
+                                    'text_answer': r['answer'],
+                                    'value': r['value'],
+                                    'group_label': r.get('group_label'),
+                                },
+                            )
 
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            matrix_row=r['row'],
-                            matrix_column= r['col'],
-                            text_answer=r['answer'],
-                            value=r['value'],
-                            group_label=r.get('group_label')
+                        # Remove stale responses for this question (now unchecked or cleared)
+                        existing = Response.objects.filter(
+                            user=request.user, survey=survey, question=question
                         )
+                        for resp in existing:
+                            if (resp.matrix_row_id, resp.matrix_column_id) not in keep_keys:
+                                resp.delete()
 
                 elif question.matrix_mode == 'multi':
                     collected_responses = []

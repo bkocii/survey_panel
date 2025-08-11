@@ -12,23 +12,17 @@ document.addEventListener("DOMContentLoaded", function () {
         fieldGroups.forEach(group => group.style.display = "none");
 
 
-        // Explicitly hide slider-only fields unless type is SLIDER
-        ["min_value-field", "max_value-field", "step_value-field"].forEach(cls => {
-            document.querySelector("." + cls)?.style.setProperty("display", "none");
-        });
-
-
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field", "next_question"
+            "helper_text-field", "helper_media-field", "helper_media_type-field", "next_question-field"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");
         });
 
         // Show choices-related fields
-        if (["MC", "DROPDOWN", "RATING", "IMAGE_CHOICE", "IMAGE_RATING"].includes(type)) {
+        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "RATING", "IMAGE_CHOICE", "IMAGE_RATING"].includes(type)) {
             document.querySelector(".choices-field")?.style.setProperty("display", "block");
         }
 
@@ -67,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const inlineBlocks = {
             "choice-inline": {
                 prefix: "choices",
-                types: ["MC", "RATING", "DROPDOWN", "IMAGE_CHOICE", "IMAGE_RATING"]
+                types: ["SINGLE_CHOICE", "MULTI_CHOICE", "RATING", "DROPDOWN", "IMAGE_CHOICE", "IMAGE_RATING"]
             },
             "matrix-row-inline": {
                 prefix: "matrix_rows",
@@ -140,6 +134,12 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // ✅ Pre-check "required" on dynamically added matrix rows
+        if (prefix === 'matrix_rows') {
+        const req = newForm.querySelector("input[type='checkbox'][name$='-required']");
+        if (req) req.checked = true;
+        }
+
         // Add new form and increment total count
         container.appendChild(newForm);
         totalForms.value = formCount + 1;
@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (helper) html += `<p class="text-sm text-gray-500">${helper}</p>`;
 
         // Show choices
-        if (["MC", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
+        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
             html += "<ul class='list-disc list-inside'>";
             document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
                 if (input.value.trim()) html += `<li>${input.value}</li>`;
