@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     flatpickr(".date-input", {
         dateFormat: "Y-m-d",
-        maxDate: "today",  // Optional: Prevent selecting future dates
+        // maxDate: "today",  // Optional: Prevent selecting future dates
         altInput: true,
         altFormat: "F j, Y",
     });
@@ -25,15 +25,15 @@ function highlightSelected(input) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    document.querySelector("form").addEventListener("submit", function (e) {
-      const dateInput = document.querySelector(".date-input");
-      if (dateInput && !dateInput.value.trim()) {
-        alert("Please select a date.");
-        e.preventDefault();
-      }
-    });
-});
+// document.addEventListener("DOMContentLoaded", function () {
+//     document.querySelector("form").addEventListener("submit", function (e) {
+//       const dateInput = document.querySelector(".date-input");
+//       if (dateInput && !dateInput.value.trim()) {
+//         alert("Please select a date.");
+//         e.preventDefault();
+//       }
+//     });
+// });
 
 function markSliderMoved() {
     document.getElementById('slider_moved').value = "true";

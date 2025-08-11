@@ -15,42 +15,6 @@
 <section class="min-h-screen w-full px-6 py-8 bg-gray dark:bg-gray-900">
 
 
-
-<nav class="bg-white border-gray-200 dark:bg-gray-900">
-  <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-    <a href="https://flowbite.com/" class="flex items-center space-x-3 rtl:space-x-reverse">
-        <img src="https://flowbite.com/docs/images/logo.svg" class="h-8" alt="Flowbite Logo" />
-        <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Flowbite</span>
-    </a>
-    <button data-collapse-toggle="navbar-default" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" aria-controls="navbar-default" aria-expanded="false">
-        <span class="sr-only">Open main menu</span>
-        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15"/>
-        </svg>
-    </button>
-    <div class="hidden w-full md:block md:w-auto" id="navbar-default">
-      <ul class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
-        <li>
-          <a href="#" class="block py-2 px-3 text-white bg-blue-700 rounded-sm md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500" aria-current="page">Home</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">About</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Services</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Pricing</a>
-        </li>
-        <li>
-          <a href="#" class="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Contact</a>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
-
-
   <div class="flex flex-col lg:flex-row gap-8 max-w-screen-xl mx-auto">
 
       <!-- LEFT: FORM (spans 2 cols) -->
@@ -62,17 +26,166 @@
           {{ form.non_field_errors }}
 
           <!-- CLONE EXISTING -->
-          <div>
-            <label for="question_lookup" class="block text-sm font-medium text-white dark:text-gray-300">
-              Clone Existing Question
-            </label>
-            <select id="question_lookup" class="mt-1 block w-full rounded border-gray-300 shadow-sm dark:bg-gray-800 dark:text-gray-100">
-              <option value="">-- Select a question to copy --</option>
-              {% for q in all_questions_full %}
-                <option value="{{ q.id }}">{{ q.code|default:"(no code)" }} — {{ q.text|truncatewords:10 }}</option>
-              {% endfor %}
-            </select>
-          </div>
+<div>
+  <label for="question_lookup_search" class="block text-sm font-medium text-white dark:text-gray-300">
+    Clone Existing Question
+  </label>
+
+  <div class="relative mt-1">
+    <!-- Search input -->
+    <input
+      id="question_lookup_search"
+      type="text"
+      autocomplete="off"
+      placeholder="Type code or text to search…"
+      class="block w-full rounded border border-gray-300 bg-white shadow-sm
+             focus:border-indigo-500 focus:ring-indigo-500
+             dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+      aria-autocomplete="list" aria-controls="question_lookup_results" aria-expanded="false"
+    />
+
+    <!-- Results dropdown -->
+    <ul
+      id="question_lookup_results"
+      class="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg
+             dark:bg-gray-900 dark:border-gray-700 hidden"
+      role="listbox"
+    ></ul>
+
+    <!-- Keep original SELECT (hidden) so existing JS keeps working) -->
+    <select id="question_lookup" class="hidden">
+      <option value="">-- Select a question to copy --</option>
+      {% for q in all_questions_full %}
+        <option value="{{ q.id }}">{{ q.code|default:"(no code)" }} — {{ q.text|truncatewords:10 }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <p class="mt-1 text-xs text-white dark:text-white">
+    Use ↑/↓ to navigate, Enter to select, Esc to close.
+  </p>
+</div>
+
+<script>
+(() => {
+  const selectEl = document.getElementById('question_lookup');
+  const inputEl  = document.getElementById('question_lookup_search');
+  const listEl   = document.getElementById('question_lookup_results');
+
+  if (!selectEl || !inputEl || !listEl) return;
+
+  // Build data from the existing <select> options (no backend changes needed)
+  const options = Array.from(selectEl.options)
+    .filter(o => o.value)  // skip placeholder
+    .map(o => ({ id: o.value, label: o.text.trim() }));
+
+  let currentIndex = -1; // keyboard highlight index
+  let visibleItems = []; // currently rendered results
+
+  const renderList = (items) => {
+    listEl.innerHTML = '';
+    if (!items.length) {
+      listEl.classList.add('hidden');
+      inputEl.setAttribute('aria-expanded', 'false');
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    items.forEach((item, idx) => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.dataset.id = item.id;
+      li.dataset.index = idx;
+      li.className =
+        'cursor-pointer px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 ' +
+        (idx === currentIndex ? 'bg-gray-100 dark:bg-gray-800' : '');
+      li.innerHTML = `<div class="truncate">${item.label}</div>`;
+      // Mouse selection
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // prevent input blur before click
+        choose(idx);
+      });
+      frag.appendChild(li);
+    });
+    listEl.appendChild(frag);
+    listEl.classList.remove('hidden');
+    inputEl.setAttribute('aria-expanded', 'true');
+  };
+
+  const choose = (idx) => {
+    if (idx < 0 || idx >= visibleItems.length) return;
+    const item = visibleItems[idx];
+
+    // Update hidden select and fire change (so your existing cloning JS runs)
+    selectEl.value = item.id;
+    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Reflect in the text box and close the list
+    inputEl.value = item.label;
+    closeList();
+  };
+
+  const closeList = () => {
+    listEl.classList.add('hidden');
+    inputEl.setAttribute('aria-expanded', 'false');
+    currentIndex = -1;
+  };
+
+  const filter = (q) => {
+    const qn = q.trim().toLowerCase();
+    if (!qn) {
+      visibleItems = options.slice(0, 20); // show first page when empty
+    } else {
+      visibleItems = options
+        .filter(o => o.label.toLowerCase().includes(qn))
+        .slice(0, 50);
+    }
+    currentIndex = -1;
+    renderList(visibleItems);
+  };
+
+  // Events
+  inputEl.addEventListener('input', (e) => {
+    // If user clears, clear select and notify downstream JS
+    if (!e.target.value.trim()) {
+      selectEl.value = '';
+      selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    filter(e.target.value);
+  });
+
+  inputEl.addEventListener('focus', () => {
+    filter(inputEl.value);
+  });
+
+  inputEl.addEventListener('keydown', (e) => {
+    const max = visibleItems.length - 1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentIndex = Math.min(max, currentIndex + 1);
+      renderList(visibleItems);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentIndex = Math.max(0, currentIndex - 1);
+      renderList(visibleItems);
+    } else if (e.key === 'Enter') {
+      if (!listEl.classList.contains('hidden') && currentIndex >= 0) {
+        e.preventDefault();
+        choose(currentIndex);
+      }
+    } else if (e.key === 'Escape') {
+      closeList();
+    }
+  });
+
+  // Close when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!listEl.contains(e.target) && e.target !== inputEl) {
+      closeList();
+    }
+  });
+})();
+</script>
 
           <!-- DYNAMIC FORM FIELDS -->
           {% for field in form %}
