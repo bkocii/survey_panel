@@ -1,4 +1,4 @@
-
+from django.contrib import admin
 from django.urls import path
 from . import views
 
@@ -15,6 +15,9 @@ urlpatterns = [
     path('<int:survey_id>/submit/', views.survey_submit, name='survey_submit'),
     path('<int:survey_id>/already-submitted/', views.already_submitted, name='already_submitted'),
     path('api/question-data/<int:question_id>/', views.get_question_data, name="question_data_api",),
+    path("admin/surveys/question-lookup/", admin.site.admin_view(views.question_lookup),
+        name="admin_question_lookup",
+    ),
     # path('admin/surveys/<int:survey_id>/add-question/', views.add_question_wizard, name='survey_add_question_wizard'),
 
 ]

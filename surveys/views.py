@@ -2,6 +2,7 @@ from django.utils.timezone import now
 from django.db import transaction
 import datetime
 from collections import defaultdict
+from django.conf import settings
 from datetime import timedelta
 from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence
 from django.contrib import messages
@@ -13,7 +14,11 @@ from .forms import SurveyResponseForm, WizardQuestionForm
 from django.db import models
 from django.utils.html import escape
 from django.forms import inlineformset_factory
-
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.db import connection
+import re
 
 # # View to list all active surveys, requires login
 @login_required
@@ -764,6 +769,44 @@ def get_question_data(request, question_id):
         "matrix_cols": matrix_cols,
     })
 
+
+def _using_postgres():
+    return connection.vendor == "postgresql"
+
+def _tsquery_prefix(q: str) -> str | None:
+    # turns "mc 1" -> "mc:* & 1:*" (prefix match)
+    terms = re.findall(r"\w+", q or "")
+    if not terms:
+        return None
+    return " & ".join(t + ":*" for t in terms)
+
+def question_lookup(request):
+    q = (request.GET.get("q") or "").strip()
+    page = max(int(request.GET.get("page", 1)), 1)
+    page_size = min(max(int(request.GET.get("page_size", 20)), 1), 50)
+
+    qs = Question.objects.only("id", "code", "text")
+
+    if q:
+        prefix_q = Q(code__istartswith=q) | Q(text__icontains=q)
+
+        if _using_postgres():
+            vector = SearchVector("code", weight="A", config="simple") + SearchVector("text", weight="B", config="simple")
+            raw = _tsquery_prefix(q)
+            if raw:
+                query = SearchQuery(raw, search_type="raw", config="simple")  # enables ':*' prefix
+                qs = qs.annotate(rank=SearchRank(vector, query)).filter(prefix_q | Q(rank__gte=0.001)).order_by("-rank", "-id")
+            else:
+                qs = qs.filter(prefix_q).order_by("-id")
+        else:
+            qs = qs.filter(prefix_q).order_by("-id")
+    else:
+        qs = qs.order_by("-id")
+
+    p = Paginator(qs, page_size)
+    page_obj = p.get_page(page)
+    results = [{"id": o.id, "label": f"{o.code or '(no code)'} — {o.text[:100]}"} for o in page_obj.object_list]
+    return JsonResponse({"results": results, "has_next": page_obj.has_next(), "page": page_obj.number})
 
 # This will be the view update to include inline formsets for choices, matrix rows, and matrix columns.
 

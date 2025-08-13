@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field", "next_question-field"
+            "helper_text-field", "helper_media-field", "helper_media_type-field"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");
@@ -245,6 +245,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Handle question lookup and auto-fill form
     document.getElementById("question_lookup")?.addEventListener("change", async function () {
         const selectedId = this.value;
+        // optional flag if you ever want to re-enable copying next_q
+        const COPY_ROUTING = false;
 
         // If no question is selected, reset form
         if (!selectedId) {
@@ -301,9 +303,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     const prefix = `id_choices-${document.getElementById("id_choices-TOTAL_FORMS").value - 1}`;
                     document.getElementById(`${prefix}-text`).value = choice.text;
                     document.getElementById(`${prefix}-value`).value = choice.value;
-                    if (choice.next_question_id) {
-                        document.getElementById(`${prefix}-next_question`).value = choice.next_question_id;
-                    }
                 });
             }
 
@@ -338,6 +337,7 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Error loading question data. Please try again.");
         }
     });
+    initQuestionLookupSearch();
 
     // === Helper to clear inline formsets ===
     function clearInlineForms() {
@@ -374,7 +374,234 @@ document.addEventListener("DOMContentLoaded", function () {
         if (existingLabel) existingLabel.remove();
     }
 
+    // === Server-side question lookup (keeps dropdown visible) ===
+    function initQuestionLookupSearch() {
+      const container = document.getElementById('question_lookup_container');
+      if (!container) return;
 
+      const endpoint = container.dataset.endpoint;
+      const selectEl = container.querySelector('#question_lookup');
+      const inputEl  = container.querySelector('#question_lookup_search');
+      const listEl   = container.querySelector('#question_lookup_results');
+
+      if (!endpoint || !selectEl || !inputEl || !listEl) return;
+
+      let currentIndex = -1;
+      let items = [];
+      let q = "";
+      let page = 1;
+      let hasNext = false;
+      let inflight;
+      let searching = false;
+      // add near the top of the function
+      let lastQuery = "";
+
+    // helper: keep the highlighted item in view
+    const ensureVisible = () => {
+      const el = listEl.querySelector(`li[data-index="${currentIndex}"]`);
+      if (!el) return;
+      const elTop = el.offsetTop;
+      const elBottom = elTop + el.offsetHeight;
+      const viewTop = listEl.scrollTop;
+      const viewBottom = viewTop + listEl.clientHeight;
+      if (elTop < viewTop) listEl.scrollTop = elTop;
+      else if (elBottom > viewBottom) listEl.scrollTop = elBottom - listEl.clientHeight;
+    };
+
+      const render = () => {
+          listEl.innerHTML = "";
+          listEl.classList.remove('hidden');
+          inputEl.setAttribute('aria-expanded', 'true');
+
+          if (searching) {
+            const wait = document.createElement('li');
+            wait.className = 'text-sm italic';
+            wait.textContent = 'Searching…';
+            listEl.appendChild(wait);
+          }
+
+          if (!items.length && !searching) {
+            const empty = document.createElement('li');
+            empty.className = 'text-sm opacity-70';
+            empty.textContent = q ? `No results for “${q}”` : 'Type to search…';
+            listEl.appendChild(empty);
+            return;
+          }
+
+          const frag = document.createDocumentFragment();
+          items.forEach((it, idx) => {
+            const li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            li.dataset.id = it.id;
+            li.dataset.index = idx;
+
+            // base classes (avoid Tailwind hover here)
+            li.className = 'dropdown-item'; // optional marker class
+
+            // set text content
+            li.innerHTML = `<div class="truncate" style="color:inherit">${it.label}</div>`;
+
+            // mouse selection
+            li.addEventListener('mousedown', (e) => { e.preventDefault(); choose(idx); });
+
+            // active row for keyboard nav
+            if (idx === currentIndex) li.classList.add('active');
+
+            frag.appendChild(li);
+          });
+          listEl.appendChild(frag);
+
+          // ✅ call ensureVisible *inside* render, after appending items
+          ensureVisible();
+        };
+
+      const choose = (idx) => {
+        const it = items[idx];
+        if (!it) return;
+        // Update hidden select and fire change so your existing clone handler runs
+        selectEl.innerHTML = `<option value="${it.id}" selected>${it.label}</option>`;
+        selectEl.value = it.id;
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        inputEl.value = it.label;
+        close();
+      };
+
+      const close = () => {
+        listEl.classList.add('hidden');
+        inputEl.setAttribute('aria-expanded', 'false');
+        currentIndex = -1;
+      };
+
+      const fetchPage = async (query, pageNum) => {
+        if (inflight) inflight.abort?.();
+        inflight = new AbortController();
+        const url = `${endpoint}?q=${encodeURIComponent(query)}&page=${pageNum}&page_size=20`;
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: inflight.signal });
+        if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
+        return res.json();
+      };
+
+      const debounced = (fn, ms=200) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+      const search = debounced(async (query) => {
+        q = (query || '').trim();
+        page = 1;
+        searching = true;
+        render(); // keep old items visible + show "Searching…"
+        try {
+          const data = await fetchPage(q, page);
+          items = data.results || [];
+          hasNext = !!data.has_next;
+        } catch (e) {
+          console.error(e);
+          items = []; hasNext = false;
+        } finally {
+          searching = false;
+          currentIndex = -1;
+          render();
+        }
+      }, 200);
+
+      const loadMore = async () => {
+        if (!hasNext) return;
+        searching = true; render();
+        try {
+          const data = await fetchPage(q, ++page);
+          (data.results || []).forEach(r => items.push(r));
+          hasNext = !!data.has_next;
+        } catch (e) { console.error(e); }
+        finally { searching = false; render(); }
+      };
+
+      // Events
+      inputEl.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (!val.trim()) {
+          // Clear select and show "Type to search…"
+          selectEl.innerHTML = '<option value=""></option>';
+          selectEl.value = '';
+          selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+          items = []; q = ""; currentIndex = -1; searching = false; render();
+          return;
+        }
+        search(val);
+      });
+
+      inputEl.addEventListener('focus', () => { render(); search(inputEl.value); });
+
+      inputEl.addEventListener('keydown', async (e) => {
+      const max = items.length - 1;
+
+      if (e.key === 'ArrowDown') {
+        if (max < 0) return;               // nothing to move to
+        e.preventDefault();                 // keep focus in input, don’t move caret
+        currentIndex = currentIndex < 0 ? 0 : Math.min(max, currentIndex + 1);
+        // if we hit the end and there is more, load next page then advance
+        if (currentIndex === max && hasNext) {
+          await loadMore();
+          currentIndex = Math.min(items.length - 1, currentIndex + 1);
+        }
+        render();
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        if (max < 0) return;
+        e.preventDefault();
+        currentIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
+        render();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        if (!listEl.classList.contains('hidden') && currentIndex >= 0) {
+          e.preventDefault();
+          choose(currentIndex);
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        // optional: close only the list, keep input focused
+        listEl.classList.add('hidden');
+        inputEl.setAttribute('aria-expanded', 'false');
+        return;
+      }
+    });
+
+
+      document.addEventListener('click', (e) => {
+        if (!listEl.contains(e.target) && e.target !== inputEl) close();
+      });
+    }
+
+    // 🚫 Prevent Enter from submitting the form
+    disableEnterSubmit('#question-form'); // change selector if your form has a different id
+
+    function disableEnterSubmit(formSelector) {
+      const form = document.querySelector(formSelector) || document.querySelector('form');
+      if (!form) return;
+
+      form.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+
+        const el   = e.target;
+        const tag  = el.tagName.toLowerCase();
+        const type = (el.getAttribute('type') || '').toLowerCase();
+
+        // Allow explicit opt-in zones: <div data-allow-enter="true">...</div>
+        if (el.dataset.allowEnter === 'true' || el.closest('[data-allow-enter="true"]')) return;
+
+        // Allow Enter inside textareas or contenteditable
+        if (tag === 'textarea' || el.isContentEditable) return;
+
+        // In our search box, we handle Enter ourselves (choose selection), so prevent submit
+        if (el.id === 'question_lookup_search') { e.preventDefault(); return; }
+
+        // Block default Enter (prevents accidental form submit)
+        e.preventDefault();
+      });
+    }
 
 
     // 🔓 Make `addForm` accessible globally (optional)
