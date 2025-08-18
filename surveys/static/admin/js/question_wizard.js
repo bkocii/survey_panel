@@ -110,48 +110,170 @@ document.addEventListener("DOMContentLoaded", function () {
         if (typeof updatePreview === "function") updatePreview();
     }
 
+    function buildChoiceRow(index) {
+      // <tr>
+      const tr = document.createElement('tr');
+      tr.className = 'border-t border-gray-700';
+
+      // a small helper to make a cell
+      const td = (cls='px-3 py-2 align-middle') => {
+        const el = document.createElement('td');
+        el.className = cls;
+        return el;
+      };
+
+      // ---- 1) Value
+      const tdValue = td();
+      const inpValue = document.createElement('input');
+      inpValue.type = 'number';
+      inpValue.name = `choices-${index}-value`;
+      inpValue.id   = `id_choices-${index}-value`;
+      inpValue.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      tdValue.appendChild(inpValue);
+      tr.appendChild(tdValue);
+
+      // ---- 2) Text
+      const tdText = td();
+      const inpText = document.createElement('input');
+      inpText.type = 'text';
+      inpText.name = `choices-${index}-text`;
+      inpText.id   = `id_choices-${index}-text`;
+      inpText.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      tdText.appendChild(inpText);
+      tr.appendChild(tdText);
+
+      // ---- 3) Next question
+      const tdNext = td();
+      const sel = document.createElement('select');
+      sel.name = `choices-${index}-next_question`;
+      sel.id   = `id_choices-${index}-next_question`;
+      sel.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      // placeholder option
+      const opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = '---------';
+      sel.appendChild(opt0);
+      // fill options from the hidden select you already use for lookup,
+      // or from a datalist you render; here we try to reuse the <select> in your page if present
+      const serverSelect = document.getElementById('id_choices-0-next_question');
+      if (serverSelect) {
+        [...serverSelect.options].forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o.value;
+          opt.textContent = o.textContent;
+          sel.appendChild(opt);
+        });
+      }
+      tdNext.appendChild(sel);
+      tr.appendChild(tdNext);
+
+      // ---- 4) Image
+      const tdImg = td();
+      const inpFile = document.createElement('input');
+      inpFile.type = 'file';
+      inpFile.name = `choices-${index}-image`;
+      inpFile.id   = `id_choices-${index}-image`;
+      inpFile.className = 'block w-full text-sm';
+      tdImg.appendChild(inpFile);
+      tr.appendChild(tdImg);
+
+      // ---- 5) DELETE
+      const tdDel = td('px-3 py-2 align-middle text-center');
+      const del = document.createElement('input');
+      del.type = 'checkbox';
+      del.name = `choices-${index}-DELETE`;
+      del.id   = `id_choices-${index}-DELETE`;
+      tdDel.appendChild(del);
+      tr.appendChild(tdDel);
+
+      return tr;
+    }
+
+
     // 🧩 Add a new form to the specified formset (choices, rows, cols)
     function addForm(prefix) {
-        const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
-        const container = document.getElementById(`${prefix}-forms`);
-        const template = document.getElementById(`${prefix}-template`);
+      const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      const container  = document.getElementById(`${prefix}-forms`);
+      const template   = document.getElementById(`${prefix}-template`);
 
-        if (!totalForms || !container || !template) {
-            console.error("Missing elements for prefix:", prefix);
-            return;
-        }
+      if (!totalForms || !container) {
+        console.error("Missing elements for prefix:", prefix);
+        return;
+      }
 
-        const formCount = parseInt(totalForms.value);
-        const html = template.innerHTML.trim().replaceAll('__prefix__', formCount);
+      // remove placeholder empty row if present
+      const emptyRow = container.querySelector('tr[data-empty-row]');
+      if (emptyRow) emptyRow.remove();
 
-        // Create new DOM element safely
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-        const newForm = doc.body.firstElementChild;
+      const formCount = parseInt(totalForms.value || '0', 10);
 
-        if (!newForm) {
-            console.error("Could not parse new form");
-            return;
-        }
+      // SPECIAL CASE: for choices in a TBODY, build a TR programmatically so it's always valid
+      if (prefix === 'choices' && container.tagName === 'TBODY') {
+        const tr = buildChoiceRow(formCount);
 
-        // ✅ Pre-check "required" on dynamically added matrix rows
-        if (prefix === 'matrix_rows') {
-        const req = newForm.querySelector("input[type='checkbox'][name$='-required']");
-        if (req) req.checked = true;
-        }
-
-        // Add new form and increment total count
-        container.appendChild(newForm);
-        totalForms.value = formCount + 1;
-
-        // Hook preview events to new inputs
-        newForm.querySelectorAll("input, select, textarea").forEach(input => {
-            input.addEventListener("input", updatePreview);
-            input.addEventListener("change", updatePreview);
+        // hook preview events
+        tr.querySelectorAll('input, select, textarea').forEach(input => {
+          input.addEventListener('input', updatePreview);
+          input.addEventListener('change', updatePreview);
         });
 
+        container.appendChild(tr);
+        totalForms.value = formCount + 1;
         updatePreview();
+        return;
+      }
+
+      // default path (div-based inlines, or matrix if you keep it that way)
+      if (!template) {
+        console.error("Missing template for prefix:", prefix);
+        return;
+      }
+
+      const html = template.innerHTML.trim().replaceAll('__prefix__', formCount);
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      let newNode = doc.body.firstElementChild;
+
+      if (!newNode) {
+        console.error("Could not parse new form");
+        return;
+      }
+
+      // If inserting into a TBODY and template doesn't return a TR, wrap it
+      const isTableBody = container.tagName === 'TBODY';
+      if (isTableBody && newNode.tagName !== 'TR') {
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-gray-700';
+        const td = document.createElement('td');
+        td.className = 'px-3 py-2 align-top';
+        td.colSpan = (prefix === 'choices') ? 5
+                 : (prefix === 'matrix_rows') ? 4
+                 : (prefix === 'matrix_cols') ? 7
+                 : 1;
+        td.appendChild(newNode);
+        tr.appendChild(td);
+        newNode = tr;
+      }
+
+      // Pre-check "required" for matrix rows
+      if (prefix === 'matrix_rows') {
+        const req = newNode.querySelector("input[type='checkbox'][name$='-required']");
+        if (req) req.checked = true;
+      }
+
+      container.appendChild(newNode);
+      totalForms.value = formCount + 1;
+
+      newNode.querySelectorAll("input, select, textarea").forEach(input => {
+        input.addEventListener("input", updatePreview);
+        input.addEventListener("change", updatePreview);
+      });
+
+      updatePreview();
     }
+
+
 
     // 🔍 Generate live question preview
     function updatePreview() {

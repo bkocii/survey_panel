@@ -1,67 +1,163 @@
 {% load static %}
 {% load tailwind_tags %}
 
+{# ------- CHOICES ------- #}
+{# ------- CHOICES (as table rows) ------- #}
+<div id="choice-inline" class="hidden">
+  <h2 class="text-lg font-medium text-gray-200">Choices</h2>
 
-{# ------- CHOICES -------#}
-<div id="choice-inline" class="space-y-4 hidden">
-  <h2 class="text-lg font-medium text-gray-800">Choices</h2>
   {{ choice_inline.management_form }}
+  {{ choice_inline.non_form_errors }}
 
-  <div id="choices-forms" class="space-y-4">
-    {% for form in choice_inline %}
-      <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
-        {% for field in form.visible_fields %}
-          <div class="w-full border-gray-300 rounded shadow-sm">
-            <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>
-            {{ field }}
-            {% if field.help_text %}
-              <p class="text-xs text-gray-500">{{ field.help_text }}</p>
-            {% endif %}
-          </div>
+  <div class="overflow-x-auto rounded border border-gray-700">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-800 text-gray-200">
+        <tr>
+          <th class="px-3 py-2 text-left w-32">Value</th>
+          <th class="px-3 py-2 text-left">Text</th>
+          <th class="px-3 py-2 text-left w-80">Next question</th>
+          <th class="px-3 py-2 text-left w-56">Image</th>
+          <th class="px-3 py-2 text-left w-20">Delete</th>
+        </tr>
+      </thead>
+
+      <tbody id="choices-forms">
+        {% for f in choice_inline.forms %}
+          <tr class="border-t border-gray-700">
+            {# keep hidden fields INSIDE a TD to keep table valid #}
+            <td class="px-3 py-2 align-middle">
+              {{ f.value }}
+              {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+              {% for e in f.value.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.text }}
+              {% for e in f.text.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.next_question }}
+              {% for e in f.next_question.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.image }}
+              {% for e in f.image.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle text-center">
+              {% if f.DELETE %}{{ f.DELETE }}{% else %}-{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr data-empty-row="true">
+            <td colspan="5" class="px-3 py-2 text-sm text-gray-400">
+              No choices yet. Use “Add choice”.
+            </td>
+          </tr>
         {% endfor %}
-      </div>
-    {% endfor %}
+      </tbody>
+    </table>
   </div>
 
+  {# Template MUST return a TR for addForm('choices') #}
   <template id="choices-template">
-    <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
-      <!-- Choice Text -->
-      <div class="space-y-1">
-        <label for="id_choices-__prefix__-text" class="block text-sm font-medium dark:text-gray-200">Text</label>
-        <input type="text" name="choices-__prefix__-text" id="id_choices-__prefix__-text" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <!-- Choice Value -->
-      <div class="space-y-1">
-        <label for="id_choices-__prefix__-value" class="block text-sm font-medium dark:text-gray-200">Value</label>
-        <input type="number" name="choices-__prefix__-value" id="id_choices-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <!-- Choice Next Question -->
-      <div class="space-y-1">
-        <label for="id_choices-__prefix__-next_question" class="block text-sm font-medium dark:text-gray-200">Next Question</label>
-        <select name="choices-__prefix__-next_question" id="id_choices-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">
+    <tr class="border-t border-gray-700">
+      <td class="px-3 py-2 align-middle">
+        <input type="number" name="choices-__prefix__-value" id="id_choices-__prefix__-value"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <input type="text" name="choices-__prefix__-text" id="id_choices-__prefix__-text"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <select name="choices-__prefix__-next_question" id="id_choices-__prefix__-next_question"
+                class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
           <option value="">---------</option>
           {% for q in all_questions %}
             <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
           {% endfor %}
         </select>
-      </div>
-      <!-- Choice Image -->
-      <div class="space-y-1">
-        <label for="id_choices-__prefix__-image" class="block text-sm font-medium dark:text-gray-200">Image</label>
-        <input type="file" name="choices-__prefix__-image" id="id_choices-__prefix__-image" class="w-full">
-      </div>
-    </div>
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <input type="file" name="choices-__prefix__-image" id="id_choices-__prefix__-image" class="block w-full text-sm">
+      </td>
+      <td class="px-3 py-2 align-middle text-center">
+        <input type="checkbox" name="choices-__prefix__-DELETE" id="id_choices-__prefix__-DELETE">
+      </td>
+    </tr>
   </template>
 
-  <div class="flex gap-3">
-    <button type="button" data-prefix="choices" class="add-form-btn text-blue-600 px-3 py-1 border border-blue-600 rounded hover:bg-blue-100">
-      ➕ Add Choice
+  <div class="mt-3 flex gap-3">
+    <button type="button" data-prefix="choices"
+            class="add-form-btn inline-flex items-center px-3 py-1.5 rounded border border-blue-600 text-blue-100 bg-blue-600/20 hover:bg-blue-600/30">
+      ➕ Add choice
     </button>
-    <button type="button" class="bulk-add-btn text-sm text-blue-700 underline" data-prefix="choices">
-      Bulk Add
+    <button type="button" class="bulk-add-btn text-sm text-blue-400 underline underline-offset-2" data-prefix="choices">
+      Bulk add
     </button>
   </div>
 </div>
+
+
+{# ------- CHOICES -------#}
+{#<div id="choice-inline" class="space-y-4 hidden">#}
+{#  <h2 class="text-lg font-medium text-gray-800">Choices</h2>#}
+{#  {{ choice_inline.management_form }}#}
+{##}
+{#  <div id="choices-forms" class="space-y-4">#}
+{#    {% for form in choice_inline %}#}
+{#      <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">#}
+{#        {% for field in form.visible_fields %}#}
+{#          <div class="w-full border-gray-300 rounded shadow-sm">#}
+{#            <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>#}
+{#            {{ field }}#}
+{#            {% if field.help_text %}#}
+{#              <p class="text-xs text-gray-500">{{ field.help_text }}</p>#}
+{#            {% endif %}#}
+{#          </div>#}
+{#        {% endfor %}#}
+{#      </div>#}
+{#    {% endfor %}#}
+{#  </div>#}
+{##}
+{#  <template id="choices-template">#}
+{#    <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">#}
+{#      <!-- Choice Text -->#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_choices-__prefix__-text" class="block text-sm font-medium dark:text-gray-200">Text</label>#}
+{#        <input type="text" name="choices-__prefix__-text" id="id_choices-__prefix__-text" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <!-- Choice Value -->#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_choices-__prefix__-value" class="block text-sm font-medium dark:text-gray-200">Value</label>#}
+{#        <input type="number" name="choices-__prefix__-value" id="id_choices-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <!-- Choice Next Question -->#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_choices-__prefix__-next_question" class="block text-sm font-medium dark:text-gray-200">Next Question</label>#}
+{#        <select name="choices-__prefix__-next_question" id="id_choices-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">#}
+{#          <option value="">---------</option>#}
+{#          {% for q in all_questions %}#}
+{#            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>#}
+{#          {% endfor %}#}
+{#        </select>#}
+{#      </div>#}
+{#      <!-- Choice Image -->#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_choices-__prefix__-image" class="block text-sm font-medium dark:text-gray-200">Image</label>#}
+{#        <input type="file" name="choices-__prefix__-image" id="id_choices-__prefix__-image" class="w-full">#}
+{#      </div>#}
+{#    </div>#}
+{#  </template>#}
+{##}
+{#  <div class="flex gap-3">#}
+{#    <button type="button" data-prefix="choices" class="add-form-btn text-blue-600 px-3 py-1 border border-blue-600 rounded hover:bg-blue-100">#}
+{#      ➕ Add Choice#}
+{#    </button>#}
+{#    <button type="button" class="bulk-add-btn text-sm text-blue-700 underline" data-prefix="choices">#}
+{#      Bulk Add#}
+{#    </button>#}
+{#  </div>#}
+{#</div>#}
 
 {# ------- MATRIX ROWS ------- #}
 <div id="matrix-row-inline" class="space-y-4 hidden">
