@@ -1,0 +1,202 @@
+/* static/admin/wizard.css */
+#question-form input,
+#question-form select,
+#question-form textarea {
+  background-color: #111827 !important; /* gray-900 */
+  color: #fff !important;
+  border-color: #374151;
+}
+#question-form input::placeholder { color: #9ca3af; }
+#question-form input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #111827 inset !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* ~4–5 chars wide, grows a bit on md screens */
+#id_code { width: 6.5rem; }           /* ≈ w-26 */
+@media (min-width: 768px) {
+  #id_code { width: 7.5rem; }         /* ≈ w-30 */
+}
+
+/* Row 1 alignment + sizing */
+#wizard-row-1 label { margin-bottom: 0.25rem; line-height: 1.25rem; }
+
+/* Make the three controls the same height */
+#id_code,
+#id_question_type,
+#question_lookup_search {
+  height: 2.5rem;           /* ~ h-10 */
+}
+
+/* Narrow width for the Code input (~4–5 chars) */
+#id_code { width: 7.5rem; } /* tweak to taste */
+@media (min-width: 768px) {
+  #id_code { width: 8rem; }
+}
+
+/* Kill any stray top margin on the lookup input wrapper */
+#question_lookup_container .relative { margin-top: 0 !important; }
+
+
+/* Row 2 alignment */
+#wizard-row-2 label { margin-bottom: .25rem; line-height: 1.25rem; }
+
+/* Make text + required controls visually same height */
+#wizard-row-2 #id_text { height: 2.5rem; }          /* ~ h-10 */
+#wizard-row-2 .h-10 { height: 2.5rem; }
+
+/* Turn the Required checkbox into a compact switch (no template changes needed) */
+#wizard-row-2 #id_required {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  width: 2.75rem;        /* ~44px */
+  height: 1.5rem;        /* ~24px */
+  border-radius: 9999px; /* full */
+  background: #374151;   /* gray-700 */
+  border: 1px solid #4b5563; /* gray-600 */
+  cursor: pointer;
+  outline: none;
+  transition: background-color .2s ease;
+}
+#wizard-row-2 #id_required::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.125rem;     /* ~18px */
+  height: 1.125rem;
+  background: #fff;    /* knob */
+  border-radius: 9999px;
+  transition: transform .2s ease;
+}
+.dark #wizard-row-2 #id_required { background: #1f2937; border-color: #374151; } /* dark: gray-800/700 */
+#wizard-row-2 #id_required:checked { background: #4f46e5; border-color: #4f46e5; } /* indigo-600 */
+#wizard-row-2 #id_required:checked::after { transform: translateX(1.25rem); }     /* move knob */
+
+/* Keyboard focus ring */
+#wizard-row-2 #id_required:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.45);
+}
+
+/* Let the Question text input truly fill available width */
+#question-form .text-field input#id_text {
+  width: 100%;
+  max-width: none;
+  height: 2.5rem; /* match h-10 */
+}
+
+/* Keep the switch row the same height */
+#question-form #wizard-row-2 .h-10 { height: 2.5rem; }
+
+/* Make the "Question text" block truly fill its side */
+#question-form #wizard-row-2 .text-field { flex: 1 1 0%; min-width: 0; }
+
+/* Kill admin/Unfold width caps (Django uses .vTextField) and force full width */
+#question-form #wizard-row-2 input#id_text,
+#question-form #wizard-row-2 input.vTextField {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* (Keep your existing height alignment) */
+#question-form #wizard-row-2 #id_text { height: 2.5rem; } /* h-10 */
+#question-form #wizard-row-2 .h-10 { height: 2.5rem; }
+
+/* Row 3: smaller labels & controls, tight spacing */
+#wizard-row-3 label { margin-bottom: .125rem; line-height: 1.1rem; }
+
+/* Smaller control height & font for helper fields */
+#wizard-row-3 .compact input[type="text"],
+#wizard-row-3 .compact input[type="search"],
+#wizard-row-3 .compact select {
+  height: 2.0rem;                 /* ≈ h-8 */
+  line-height: 2rem;
+  font-size: .775rem;           /* text-sm */
+  padding: .25rem .5rem;        /* tighter */
+  width: 100%;
+  max-width: none;              /* beat admin caps */
+}
+
+/* File input: visually compact */
+#wizard-row-3 input[type="file"] {
+  height: 2.0rem;
+  font-size: .7125rem;          /* ~13px */
+  line-height: 1.25rem;
+  padding: .25rem .5rem;
+  width: 100%;
+  max-width: none;
+}
+
+/* Dark theme consistency */
+#wizard-row-3 .compact input,
+#wizard-row-3 .compact select,
+#wizard-row-3 input[type="file"] {
+  background-color: #111827;    /* gray-900 */
+  color: #fff;
+  border-color: #374151;        /* gray-700 */
+}
+
+/* If admin theme adds extra top margins anywhere, neutralize here */
+#wizard-row-3 .question-field > .w-full { margin-top: 0 !important; }
+
+}
+
+/* neutral shells that won't fight admin resets */
+#wizard-actions .btn-shell {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  cursor: pointer;
+}
+#wizard-actions .btn-link {
+  text-decoration: none !important;
+}
+
+/* the real visual button lives here */
+#wizard-actions .btn-ui {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .5rem 1rem;            /* ~ py-2 px-4 */
+  border-radius: .5rem;           /* rounded-md */
+  font-size: .875rem;             /* text-sm */
+  line-height: 1.25rem;
+  font-weight: 600;               /* semibold */
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+/* variants */
+#wizard-actions .btn-primary {
+  background: #2563eb;            /* blue-600 */
+  color: #fff;
+  border-color: #1d4ed8;          /* blue-700 */
+}
+#wizard-actions .btn-primary:hover {
+  background: #1d4ed8;            /* blue-700 */
+  border-color: #1e40af;          /* blue-800 */
+}
+
+#wizard-actions .btn-secondary {
+  background: transparent;
+  color: #e5e7eb;                  /* gray-200 */
+  border-color: #4b5563;           /* gray-600 */
+}
+#wizard-actions .btn-secondary:hover {
+  background: rgba(255,255,255,.06);
+}
+
+/* dark tune */
+.dark #wizard-actions .btn-primary {
+  background: #4f46e5;            /* indigo-600 */
+  border-color: #4338ca;          /* indigo-700 */
+}
+.dark #wizard-actions .btn-primary:hover {
+  background: #4338ca;            /* indigo-700 */
+}
+
+
+

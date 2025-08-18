@@ -10,6 +10,7 @@ module.exports = {
         '!../../**/node_modules',
         // Include JavaScript files that might contain Tailwind CSS classes
         '../../**/*.js',
+        '../../../**/*.js',
         // Include Python files that might contain Tailwind CSS classes
         '../../**/*.py',
         // Include flowbite files
@@ -22,6 +23,9 @@ module.exports = {
     'grid-cols-5',
     'grid-cols-6',
     'place-items-center',
+    'dark:bg-base-900',
+    'blue-600',
+    'text-indigo-400','dark:text-indigo-300','italic'
   ],
       theme: {
     extend: {
@@ -67,7 +71,7 @@ module.exports = {
     }
   },
       plugins: [
-          require('flowbite/plugin-windicss'),
+          require('flowbite/plugin'),
           require('@tailwindcss/forms'),
           require('@tailwindcss/typography'),
           require('@tailwindcss/aspect-ratio')

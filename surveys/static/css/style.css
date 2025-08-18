@@ -50,6 +50,14 @@
   outline: 1px solid rgba(255,255,255,0.5);
 }
 
+#question-preview .placeholder {
+  color: #818cf8;             /* indigo-400 */
+  font-style: italic;
+}
+.dark #question-preview .placeholder {
+  color: #a5b4fc;             /* indigo-300 */
+}
+
 
 
 

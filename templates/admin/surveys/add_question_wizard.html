@@ -2,18 +2,6 @@
 {% load static %}
 {% load tailwind_tags %}
 
-{% block extrahead %}
-    {{ block.super }}
-    {% tailwind_css %}
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <script src="{% static 'admin/js/modal_manager.js' %}" defer></script>
-    <script src="{% static 'admin/js/question_wizard.js' %}" defer></script>
-    <script src="{% static 'admin/js/bulk_add.js' %}" defer></script>
-    <link rel="stylesheet" href="{% static 'dist/tailwind.css' %}">
-
-
-
-{% endblock %}
 
 {% block content %}
 <section class="min-h-screen w-full px-6 py-8 bg-gray dark:bg-gray-900">
@@ -29,105 +17,114 @@
           {% csrf_token %}
           {{ form.non_field_errors }}
 
-          <!-- CLONE EXISTING -->
-            <div id="question_lookup_container" data-endpoint="{% url 'surveys:admin_question_lookup' %}">
-              <label for="question_lookup_search" class="block text-sm font-medium text-white dark:text-gray-300">
-                Clone Existing Question
-              </label>
+            {# Row 1: Code (narrow) | Question type | Lookup #}
+            <div id="wizard-row-1" class="flex items-end gap-8 mb-4">
 
-              <div class="relative mt-1">
-                <!-- Search input -->
-                <input
-                  id="question_lookup_search"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="Type code or text to search…"
-                  class="block w-full rounded border border-gray-300 bg-white shadow-sm
-                         focus:border-indigo-500 focus:ring-indigo-500
-                         dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
-                  aria-autocomplete="list" aria-controls="question_lookup_results" aria-expanded="false"
-                />
-
-                <!-- Results dropdown -->
-                <ul
-                  id="question_lookup_results"
-                  class="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg
-                         dark:bg-gray-900 dark:border-gray-700 hidden"
-                  role="listbox"
-                ></ul>
-
-                <!-- Hidden SELECT (kept for backward compatibility with your existing JS) -->
-                <select id="question_lookup" class="hidden">
-                  <option value=""></option>
-                </select>
+              {# Code — narrow, non-growing #}
+              <div class="question-field code-field flex-none">
+                <label for="{{ form.code.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300 mb-1">
+                  Code
+                </label>
+                {{ form.code }}
               </div>
 
-              <p class="mt-1 text-xs text-white dark:text-white">
-                Use ↑/↓ to navigate, Enter to select, Esc to close.
-              </p>
+              {# Question type — grows to fill the middle #}
+              <div class="question-field question_type-field flex-1 min-w-0">
+                <label for="{{ form.question_type.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300 mb-1">
+                  Question type
+                </label>
+                {{ form.question_type }}
+              </div>
+
+              {# Lookup — fixed width, pushed to the far right #}
+              <div id="question_lookup_container"
+                   class="lookup-field flex-none w-80 ml-auto"
+                   data-endpoint="{% url 'surveys:admin_question_lookup' %}">
+                <label for="question_lookup_search" class="block text-sm font-medium text-white dark:text-gray-300 mb-1">
+                  Clone Existing Question
+                </label>
+                <div class="relative">
+                  <input id="question_lookup_search" type="text" autocomplete="off"
+                         placeholder="Type code or text to search…"
+                         class="block w-full rounded border border-gray-300 bg-white shadow-sm
+                                focus:border-indigo-500 focus:ring-indigo-500
+                                dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+                         aria-autocomplete="list" aria-controls="question_lookup_results" aria-expanded="false" />
+                  <ul id="question_lookup_results"
+                      class="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg
+                             dark:bg-gray-900 dark:border-gray-700 hidden"
+                      role="listbox"></ul>
+                  <select id="question_lookup" class="hidden"><option value=""></option></select>
+                </div>
+              </div>
             </div>
 
-            {# ALWAYS-VISIBLE FIELDS laid out in rows using flex (robust across widths) #}
-            <div class="space-y-4">
+            {# Row 2: Question text (fills) | Required switch (small, right) #}
+            <div id="wizard-row-2" class="flex flex-col md:flex-row md:items-end gap-6 md:gap-8 mt-10 mb-0">
 
-              {# Row 1: code | question_type | required #}
-              <div class="flex flex-col sm:flex-row gap-8">
-                <div class="question-field code-field sm:basis-3/12 sm:flex-1 min-w-0">
-                  <label for="{{ form.code.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">Code</label>
-                  {{ form.code }}
-                  {% if form.code.help_text %}<p class="text-xs text-white/80 dark:text-gray-400">{{ form.code.help_text }}</p>{% endif %}
-                  {% for error in form.code.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+              {# Question text — grows; full width on small, wide on md+ #}
+              <div class="question-field text-field md:flex-1 min-w-0">
+                <label for="{{ form.text.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300 mb-1">
+                  Question text
+                </label>
+                <div class="w-full">
+                  {{ form.text }}
                 </div>
-
-                <div class="question-field question_type-field sm:basis-6/12 sm:flex-1 min-w-0">
-                  <label for="{{ form.question_type.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">Question type</label>
-                  {{ form.question_type }}
-                  {% if form.question_type.help_text %}<p class="text-xs text-white/80 dark:text-gray-400">{{ form.question_type.help_text }}</p>{% endif %}
-                  {% for error in form.question_type.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                </div>
-
-                <div class="question-field required-field sm:basis-3/12 sm:flex-1 min-w-0">
-                  <label class="block text-sm font-medium text-white dark:text-gray-300 mb-1">Required</label>
-                  <div class="flex items-center gap-2">
-                    {{ form.required }}
-                    <span class="text-sm text-white/90 dark:text-gray-300">This question is required</span>
-                  </div>
-                  {% for error in form.required.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                </div>
-              </div>
-
-              {# Row 2: text (full width) #}
-              <div class="question-field text-field">
-                <label for="{{ form.text.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">Question text</label>
-                {{ form.text }}
-                {% if form.text.help_text %}<p class="text-xs text-white/80 dark:text-gray-400">{{ form.text.help_text }}</p>{% endif %}
+                {% if form.text.help_text %}
+                  <p class="text-xs text-white/80 dark:text-gray-400 mt-1">{{ form.text.help_text }}</p>
+                {% endif %}
                 {% for error in form.text.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
               </div>
 
-
-              {# Row 3: helper_text | helper_media_type #}
-              <div class="flex flex-col sm:flex-row gap-4">
-                <div class="question-field helper_text-field sm:basis-8/12 sm:flex-1 min-w-0">
-                  <label for="{{ form.helper_text.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">Helper text</label>
-                  {{ form.helper_text }}
-                  {% if form.helper_text.help_text %}<p class="text-xs text-white/80 dark:text-gray-400">{{ form.helper_text.help_text }}</p>{% endif %}
-                  {% for error in form.helper_text.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+              {# Required — fixed/compact on the right #}
+              <div class="question-field required-field md:flex-none md:w-48 md:ml-auto">
+                <label for="{{ form.required.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300 mb-1">
+                  Required
+                </label>
+                <div class="h-10 flex items-center justify-end">
+                  {{ form.required }}
                 </div>
-
-                <div class="question-field helper_media_type-field sm:basis-4/12 sm:flex-1 min-w-0">
-                  <label for="{{ form.helper_media_type.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">Helper media type</label>
-                  {{ form.helper_media_type }}
-                  {% if form.helper_media_type.help_text %}<p class="text-xs text-white/80 dark:text-gray-400">{{ form.helper_media_type.help_text }}</p>{% endif %}
-                  {% for error in form.helper_media_type.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                </div>
-
+                {% for error in form.required.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
               </div>
 
-              {# Row 4: helper_media (full width) #}
-              <div class="question-field helper_media-field">
-                <label for="{{ form.helper_media.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">Helper media</label>
-                {{ form.helper_media }}
-                {% if form.helper_media.help_text %}<p class="text-xs text-white/80 dark:text-gray-400">{{ form.helper_media.help_text }}</p>{% endif %}
+            </div>
+
+            {# Row 3: Helper text (1/2) | Media type + Upload (1/2) #}
+            <div id="wizard-row-3" class="flex flex-col md:flex-row md:flex-wrap md:items-end gap-6 mt-0">
+
+              {# Helper text — half #}
+              <div class="question-field helper_text-field compact md:basis-1/2 md:flex-[0_0_50%] min-w-0">
+                <label for="{{ form.helper_text.id_for_label }}"
+                       class="block text-xs font-medium text-white dark:text-gray-300 mb-0.5">
+                  Helper text
+                </label>
+                <div class="w-full">{{ form.helper_text }}</div>
+                {% if form.helper_text.help_text %}
+                  <p class="text-[11px] leading-4 text-white/80 dark:text-white mt-1">{{ form.helper_text.help_text }}</p>
+                {% endif %}
+                {% for error in form.helper_text.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+              </div>
+
+              {# Media type — quarter #}
+              <div class="question-field helper_media_type-field compact md:basis-1/4 md:flex-[0_0_25%] min-w-0">
+                <label for="{{ form.helper_media_type.id_for_label }}"
+                       class="block text-xs font-medium text-white dark:text-gray-300 mb-0.5">
+                  Media type
+                </label>
+                <div class="w-full">{{ form.helper_media_type }}</div>
+                {% for error in form.helper_media_type.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+              </div>
+
+              {# Upload — quarter #}
+              <div class="question-field helper_media-field compact md:basis-1/4 md:flex-[0_0_25%] min-w-0">
+                <label for="{{ form.helper_media.id_for_label }}"
+                       class="block text-xs font-medium text-white dark:text-gray-300 mb-0.5">
+                  Helper media
+                </label>
+                <div class="w-full">{{ form.helper_media }}</div>
+                {% if form.helper_media.help_text %}
+                  <p class="text-[11px] leading-4 text-white/80 dark:text-gray-400 mt-1">{{ form.helper_media.help_text }}</p>
+                {% endif %}
                 {% for error in form.helper_media.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
               </div>
 
@@ -146,39 +143,40 @@
               {% endif %}
             {% endfor %}
 
+
           {% include 'admin/surveys/includes/inlines.html' %}
 
-          <button type="submit" class="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded">
-            💾 Save Question
-          </button>
+            <div id="wizard-actions" class="mt-8 flex flex-wrap gap-3 justify-between items-center">
+              <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="btn-link" role="button">
+                <span class="btn-ui btn-secondary">← Back to survey</span>
+              </a>
+
+              <button type="submit" class="btn-shell">
+                <span class="btn-ui btn-primary">💾 Save Question</span>
+              </button>
+            </div>
+
         </form>
 
         {% include "admin/surveys/includes/partials/bulk_add_modal.html" %}
         {% include "admin/surveys/includes/partials/confirm_switch_modal.html" %}
 
-        <div class="mt-6">
-          <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="text-sm text-white hover:underline">
-            ← Back to survey
-          </a>
-        </div>
       </div>
-
+        <template id="preview-placeholder">
+          <em class="text-indigo-400 dark:text-indigo-300 italic">
+            Start typing or adding options to see a live preview...
+          </em>
+        </template>
       <!-- RIGHT: LIVE PREVIEW (1 col) -->
-      <div class="lg:w-1/3 w-full border-l lg:pl-6 mt-8 lg:mt-0">
+      <div class="lg:w-1/3 w-full border-l lg:pl-6 mt-8 lg:mt-0 ">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">🔍 Live Preview</h2>
-        <div id="question-preview" class="bg-gray-50 dark:bg-gray-800 border rounded p-4 text-sm text-gray-700 dark:text-gray-200">
-          <em class="text-gray-400 dark:text-gray-500">Start typing or adding options to see a live preview...</em>
+        <div id="question-preview"
+             data-placeholder="<em class='text-indigo-400 dark:text-indigo-300 italic bg-gray-900'>Start typing or adding options to see a live preview...</em>"
+             class="bg-gray-50 dark:bg-gray-800 border rounded p-4 text-sm text-gray-700 dark:text-gray-200">
+          <em class="text-indigo-400 dark:text-indigo-300 italic">Start typing or adding options to see a live preview...</em>
         </div>
       </div>
   </div>
 </section>
-
-    <div class="grid grid-flow-row-dense grid-cols-3 grid-rows-3 ...">
-  <div class="col-span-2">01</div>
-  <div class="col-span-2">02</div>
-  <div>03</div>
-  <div>04</div>
-  <div>05</div>
-</div>
 
 {% endblock %}

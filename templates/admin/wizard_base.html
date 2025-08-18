@@ -8,10 +8,13 @@
     <title>{{ title|default:"Survey Wizard" }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% tailwind_css %}
+
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="{% static 'admin/js/modal_manager.js' %}" defer></script>
     <script src="{% static 'admin/js/question_wizard.js' %}" defer></script>
     <script src="{% static 'admin/js/bulk_add.js' %}" defer></script>
+{#    <link rel="stylesheet" href="{% static 'dist/tailwind.css' %}">#}
+    <link rel="stylesheet" href="{% static 'admin/wizard.css' %}">
 </head>
 <body class="min-h-screen bg-white dark:bg-gray-900">
     <main class="min-h-screen">

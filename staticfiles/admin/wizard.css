@@ -1,0 +1,13 @@
+/* static/admin/wizard.css */
+#question-form input,
+#question-form select,
+#question-form textarea {
+  background-color: #111827 !important; /* gray-900 */
+  color: #fff !important;
+  border-color: #374151;
+}
+#question-form input::placeholder { color: #9ca3af; }
+#question-form input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #111827 inset !important;
+  -webkit-text-fill-color: #fff !important;
+}

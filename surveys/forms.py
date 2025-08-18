@@ -29,15 +29,47 @@ class WizardQuestionForm(forms.ModelForm):
             'helper_text', 'helper_media', 'helper_media_type', 'next_question'
         ]
         widgets = {
-            'code': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
-            'text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm '}),
-            'question_type': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            # NOTE: fix 'text' -> 'text-white', add 'border' so width is applied
+            'code': forms.TextInput(attrs={
+                'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
+                         'focus:border-indigo-500 focus:ring-indigo-500 placeholder-gray-400'
+            }),
+            'text': forms.TextInput(attrs={
+                'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
+                         'focus:border-indigo-500 focus:ring-indigo-500 placeholder-gray-400'
+            }),
+            'question_type': forms.Select(attrs={
+                'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
+                         'focus:border-indigo-500 focus:ring-indigo-500'
+            }),
             'required': forms.CheckboxInput(attrs={'class': 'rounded'}),
-            'helper_text': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
-            'helper_media': forms.ClearableFileInput(attrs={'class': 'w-full text-white'}),
-            'helper_media_type': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
-            'next_question': forms.Select(attrs={'class': 'w-full border-gray-300 rounded shadow-sm'}),
+            'helper_text': forms.TextInput(attrs={
+                'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
+                         'focus:border-indigo-500 focus:ring-indigo-500 placeholder-gray-400'
+            }),
+            'helper_media': forms.ClearableFileInput(attrs={
+                'class': 'w-full text-white'
+            }),
+            'helper_media_type': forms.Select(attrs={
+                'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
+                         'focus:border-indigo-500 focus:ring-indigo-500'
+            }),
+            'next_question': forms.Select(attrs={
+                'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
+                         'focus:border-indigo-500 focus:ring-indigo-500'
+            }),
         }
+
+    # ←← move __init__ here (sibling of Meta)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # normalize all widgets; remove inline styles if any got injected elsewhere
+        for f in self.fields.values():
+            cls = f.widget.attrs.get('class', '')
+            base = 'w-full rounded shadow-sm border focus:border-indigo-500 focus:ring-indigo-500'
+            dark = 'bg-gray-900 text-white border-gray-700'
+            f.widget.attrs['class'] = f'{base} {dark} {cls}'.strip()
+            f.widget.attrs.pop('style', None)
 
 
 # Dynamic form for survey responses, generated based on survey questions

@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field"
+            "helper_text-field", "helper_media-field", "helper_media_type-field", "lookup-field"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");
@@ -155,51 +155,54 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 🔍 Generate live question preview
     function updatePreview() {
-        const preview = document.getElementById("question-preview");
-        const type = document.getElementById("id_question_type")?.value;
-        const text = document.getElementById("id_text")?.value || "";
-        const helper = document.getElementById("id_helper_text")?.value || "";
+      const preview = document.getElementById("question-preview");
+      const type = document.getElementById("id_question_type")?.value;
+      const text = document.getElementById("id_text")?.value || "";
+      const helper = document.getElementById("id_helper_text")?.value || "";
 
-        let html = `<h3 class="font-bold text-lg">${text}</h3>`;
-        if (helper) html += `<p class="text-sm text-gray-500">${helper}</p>`;
+      let html = `<h3 class="font-bold text-lg">${text}</h3>`;
+      if (helper) html += `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`;
 
-        // Show choices
-        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
-            html += "<ul class='list-disc list-inside'>";
-            document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
-                if (input.value.trim()) html += `<li>${input.value}</li>`;
+      // Show choices
+      if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
+        html += "<ul class='list-disc list-inside'>";
+        document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
+          if (input.value.trim()) html += `<li>${input.value}</li>`;
+        });
+        html += "</ul>";
+      }
+
+      // Show matrix table
+      if (type === "MATRIX") {
+        const rows = document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]');
+        const cols = document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]');
+
+        html += "<table class='table-auto w-full border text-left mt-2 text-sm'>";
+        html += "<thead><tr><th></th>";
+        cols.forEach(col => {
+          if (col.value.trim()) html += `<th class="px-2 py-1 border">${col.value}</th>`;
+        });
+        html += "</tr></thead><tbody>";
+
+        rows.forEach(row => {
+          if (row.value.trim()) {
+            html += `<tr><td class="px-2 py-1 border font-semibold">${row.value}</td>`;
+            cols.forEach(() => {
+              html += "<td class='px-2 py-1 border'><input type='radio' disabled></td>";
             });
-            html += "</ul>";
-        }
+            html += "</tr>";
+          }
+        });
 
-        // Show matrix table
-        if (type === "MATRIX") {
-            const rows = document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]');
-            const cols = document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]');
+        html += "</tbody></table>";
+      }
 
-            html += "<table class='table-auto w-full border text-left mt-2 text-sm'>";
-            html += "<thead><tr><th></th>";
-            cols.forEach(col => {
-                if (col.value.trim()) html += `<th class="px-2 py-1 border">${col.value}</th>`;
-            });
-            html += "</tr></thead><tbody>";
-
-            rows.forEach(row => {
-                if (row.value.trim()) {
-                    html += `<tr><td class="px-2 py-1 border font-semibold">${row.value}</td>`;
-                    cols.forEach(() => {
-                        html += "<td class='px-2 py-1 border'><input type='radio' disabled></td>";
-                    });
-                    html += "</tr>";
-                }
-            });
-
-            html += "</tbody></table>";
-        }
-
-        preview.innerHTML = html || "<em class='text-gray-400'>Nothing to preview yet.</em>";
+      // ✅ Use template-provided placeholder (lets you control color), fallback if missing
+      const tpl = document.getElementById("preview-placeholder");
+      const placeholder = tpl ? tpl.innerHTML
+                              : "<em class='text-gray-400 dark:text-gray-500 italic'>Start typing…</em>";
+      preview.innerHTML = html || placeholder;
     }
-
 
     previousQuestionType = document.getElementById("id_question_type")?.value;
 
