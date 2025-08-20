@@ -198,5 +198,34 @@
   background: #4338ca;            /* indigo-700 */
 }
 
+/* CHOICES widths */
+#choices-table col.col-value   { width: 8rem;  }  /* narrow */
+#choices-table col.col-next    { width: 12rem; }
+#choices-table col.col-image   { width: 10rem; }
+#choices-table col.col-delete  { width: 5rem;  }
+#choices-table col.col-text    { width: auto; }    /* ← stretches */
+
+/* MATRIX ROWS widths */
+#matrix-rows-table col.col-value   { width: 8rem; }
+#matrix-rows-table col.col-required{ width: 6rem; }
+#matrix-rows-table col.col-delete  { width: 5rem; }
+#matrix-rows-table col.col-text    { width: auto; } /* ← stretches */
+
+/* MATRIX COLS widths */
+#matrix-cols-table col.col-value   { width: 8rem; }
+#matrix-cols-table col.col-adv     { width: 11rem; } /* Group / Input type */
+#matrix-cols-table col.col-required{ width: 6rem; }
+#matrix-cols-table col.col-delete  { width: 5rem; }
+#matrix-cols-table col.col-label   { width: auto; }  /* ← stretches */
+
+/* Make inputs fill their cells nicely */
+table input[type="text"],
+table input[type="number"],
+table select {
+  width: 100%;
+  height: 2.25rem;      /* compact */
+}
+
+
 
 

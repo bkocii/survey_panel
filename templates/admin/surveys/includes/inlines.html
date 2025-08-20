@@ -10,7 +10,14 @@
   {{ choice_inline.non_form_errors }}
 
   <div class="overflow-x-auto rounded border border-gray-700">
-    <table class="min-w-full text-sm">
+    <table id="choices-table" class="min-w-full text-sm">
+        <colgroup>
+            <col class="col-value">
+            <col class="col-text">      {# ← will stretch #}
+            <col class="col-next">
+            <col class="col-image">
+            <col class="col-delete">
+          </colgroup>
       <thead class="bg-gray-800 text-gray-200">
         <tr>
           <th class="px-3 py-2 text-left w-32">Value</th>
@@ -97,6 +104,236 @@
   </div>
 </div>
 
+{# ------- MATRIX ROWS (table) ------- #}
+<div id="matrix-row-inline" class="hidden">
+  <h2 class="text-lg font-medium text-gray-200">Matrix Rows</h2>
+
+  {{ matrix_row_inline.management_form }}
+  {{ matrix_row_inline.non_form_errors }}
+
+  <div class="overflow-x-auto rounded border border-gray-700">
+    <table id="matrix-rows-table" class="min-w-full text-sm">
+        <colgroup>
+            <col class="col-value">
+            <col class="col-text">      {# ← will stretch #}
+            <col class="col-required">
+            <col class="col-delete">
+          </colgroup>
+      <thead class="bg-gray-800 text-gray-200">
+        <tr>
+          <th class="px-3 py-2 text-left w-32">Value</th>
+          <th class="px-3 py-2 text-left">Row text</th>
+          <th class="px-3 py-2 text-left w-24">Required</th>
+          <th class="px-3 py-2 text-left w-20">Delete</th>
+        </tr>
+      </thead>
+
+      <tbody id="matrix_rows-forms">
+        {% for f in matrix_row_inline.forms %}
+          <tr class="border-t border-gray-700">
+            <td class="px-3 py-2 align-middle">
+              {{ f.value }}
+              {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+              {% for e in f.value.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.text }}
+              {% for e in f.text.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.required }}
+            </td>
+            <td class="px-3 py-2 align-middle text-center">
+              {% if f.DELETE %}{{ f.DELETE }}{% else %}-{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr data-empty-row="true">
+            <td colspan="5" class="px-3 py-2 text-sm text-gray-400">
+              No rows yet. Use “Add row”.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Template → TR (JS addForm will insert this if you don't use the JS builder) #}
+  <template id="matrix_rows-template">
+    <tr class="border-t border-gray-700">
+      <td class="px-3 py-2 align-middle">
+        <input type="number" name="matrix_rows-__prefix__-value" id="id_matrix_rows-__prefix__-value"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <input type="text" name="matrix_rows-__prefix__-text" id="id_matrix_rows-__prefix__-text"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+      <td class="px-3 py-2 align-middle text-center">
+        <input type="checkbox" name="matrix_rows-__prefix__-required" id="id_matrix_rows-__prefix__-required">
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <select name="matrix_rows-__prefix__-next_question" id="id_matrix_rows-__prefix__-next_question"
+                class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+          <option value="">---------</option>
+          {% for q in all_questions %}
+            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td class="px-3 py-2 align-middle text-center">
+        <input type="checkbox" name="matrix_rows-__prefix__-DELETE" id="id_matrix_rows-__prefix__-DELETE">
+      </td>
+    </tr>
+  </template>
+
+  <div class="mt-3 flex gap-3">
+    <button type="button" data-prefix="matrix_rows"
+            class="add-form-btn inline-flex items-center px-3 py-1.5 rounded border border-blue-600 text-blue-100 bg-blue-600/20 hover:bg-blue-600/30">
+      ➕ Add row
+    </button>
+      <button type="button" class="bulk-add-btn text-sm text-blue-400 underline underline-offset-2" data-prefix="matrix_rows">
+      Bulk add
+    </button>
+  </div>
+</div>
+
+{# ------- MATRIX COLUMNS (table) ------- #}
+<div id="matrix-column-inline" class="hidden">
+  <h2 class="text-lg font-medium text-gray-200">Matrix Columns</h2>
+
+  {{ matrix_column_inline.management_form }}
+  {{ matrix_column_inline.non_form_errors }}
+
+  <div class="overflow-x-auto rounded border border-gray-700">
+    <table id="matrix-cols-table" class="min-w-full text-sm">
+        <colgroup>
+            <col class="col-value">
+            <col class="col-label">     {# ← will stretch #}
+            <col class="col-adv" data-advcol>    {# Group (SBS only) #}
+            <col class="col-adv" data-advcol>    {# Input type (SBS only) #}
+            <col class="col-required">
+            <col class="col-delete">
+          </colgroup>
+      <thead class="bg-gray-800 text-gray-200">
+        <tr>
+          <th class="px-3 py-2 text-left w-32">Value</th>
+          <th class="px-3 py-2 text-left">Label</th>
+
+          {# advanced-only headers #}
+          <th class="px-3 py-2 text-left w-40" data-advcol="true">Group</th>
+          <th class="px-3 py-2 text-left w-40" data-advcol="true">Input type</th>
+          <th class="px-3 py-2 text-left w-24">Required</th>
+          <th class="px-3 py-2 text-left w-20">Delete</th>
+        </tr>
+      </thead>
+
+      <tbody id="matrix_cols-forms">
+        {% for f in matrix_column_inline.forms %}
+          <tr class="border-t border-gray-700">
+            <td class="px-3 py-2 align-middle">
+              {{ f.value }}
+              {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+              {% for e in f.value.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.label }}
+              {% for e in f.label.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+
+            {# advanced-only cells #}
+            <td class="px-3 py-2 align-middle" data-advcol="true">
+              {{ f.group }}
+            </td>
+            <td class="px-3 py-2 align-middle" data-advcol="true">
+              {{ f.input_type }}
+            </td>
+            <td class="px-3 py-2 align-middle" data-advcol="true">
+              {{ f.order }}
+            </td>
+
+            <td class="px-3 py-2 align-middle">
+              {{ f.required }}
+            </td>
+            <td class="px-3 py-2 align-middle">
+              {{ f.next_question }}
+              {% for e in f.next_question.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
+            </td>
+            <td class="px-3 py-2 align-middle text-center">
+              {% if f.DELETE %}{{ f.DELETE }}{% else %}-{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr data-empty-row="true">
+            <td colspan="8" class="px-3 py-2 text-sm text-gray-400">
+              No columns yet. Use “Add column”.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Template → TR #}
+  <template id="matrix_cols-template">
+    <tr class="border-t border-gray-700">
+      <td class="px-3 py-2 align-middle">
+        <input type="number" name="matrix_cols-__prefix__-value" id="id_matrix_cols-__prefix__-value"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <input type="text" name="matrix_cols-__prefix__-label" id="id_matrix_cols-__prefix__-label"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+
+      <td class="px-3 py-2 align-middle" data-advcol="true">
+        <input type="text" name="matrix_cols-__prefix__-group" id="id_matrix_cols-__prefix__-group"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+      <td class="px-3 py-2 align-middle" data-advcol="true">
+        <select name="matrix_cols-__prefix__-input_type" id="id_matrix_cols-__prefix__-input_type"
+                class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+          <option value="text">Text</option>
+          <option value="select">Dropdown</option>
+          <option value="radio">Radio</option>
+          <option value="checkbox">Checkbox</option>
+        </select>
+      </td>
+      <td class="px-3 py-2 align-middle" data-advcol="true">
+        <input type="number" name="matrix_cols-__prefix__-order" id="id_matrix_cols-__prefix__-order"
+               class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+      </td>
+
+      <td class="px-3 py-2 align-middle text-center">
+        <input type="checkbox" name="matrix_cols-__prefix__-required" id="id_matrix_cols-__prefix__-required">
+      </td>
+      <td class="px-3 py-2 align-middle">
+        <select name="matrix_cols-__prefix__-next_question" id="id_matrix_cols-__prefix__-next_question"
+                class="w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2">
+          <option value="">---------</option>
+          {% for q in all_questions %}
+            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td class="px-3 py-2 align-middle text-center">
+        <input type="checkbox" name="matrix_cols-__prefix__-DELETE" id="id_matrix_cols-__prefix__-DELETE">
+      </td>
+    </tr>
+  </template>
+
+  <div class="mt-3 flex gap-3">
+    <button type="button" data-prefix="matrix_cols"
+            class="add-form-btn inline-flex items-center px-3 py-1.5 rounded border border-blue-600 text-blue-100 bg-blue-600/20 hover:bg-blue-600/30">
+      ➕ Add column
+    </button>
+      <button type="button" class="bulk-add-btn text-sm text-blue-400 underline underline-offset-2" data-prefix="matrix_cols">
+      Bulk add
+    </button>
+  </div>
+</div>
+
+
 
 {# ------- CHOICES -------#}
 {#<div id="choice-inline" class="space-y-4 hidden">#}
@@ -160,136 +397,136 @@
 {#</div>#}
 
 {# ------- MATRIX ROWS ------- #}
-<div id="matrix-row-inline" class="space-y-4 hidden">
-  <h2 class="text-lg font-medium text-gray-800">Matrix Rows</h2>
-  {{ matrix_row_inline.management_form }}
-
-  <div id="matrix_rows-forms" class="space-y-4">
-    {% for form in matrix_row_inline %}
-      <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
-        {% for field in form.visible_fields %}
-          <div class="space-y-1">
-            <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>
-            {{ field }}
-            {% if field.help_text %}
-              <p class="text-xs text-gray-500">{{ field.help_text }}</p>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% endfor %}
-  </div>
-
-  <template id="matrix_rows-template">
-    <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
-      <div class="space-y-1">
-        <label for="id_matrix_rows-__prefix__-text" class="block text-sm font-medium dark:text-gray-200">Row Text</label>
-        <input type="text" name="matrix_rows-__prefix__-text" id="id_matrix_rows-__prefix__-text" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <div class="space-y-1">
-        <label for="id_matrix_rows-__prefix__-value" class="block text-sm font-medium dark:text-gray-200">Value</label>
-        <input type="number" name="matrix_rows-__prefix__-value" id="id_matrix_rows-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <div class="space-y-1">
-        <label class="inline-flex items-center">
-          <input type="checkbox" name="matrix_rows-__prefix__-required" id="id_matrix_rows-__prefix__-required" class="mr-2">
-          Required
-        </label>
-      </div>
-      <div class="space-y-1">
-        <label class="block text-sm font-medium dark:text-gray-200" for="id_matrix_rows-__prefix__-next_question">Next Question</label>
-        <select name="matrix_rows-__prefix__-next_question" id="id_matrix_rows-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">
-          <option value="">---------</option>
-          {% for q in all_questions %}
-            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-  </template>
-
-  <div class="flex gap-3">
-    <button type="button" data-prefix="matrix_rows" class="add-form-btn text-blue-600 px-3 py-1 border border-blue-600 rounded hover:bg-blue-100">
-      ➕ Add Row
-    </button>
-    <button type="button" class="bulk-add-btn text-sm text-blue-700 underline" data-prefix="matrix_rows">
-      Bulk Add
-    </button>
-  </div>
-</div>
+{#<div id="matrix-row-inline" class="space-y-4 hidden">#}
+{#  <h2 class="text-lg font-medium text-gray-800">Matrix Rows</h2>#}
+{#  {{ matrix_row_inline.management_form }}#}
+{##}
+{#  <div id="matrix_rows-forms" class="space-y-4">#}
+{#    {% for form in matrix_row_inline %}#}
+{#      <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">#}
+{#        {% for field in form.visible_fields %}#}
+{#          <div class="space-y-1">#}
+{#            <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>#}
+{#            {{ field }}#}
+{#            {% if field.help_text %}#}
+{#              <p class="text-xs text-gray-500">{{ field.help_text }}</p>#}
+{#            {% endif %}#}
+{#          </div>#}
+{#        {% endfor %}#}
+{#      </div>#}
+{#    {% endfor %}#}
+{#  </div>#}
+{##}
+{#  <template id="matrix_rows-template">#}
+{#    <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_rows-__prefix__-text" class="block text-sm font-medium dark:text-gray-200">Row Text</label>#}
+{#        <input type="text" name="matrix_rows-__prefix__-text" id="id_matrix_rows-__prefix__-text" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_rows-__prefix__-value" class="block text-sm font-medium dark:text-gray-200">Value</label>#}
+{#        <input type="number" name="matrix_rows-__prefix__-value" id="id_matrix_rows-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label class="inline-flex items-center">#}
+{#          <input type="checkbox" name="matrix_rows-__prefix__-required" id="id_matrix_rows-__prefix__-required" class="mr-2">#}
+{#          Required#}
+{#        </label>#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label class="block text-sm font-medium dark:text-gray-200" for="id_matrix_rows-__prefix__-next_question">Next Question</label>#}
+{#        <select name="matrix_rows-__prefix__-next_question" id="id_matrix_rows-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">#}
+{#          <option value="">---------</option>#}
+{#          {% for q in all_questions %}#}
+{#            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>#}
+{#          {% endfor %}#}
+{#        </select>#}
+{#      </div>#}
+{#    </div>#}
+{#  </template>#}
+{##}
+{#  <div class="flex gap-3">#}
+{#    <button type="button" data-prefix="matrix_rows" class="add-form-btn text-blue-600 px-3 py-1 border border-blue-600 rounded hover:bg-blue-100">#}
+{#      ➕ Add Row#}
+{#    </button>#}
+{#    <button type="button" class="bulk-add-btn text-sm text-blue-700 underline" data-prefix="matrix_rows">#}
+{#      Bulk Add#}
+{#    </button>#}
+{#  </div>#}
+{#</div>#}
 
 {# ------- MATRIX COLUMNS ------- #}
-<div id="matrix-column-inline" class="space-y-4 hidden">
-  <h2 class="text-lg font-medium text-gray-800">Matrix Columns</h2>
-  {{ matrix_column_inline.management_form }}
-
-  <div id="matrix_cols-forms" class="space-y-4">
-    {% for form in matrix_column_inline %}
-      <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
-        {% for field in form.visible_fields %}
-          <div class="space-y-1">
-            <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>
-            {{ field }}
-            {% if field.help_text %}
-              <p class="text-xs text-gray-500">{{ field.help_text }}</p>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% endfor %}
-  </div>
-
-  <template id="matrix_cols-template">
-    <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">
-      <div class="space-y-1">
-        <label for="id_matrix_cols-__prefix__-label" class="block text-sm font-medium dark:text-gray-200">Label</label>
-        <input type="text" name="matrix_cols-__prefix__-label" id="id_matrix_cols-__prefix__-label" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <div class="space-y-1">
-        <label for="id_matrix_cols-__prefix__-value" class="block text-sm font-medium dark:text-gray-200">Value</label>
-        <input type="number" name="matrix_cols-__prefix__-value" id="id_matrix_cols-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <div class="space-y-1">
-        <label for="id_matrix_cols-__prefix__-input_type" class="block text-sm font-medium dark:text-gray-200">Input Type</label>
-        <select name="matrix_cols-__prefix__-input_type" id="id_matrix_cols-__prefix__-input_type" class="w-full border-gray-300 rounded shadow-sm">
-          <option value="text">Text</option>
-          <option value="select">Dropdown</option>
-          <option value="radio">Radio</option>
-          <option value="checkbox">Checkbox</option>
-        </select>
-      </div>
-      <div class="space-y-1">
-        <label for="id_matrix_cols-__prefix__-group" class="block text-sm font-medium dark:text-gray-200">Group</label>
-        <input type="text" name="matrix_cols-__prefix__-group" id="id_matrix_cols-__prefix__-group" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <div class="space-y-1">
-        <label for="id_matrix_cols-__prefix__-order" class="block text-sm font-medium dark:text-gray-200">Order</label>
-        <input type="number" name="matrix_cols-__prefix__-order" id="id_matrix_cols-__prefix__-order" class="w-full border-gray-300 rounded shadow-sm">
-      </div>
-      <div class="space-y-1">
-        <label for="id_matrix_cols-__prefix__-next_question" class="block text-sm font-medium dark:text-gray-200">Next Question</label>
-        <select name="matrix_cols-__prefix__-next_question" id="id_matrix_cols-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">
-          <option value="">---------</option>
-          {% for q in all_questions %}
-            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="space-y-1">
-        <label class="inline-flex items-center">
-          <input type="checkbox" name="matrix_cols-__prefix__-required" id="id_matrix_cols-__prefix__-required" class="mr-2">
-          Required
-        </label>
-      </div>
-    </div>
-  </template>
-
-  <div class="flex gap-3">
-    <button type="button" data-prefix="matrix_cols" class="add-form-btn text-blue-600 px-3 py-1 border border-blue-600 rounded hover:bg-blue-100">
-      ➕ Add Column
-    </button>
-    <button type="button" class="bulk-add-btn text-sm text-blue-700 underline" data-prefix="matrix_cols">
-      Bulk Add
-    </button>
-  </div>
-</div>
+{#<div id="matrix-column-inline" class="space-y-4 hidden">#}
+{#  <h2 class="text-lg font-medium text-gray-800">Matrix Columns</h2>#}
+{#  {{ matrix_column_inline.management_form }}#}
+{##}
+{#  <div id="matrix_cols-forms" class="space-y-4">#}
+{#    {% for form in matrix_column_inline %}#}
+{#      <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">#}
+{#        {% for field in form.visible_fields %}#}
+{#          <div class="space-y-1">#}
+{#            <label class="block text-sm font-medium dark:text-gray-200">{{ field.label }}</label>#}
+{#            {{ field }}#}
+{#            {% if field.help_text %}#}
+{#              <p class="text-xs text-gray-500">{{ field.help_text }}</p>#}
+{#            {% endif %}#}
+{#          </div>#}
+{#        {% endfor %}#}
+{#      </div>#}
+{#    {% endfor %}#}
+{#  </div>#}
+{##}
+{#  <template id="matrix_cols-template">#}
+{#    <div class="p-4 border rounded bg-gray-50 dark:bg-gray-800 space-y-3">#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_cols-__prefix__-label" class="block text-sm font-medium dark:text-gray-200">Label</label>#}
+{#        <input type="text" name="matrix_cols-__prefix__-label" id="id_matrix_cols-__prefix__-label" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_cols-__prefix__-value" class="block text-sm font-medium dark:text-gray-200">Value</label>#}
+{#        <input type="number" name="matrix_cols-__prefix__-value" id="id_matrix_cols-__prefix__-value" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_cols-__prefix__-input_type" class="block text-sm font-medium dark:text-gray-200">Input Type</label>#}
+{#        <select name="matrix_cols-__prefix__-input_type" id="id_matrix_cols-__prefix__-input_type" class="w-full border-gray-300 rounded shadow-sm">#}
+{#          <option value="text">Text</option>#}
+{#          <option value="select">Dropdown</option>#}
+{#          <option value="radio">Radio</option>#}
+{#          <option value="checkbox">Checkbox</option>#}
+{#        </select>#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_cols-__prefix__-group" class="block text-sm font-medium dark:text-gray-200">Group</label>#}
+{#        <input type="text" name="matrix_cols-__prefix__-group" id="id_matrix_cols-__prefix__-group" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_cols-__prefix__-order" class="block text-sm font-medium dark:text-gray-200">Order</label>#}
+{#        <input type="number" name="matrix_cols-__prefix__-order" id="id_matrix_cols-__prefix__-order" class="w-full border-gray-300 rounded shadow-sm">#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label for="id_matrix_cols-__prefix__-next_question" class="block text-sm font-medium dark:text-gray-200">Next Question</label>#}
+{#        <select name="matrix_cols-__prefix__-next_question" id="id_matrix_cols-__prefix__-next_question" class="w-full border-gray-300 rounded shadow-sm">#}
+{#          <option value="">---------</option>#}
+{#          {% for q in all_questions %}#}
+{#            <option value="{{ q.id }}">{{ q.text|truncatewords:8 }}</option>#}
+{#          {% endfor %}#}
+{#        </select>#}
+{#      </div>#}
+{#      <div class="space-y-1">#}
+{#        <label class="inline-flex items-center">#}
+{#          <input type="checkbox" name="matrix_cols-__prefix__-required" id="id_matrix_cols-__prefix__-required" class="mr-2">#}
+{#          Required#}
+{#        </label>#}
+{#      </div>#}
+{#    </div>#}
+{#  </template>#}
+{##}
+{#  <div class="flex gap-3">#}
+{#    <button type="button" data-prefix="matrix_cols" class="add-form-btn text-blue-600 px-3 py-1 border border-blue-600 rounded hover:bg-blue-100">#}
+{#      ➕ Add Column#}
+{#    </button>#}
+{#    <button type="button" class="bulk-add-btn text-sm text-blue-700 underline" data-prefix="matrix_cols">#}
+{#      Bulk Add#}
+{#    </button>#}
+{#  </div>#}
+{#</div>#}

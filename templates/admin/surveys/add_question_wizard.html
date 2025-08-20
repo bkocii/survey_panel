@@ -15,6 +15,16 @@
         <br>
         <form method="post" enctype="multipart/form-data" id="question-form" class="space-y-6">
           {% csrf_token %}
+
+            {# Hidden pool of options for "next_question" selects #}
+            <select id="next-question-options" class="hidden" aria-hidden="true" tabindex="-1">
+              <option value="">---------</option>
+              {# Use whatever you already pass; adjust the loop if your var name differs #}
+              {% for q in all_questions %}
+                <option value="{{ q.id }}">{{ q.text|truncatewords:10 }}</option>
+              {% endfor %}
+            </select>
+
           {{ form.non_field_errors }}
 
             {# Row 1: Code (narrow) | Question type | Lookup #}
