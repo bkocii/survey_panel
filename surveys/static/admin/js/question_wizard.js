@@ -282,6 +282,15 @@ document.addEventListener("DOMContentLoaded", function () {
       root.querySelectorAll('th[data-advcol]').forEach(th => {
         th.style.display = isSBS ? '' : 'none';
       });
+
+      //columns (colgroup)
+      const table = (root.getElementById ? root.getElementById('matrix_cols-forms') : document.getElementById('matrix_cols-forms'))?.closest('table');
+      if (table) {
+        table.querySelectorAll('colgroup col[data-advcol]').forEach(c => {
+          c.style.display = isSBS ? '' : 'none';
+        });
+      }
+
       // cells + disable inputs when hidden
       root.querySelectorAll('[data-advcol]').forEach(td => {
         td.style.display = isSBS ? '' : 'none';
@@ -294,28 +303,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // run now (we're already inside DOMContentLoaded) and wire change listener
     applyMatrixColsAdvancedVisibility(document);
-    const matrixModeEl = document.getElementById('id_matrix_mode');
-    if (matrixModeEl) {
-      matrixModeEl.addEventListener('change', () => {
-        // OPTIONAL confirm; comment out this block if you never want a prompt
-        const rowsCount = (document.querySelectorAll('#matrix_rows-forms tr').length || 0);
-        const colsCount = (document.querySelectorAll('#matrix_cols-forms tr').length || 0);
-        const hasAny = rowsCount + colsCount > 0;
+        const matrixModeEl = document.getElementById('id_matrix_mode');
+        if (matrixModeEl) {
+          matrixModeEl.addEventListener('change', () => {
+            // OPTIONAL confirm; comment out this block if you never want a prompt
+            const rowsCount = (document.querySelectorAll('#matrix_rows-forms tr').length || 0);
+            const colsCount = (document.querySelectorAll('#matrix_cols-forms tr').length || 0);
+            const hasAny = rowsCount + colsCount > 0;
 
-        if (!hasAny || confirm('Switching matrix mode will clear existing rows and columns. Continue?')) {
-          clearMatrixFormsets();
-        } else {
-          // revert select back if user cancels
-          matrixModeEl.value = matrixModeEl.dataset.prevValue || matrixModeEl.value;
-          applyMatrixColsAdvancedVisibility(document);
+            if (!hasAny || confirm('Switching matrix mode will clear existing rows and columns. Continue?')) {
+              clearMatrixFormsets();
+            } else {
+              // revert select back if user cancels
+              matrixModeEl.value = matrixModeEl.dataset.prevValue || matrixModeEl.value;
+              applyMatrixColsAdvancedVisibility(document);
+            }
+            // store the last chosen value for future cancel reversions
+            matrixModeEl.dataset.prevValue = matrixModeEl.value;
+          });
+
+          // seed prevValue on load
+          matrixModeEl.dataset.prevValue = matrixModeEl.value;
         }
-        // store the last chosen value for future cancel reversions
-        matrixModeEl.dataset.prevValue = matrixModeEl.value;
-      });
-
-      // seed prevValue on load
-      matrixModeEl.dataset.prevValue = matrixModeEl.value;
-    }
 
 
     // --- Matrix mode helpers ---
@@ -379,6 +388,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const th = table.tHead.rows[0].cells[imgColIdx];
         if (th) th.style.display = show ? '' : 'none';
       }
+
+      // hide/show the <col> so width is reclaimed
+      const col = table.querySelector('colgroup col[data-col="image"]');
+      if (col) col.style.display = show ? '' : 'none';
 
       // hide/show each row’s cell and disable the input when hidden
       Array.from(tbody.rows).forEach(tr => {
