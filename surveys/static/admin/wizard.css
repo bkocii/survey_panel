@@ -197,9 +197,155 @@
 .dark #wizard-actions .btn-primary:hover {
   background: #4338ca;            /* indigo-700 */
 }
-/* (Optional CSS in wizard.css to add a subtle enter animation:) */
-#confirm-switch-modal .modal-card { transform: scale(.98); opacity: 0; transition: all 150ms ease; }
-#confirm-switch-modal:not(.hidden) .modal-card { transform: scale(1); opacity: 1; }
+/* ---- Card with thick border + outer frame ---- */
+#confirm-switch-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;            /* gray-900 */
+  color: #fff !important;
+  border: 4px solid #ffffff !important;       /* <-- guaranteed visible border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+}
+
+/* Optional indigo border instead of white: swap the color above to #4f46e5 */
+
+/* Outer frame ring (subtle) */
+#confirm-switch-modal .confirm-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;                                /* outside the card */
+  border: 2px solid rgba(99,102,241,.6);      /* indigo-500-ish */
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+/* Title & message */
+#confirm-switch-modal .modal-title   { font-size: 1.125rem; font-weight: 600; }   /* ~text-lg */
+#confirm-switch-modal .modal-message { font-size: .9375rem; line-height: 1.6; }   /* ~text-sm+ */
+#confirm-switch-modal [data-modal-title],
+#confirm-switch-modal [data-modal-message] { overflow-wrap: anywhere; }
+
+/* Buttons: identical size, rounded */
+#confirm-switch-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;                          /* same width */
+  padding: 0.625rem 1rem;                     /* ~py-2.5 px-4 */
+  border-radius: 0.5rem;                      /* rounded-md */
+  font-size: .875rem;                         /* text-sm */
+  line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#confirm-switch-modal .btn-modal:active { transform: translateY(1px); }
+
+#confirm-switch-modal .btn-cancel {
+  background: #374151;                        /* gray-700 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-cancel:hover { background: #4b5563; }  /* gray-600 */
+
+#confirm-switch-modal .btn-confirm {
+  background: #dc2626;                        /* red-600 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-confirm:hover { background: #b91c1c; } /* red-700 */
+
+/* Pop-in animation (optional) */
+#confirm-switch-modal .confirm-modal-card {
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#confirm-switch-modal:not(.hidden) .confirm-modal-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ---- BULK MODAL: solid background, thick frame, white text ---- */
+#bulk-add-modal .bulk-card {
+  position: relative;
+  background: #111827 !important;            /* gray-900 */
+  color: #ffffff !important;                  /* all text white */
+  border: 4px solid #ffffff !important;       /* clear, thick border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+}
+
+/* Outer frame (indigo ring around the card) */
+#bulk-add-modal .bulk-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;                                /* sits outside the card */
+  border: 2px solid rgba(99,102,241,.65);     /* indigo-500-ish */
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+/* Headline & description wrap nicely on long text */
+#bulk-add-modal h3,
+#bulk-add-modal p { overflow-wrap: anywhere; }
+
+/* Buttons: same size, rounded, centered */
+#bulk-add-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;                          /* equal width */
+  padding: 0.625rem 1rem;                     /* ~py-2.5 px-4 */
+  font-size: .875rem;
+  line-height: 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#bulk-add-modal .btn-modal:active { transform: translateY(1px); }
+
+#bulk-add-modal .btn-cancel {
+  background: #374151;                        /* gray-700 */
+  color: #fff;
+}
+#bulk-add-modal .btn-cancel:hover { background: #4b5563; }  /* gray-600 */
+
+#bulk-add-modal .btn-confirm {
+  background: #2563eb;                        /* blue-600 */
+  color: #fff;
+}
+#bulk-add-modal .btn-confirm:hover { background: #1d4ed8; } /* blue-700 */
+
+/* Pop-in animation (optional) */
+#bulk-add-modal .bulk-card {
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#bulk-add-modal:not(.hidden) .bulk-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Force light textarea with dark text inside the dark modal */
+#bulk-add-modal #bulk-add-input {
+  background: #ffffff !important;        /* white */
+  color: #111827 !important;             /* gray-900 (near-black) */
+  border-color: rgba(0,0,0,.2) !important;
+  caret-color: #111827 !important;
+}
+
+/* Keep placeholder readable */
+#bulk-add-modal #bulk-add-input::placeholder {
+  color: #6b7280 !important;             /* gray-500 */
+  opacity: 1;
+}
+
+/* If you want a very light gray instead of pure white in dark mode */
+.dark #bulk-add-modal #bulk-add-input {
+  background: #f9fafb !important;        /* gray-50 */
+  color: #111827 !important;
+  border-color: rgba(0,0,0,.25) !important;
+}
+
 
 
 

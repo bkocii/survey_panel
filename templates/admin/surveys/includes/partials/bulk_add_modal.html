@@ -1,25 +1,31 @@
 <!-- Bulk Add Modal -->
-<div id="bulk-add-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">➕ Bulk Add Items</h3>
-    <p class="text-sm text-gray-600 dark:text-gray-300">Enter items one per line or comma-separated. Values will be incremented automatically.</p>
+<div id="bulk-add-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
 
-    <textarea id="bulk-add-input"
-              rows="6"
-              class="w-full border border-gray-300 dark:border-gray-700 bg-gray-800 dark:text-black rounded shadow-sm p-2 resize-y"
-              placeholder="Item 1\nItem 2\nItem 3"></textarea>
+  <!-- Center wrapper -->
+  <div class="relative h-full w-full flex items-center justify-center px-4">
+    <!-- Card -->
+    <div class="bulk-card w-[22rem] sm:w-[28rem] p-6 text-center space-y-4 rounded-2xl">
+      <h3 class="text-lg font-semibold">➕ Bulk Add Items</h3>
+      <p class="text-sm">Enter items one per line or comma-separated. Values will be incremented automatically.</p>
 
-    <div class="flex justify-end gap-3 pt-2">
-      <button id="bulk-add-cancel"
-              type="button"
-              class="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600">
-        ✖ Cancel
-      </button>
-      <button id="bulk-add-confirm"
-              type="button"
-              class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
-        ➕ Add Items
-      </button>
+      <textarea id="bulk-add-input"
+          rows="6"
+          class="w-full rounded-md p-2 resize-y
+                 border bg-white text-gray-900
+                 dark:bg-gray-50 dark:text-gray-900
+                 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          placeholder="Item 1&#10;Item 2&#10;Item 3"></textarea>
+
+      <div class="mt-2 flex justify-center gap-6">
+        <button id="bulk-add-cancel" type="button" class="btn-modal btn-cancel rounded-md">
+          ✖ Cancel
+        </button>
+        <button id="bulk-add-confirm" type="button" class="btn-modal btn-confirm rounded-md">
+          ➕ Add Items
+        </button>
+      </div>
     </div>
   </div>
 </div>
