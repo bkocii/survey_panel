@@ -197,7 +197,9 @@
 .dark #wizard-actions .btn-primary:hover {
   background: #4338ca;            /* indigo-700 */
 }
-
+/* (Optional CSS in wizard.css to add a subtle enter animation:) */
+#confirm-switch-modal .modal-card { transform: scale(.98); opacity: 0; transition: all 150ms ease; }
+#confirm-switch-modal:not(.hidden) .modal-card { transform: scale(1); opacity: 1; }
 
 
 

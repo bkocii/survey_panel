@@ -1,5 +1,6 @@
 // question_wizard.js
 let previousQuestionType = null;
+let previousMatrixMode = document.getElementById('id_matrix_mode')?.value || null;
 
 document.addEventListener("DOMContentLoaded", function () {
 
@@ -303,28 +304,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // run now (we're already inside DOMContentLoaded) and wire change listener
     applyMatrixColsAdvancedVisibility(document);
-        const matrixModeEl = document.getElementById('id_matrix_mode');
-        if (matrixModeEl) {
-          matrixModeEl.addEventListener('change', () => {
-            // OPTIONAL confirm; comment out this block if you never want a prompt
-            const rowsCount = (document.querySelectorAll('#matrix_rows-forms tr').length || 0);
-            const colsCount = (document.querySelectorAll('#matrix_cols-forms tr').length || 0);
-            const hasAny = rowsCount + colsCount > 0;
-
-            if (!hasAny || confirm('Switching matrix mode will clear existing rows and columns. Continue?')) {
-              clearMatrixFormsets();
-            } else {
-              // revert select back if user cancels
-              matrixModeEl.value = matrixModeEl.dataset.prevValue || matrixModeEl.value;
-              applyMatrixColsAdvancedVisibility(document);
-            }
-            // store the last chosen value for future cancel reversions
-            matrixModeEl.dataset.prevValue = matrixModeEl.value;
-          });
-
-          // seed prevValue on load
-          matrixModeEl.dataset.prevValue = matrixModeEl.value;
-        }
 
 
     // --- Matrix mode helpers ---
@@ -554,6 +533,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     previousQuestionType = document.getElementById("id_question_type")?.value;
+    let previousMatrixMode = document.getElementById('id_matrix_mode')?.value || null;
+
 
     // Initialize modal manager with the current question type
     ModalManager.init(document.getElementById("id_question_type")?.value);
@@ -578,23 +559,68 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // 🧩 Re-run logic on question type change
+  // 🧩 Re-run logic on question type change
+    // 🧩 Question type change via modal; also clear text & lookup after confirm
     document.getElementById("id_question_type")?.addEventListener("change", function () {
-        const newType = this.value;
+      const newType = this.value;
 
-        ModalManager.handleQuestionTypeSwitch(
-            previousQuestionType,
-            newType,
-            function confirmedSwitch(type) {
-                document.getElementById("id_question_type").value = type;
-                toggleInlinesByType();
-                updateFieldVisibility();
-                updatePreview();
-                applyChoiceImageVisibility(document);
-                previousQuestionType = type;
-            }
-        );
+      ModalManager.handleQuestionTypeSwitch(
+        previousQuestionType,
+        newType,
+        function confirmedSwitch(type) {
+          // lock select to confirmed type
+          document.getElementById("id_question_type").value = type;
+
+          // reset fields + inlines for the new type (your existing helper)
+          resetFieldsForType(type);
+
+          // 👉 additionally clear the question text to avoid leftover cloned content
+          const textEl = document.getElementById('id_text');
+          if (textEl) textEl.value = '';
+
+          // 👉 also clear the clone lookup widgets so we’re no longer “on” that question
+          if (typeof clearLookupWidgets === 'function') clearLookupWidgets();
+
+          // refresh preview (resetFieldsForType already calls, but safe to call again)
+          if (typeof updatePreview === 'function') updatePreview();
+
+          // remember new type
+          previousQuestionType = type;
+        }
+      );
     });
+
+
+
+    // 🔁 Re-run logic on matrix mode change (standard <-> side_by_side)
+    document.getElementById('id_matrix_mode')?.addEventListener('change', function () {
+      const newMode = this.value;
+
+      ModalManager.handleMatrixModeSwitch(
+        previousMatrixMode,
+        newMode,
+        function confirmedSwitch(mode) {
+          // set the select value to the confirmed mode
+          document.getElementById('id_matrix_mode').value = mode;
+
+          // clear rows & cols because the structures differ per mode
+          clearInline('matrix_rows');
+          clearInline('matrix_cols');
+
+          // keep matrix inlines visible if question type is MATRIX
+          toggleInlinesByType();
+
+          // apply SBS visibility rules to columns and update preview
+          if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+            applyMatrixColsAdvancedVisibility(document);
+          }
+          if (typeof updatePreview === 'function') updatePreview();
+
+          previousMatrixMode = mode;
+        }
+      );
+    });
+
 
     // Handle question lookup and auto-fill form
     document.getElementById("question_lookup")?.addEventListener("change", async function () {
@@ -681,7 +707,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     document.getElementById(`${prefix}-input_type`).value = col.input_type;
                     document.getElementById(`${prefix}-required`).checked = col.required;
                     document.getElementById(`${prefix}-group`).value = col.group || "";
-                    document.getElementById(`${prefix}-order`).value = col.order || "";
+                    const orderEl = document.getElementById(`${prefix}-order`);
+                    if (orderEl) orderEl.value = col.order ?? '';
+
                 });
             }
 
@@ -707,6 +735,85 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function clearInline(prefix) {
+      const container = document.getElementById(`${prefix}-forms`);
+      const total = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      if (container) container.innerHTML = '';
+      if (total) total.value = '0';
+    }
+
+    // Clear the server-side lookup UI as well
+    function clearLookupWidgets() {
+      const sel  = document.getElementById('question_lookup');
+      const inp  = document.getElementById('question_lookup_search');
+      const list = document.getElementById('question_lookup_results');
+      if (sel)  { sel.innerHTML = '<option value=""></option>'; sel.value = ''; }
+      if (inp)  { inp.value = ''; inp.setAttribute('aria-expanded', 'false'); }
+      if (list) { list.innerHTML = ''; list.classList.add('hidden'); }
+    }
+
+    // One-click clear
+    document.getElementById('clear-wizard-btn')?.addEventListener('click', () => {
+      // Default: clear code & text too. If you want to keep code, pass {clearCode:false}
+      clearWizard({ clearCode: true, clearText: true });
+    });
+
+
+    // One-click clear while keeping current question_type (and matrix_mode if MATRIX)
+    function clearWizard(opts = { clearCode: true, clearText: true }) {
+      const currentType = document.getElementById('id_question_type')?.value || '';
+
+      // Reuse your existing reset routine (clears helper/media/flags + inlines + visibility + preview)
+      if (typeof resetFieldsForType === 'function') {
+        resetFieldsForType(currentType);
+      } else {
+        // Fallback if helper not present:
+        clearInline('choices');
+        clearInline('matrix_rows');
+        clearInline('matrix_cols');
+        const helperText = document.getElementById('id_helper_text');
+        if (helperText) helperText.value = '';
+        const helperMedia = document.getElementById('id_helper_media');
+        if (helperMedia) try { helperMedia.value = ''; } catch(_) {}
+        const helperMediaLabel = document.getElementById('helper-media-label');
+        if (helperMediaLabel) helperMediaLabel.remove();
+        const allowsMultiple  = document.getElementById('id_allows_multiple');
+        const allowMultiFiles = document.getElementById('id_allow_multiple_files');
+        if (allowsMultiple)  allowsMultiple.checked  = false;
+        if (allowMultiFiles) allowMultiFiles.checked = false;
+        const minEl = document.getElementById('id_min_value');
+        const maxEl = document.getElementById('id_max_value');
+        const stepEl = document.getElementById('id_step_value');
+        if (minEl)  minEl.value  = '';
+        if (maxEl)  maxEl.value  = '';
+        if (stepEl) stepEl.value = '';
+        updateFieldVisibility?.();
+        toggleInlinesByType?.();
+        applyChoiceImageVisibility?.(document);
+        applyMatrixColsAdvancedVisibility?.(document);
+      }
+
+      // Optionally clear code/text (defaults: both true)
+      if (opts.clearText) {
+        const t = document.getElementById('id_text');
+        if (t) t.value = '';
+      }
+      if (opts.clearCode) {
+        const c = document.getElementById('id_code');
+        if (c) c.value = '';
+      }
+
+      // Don’t touch Required checkbox; leave as-is by design
+
+      // Clear the lookup widgets so nothing is “selected”
+      clearLookupWidgets();
+
+      // Refresh preview to placeholder
+      updatePreview?.();
+    }
+
+
+
     // === Helper to reset all input fields to blank/default ===
     function resetFormFields() {
         const fieldsToReset = [
@@ -727,6 +834,64 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const existingLabel = document.getElementById("helper-media-label");
         if (existingLabel) existingLabel.remove();
+    }
+
+    //wipes any stray values that don’t belong to the new type and re-runs visibility logic + preview.
+    function resetFieldsForType(newType) {
+      // Text helpers
+      const helperText = document.getElementById('id_helper_text');
+      if (helperText) helperText.value = '';
+
+      // Media helper
+      const helperMedia = document.getElementById('id_helper_media');
+      if (helperMedia) {
+        try { helperMedia.value = ''; } catch (_) {}
+      }
+      const helperMediaLabel = document.getElementById('helper-media-label');
+      if (helperMediaLabel) helperMediaLabel.remove();
+
+      // Slider fields
+      const minEl = document.getElementById('id_min_value');
+      const maxEl = document.getElementById('id_max_value');
+      const stepEl = document.getElementById('id_step_value');
+      if (minEl)  minEl.value  = '';
+      if (maxEl)  maxEl.value  = '';
+      if (stepEl) stepEl.value = '';
+
+      // Image-choice multi select flag (only applies to IMAGE_CHOICE)
+      const allowsMultiple = document.getElementById('id_allows_multiple');
+      if (allowsMultiple) allowsMultiple.checked = false;
+
+      // Media uploads multiple flag (only applies to *_UPLOAD types)
+      const allowMultiFiles = document.getElementById('id_allow_multiple_files');
+      if (allowMultiFiles) allowMultiFiles.checked = false;
+
+      // Matrix mode (only meaningful for MATRIX)
+      const matrixModeEl = document.getElementById('id_matrix_mode');
+      if (matrixModeEl && newType !== 'MATRIX') {
+        // reset to blank (so nothing posts) if not Matrix
+        matrixModeEl.value = '';
+      }
+
+      // Clear all inlines; new type decides which ones re-appear
+      clearInline('choices');
+      clearInline('matrix_rows');
+      clearInline('matrix_cols');
+
+      // Recompute visibility
+      updateFieldVisibility();
+      toggleInlinesByType();
+
+      // Apply per-inline UI visibility helpers
+      if (typeof applyChoiceImageVisibility === 'function') {
+        applyChoiceImageVisibility(document);
+      }
+      if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+        applyMatrixColsAdvancedVisibility(document);
+      }
+
+      // Refresh preview
+      if (typeof updatePreview === 'function') updatePreview();
     }
 
     // === Server-side question lookup (keeps dropdown visible) ===
