@@ -171,7 +171,7 @@
 
 /* variants */
 #wizard-actions .btn-primary {
-  background: #2563eb;            /* blue-600 */
+  background: #1e3a7b;            /* blue-600 */
   color: #fff;
   border-color: #1d4ed8;          /* blue-700 */
 }
@@ -202,7 +202,7 @@
   position: relative;
   background: #111827 !important;            /* gray-900 */
   color: #fff !important;
-  border: 4px solid #ffffff !important;       /* <-- guaranteed visible border */
+  border: 1px solid #ffffff !important;       /* <-- guaranteed visible border */
   border-radius: 16px !important;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
 }
@@ -214,7 +214,7 @@
   content: "";
   position: absolute;
   inset: -8px;                                /* outside the card */
-  border: 2px solid rgba(99,102,241,.6);      /* indigo-500-ish */
+  /*border: 2px solid rgba(99,102,241,.6);      !* indigo-500-ish *!*/
   border-radius: 22px;
   pointer-events: none;
 }
@@ -268,7 +268,7 @@
   position: relative;
   background: #111827 !important;            /* gray-900 */
   color: #ffffff !important;                  /* all text white */
-  border: 4px solid #ffffff !important;       /* clear, thick border */
+  border: 1px solid #ffffff !important;       /* clear, thick border */
   border-radius: 16px !important;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
 }
@@ -278,8 +278,8 @@
   content: "";
   position: absolute;
   inset: -8px;                                /* sits outside the card */
-  border: 2px solid rgba(99,102,241,.65);     /* indigo-500-ish */
-  border-radius: 22px;
+  /*border: 2px solid rgba(99,102,241,.65);     !* indigo-500-ish *!*/
+  /*border-radius: 12px;*/
   pointer-events: none;
 }
 
@@ -297,7 +297,7 @@
   font-size: .875rem;
   line-height: 1.25rem;
   border-radius: 0.5rem;
-  border: 1px solid rgba(255,255,255,.18);
+  /*border: 1px solid rgba(255,255,255,.18);*/
   transition: background-color .15s ease, transform .05s ease;
 }
 #bulk-add-modal .btn-modal:active { transform: translateY(1px); }
@@ -344,8 +344,53 @@
   background: #f9fafb !important;        /* gray-50 */
   color: #111827 !important;
   border-color: rgba(0,0,0,.25) !important;
+  border-radius: 12px !important;
 }
 
+/* Shell (lets the inner pill handle visuals) */
+.btn-shell {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+/* Shared pill look */
+.btn-ui {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .625rem .9rem;         /* ~py-2.5 px-3.5 */
+  border-radius: .5rem;           /* rounded-md */
+  font-weight: 600;
+  font-size: .875rem;             /* text-sm */
+  line-height: 1.0rem;
+  border: 1px solid transparent;
+  transition: background-color .15s ease, transform .05s ease, border-color .15s ease;
+}
+.btn-ui:active { transform: translateY(1px); }
+
+/* Primary (match Save) */
+.btn-primary {
+  background: #1e3a7b;            /* blue-600 */
+  color: #fff;
+  border-color: rgba(255,255,255,.18);
+}
+.btn-primary:hover { background: #1d4ed8; }  /* blue-700 */
+.btn-primary:focus-visible { outline: 2px solid rgba(37,99,235,.45); outline-offset: 2px; }
+
+/* Secondary (match Clear / Back shell) */
+.btn-secondary {
+  background: #374151;            /* gray-700 */
+  color: #fff;
+  border-color: rgba(255,255,255,.18);
+}
+.btn-secondary:hover { background: #4b5563; } /* gray-600 */
+.btn-secondary:focus-visible { outline: 2px solid rgba(255,255,255,.28); outline-offset: 2px; }
+
+/* Dark mode tweaks (optional) */
+.dark .btn-primary { border-color: rgba(255,255,255,.22); }
+.dark .btn-secondary { border-color: rgba(255,255,255,.22); }
 
 
 

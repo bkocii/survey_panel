@@ -4,7 +4,8 @@
 {# ------- CHOICES ------- #}
 {# ------- CHOICES (as table rows) ------- #}
 <div id="choice-inline" class="hidden">
-  <h2 class="text-lg font-medium text-gray-200">Choices</h2>
+    <h2 class="text-lg font-medium text-gray-200">Choices</h2>
+
 
   {{ choice_inline.management_form }}
   {{ choice_inline.non_form_errors }}
@@ -93,15 +94,21 @@
     </tr>
   </template>
 
-  <div class="mt-3 flex gap-3">
-    <button type="button" data-prefix="choices"
-            class="add-form-btn inline-flex items-center px-3 py-1.5 rounded border border-blue-600 text-blue-100 bg-blue-600/20 hover:bg-blue-600/30">
-      ➕ Add choice
-    </button>
-    <button type="button" class="bulk-add-btn text-sm text-blue-400 underline underline-offset-2" data-prefix="choices">
-      Bulk add
-    </button>
-  </div>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <button type="button"
+              data-prefix="choices"
+              class="add-form-btn btn-shell"
+              title="Add a new choice row">
+        <span class="btn-ui btn-primary">➕ Add choice</span>
+      </button>
+
+      <button type="button"
+              data-prefix="choices"
+              class="bulk-add-btn btn-shell"
+              title="Bulk add multiple choices">
+        <span class="btn-ui btn-secondary">📥 Bulk add</span>
+      </button>
+    </div>
 </div>
 
 {# ------- MATRIX ROWS (table) ------- #}
@@ -187,15 +194,21 @@
     </tr>
   </template>
 
-  <div class="mt-3 flex gap-3">
-    <button type="button" data-prefix="matrix_rows"
-            class="add-form-btn inline-flex items-center px-3 py-1.5 rounded border border-blue-600 text-blue-100 bg-blue-600/20 hover:bg-blue-600/30">
-      ➕ Add row
-    </button>
-      <button type="button" class="bulk-add-btn text-sm text-blue-400 underline underline-offset-2" data-prefix="matrix_rows">
-      Bulk add
-    </button>
-  </div>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <button type="button"
+              data-prefix="matrix_rows"
+              class="add-form-btn btn-shell"
+              title="Add a new choice row">
+        <span class="btn-ui btn-primary">➕ Add choice</span>
+      </button>
+
+      <button type="button"
+              data-prefix="matrix_rows"
+              class="bulk-add-btn btn-shell"
+              title="Bulk add multiple choices">
+        <span class="btn-ui btn-secondary">📥 Bulk add</span>
+      </button>
+    </div>
 </div>
 
 {# ------- MATRIX COLUMNS (table) ------- #}
@@ -322,15 +335,21 @@
     </tr>
   </template>
 
-  <div class="mt-3 flex gap-3">
-    <button type="button" data-prefix="matrix_cols"
-            class="add-form-btn inline-flex items-center px-3 py-1.5 rounded border border-blue-600 text-blue-100 bg-blue-600/20 hover:bg-blue-600/30">
-      ➕ Add column
-    </button>
-      <button type="button" class="bulk-add-btn text-sm text-blue-400 underline underline-offset-2" data-prefix="matrix_cols">
-      Bulk add
-    </button>
-  </div>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <button type="button"
+              data-prefix="matrix_cols"
+              class="add-form-btn btn-shell"
+              title="Add a new choice row">
+        <span class="btn-ui btn-primary">➕ Add choice</span>
+      </button>
+
+      <button type="button"
+              data-prefix="matrix_cols"
+              class="bulk-add-btn btn-shell"
+              title="Bulk add multiple choices">
+        <span class="btn-ui btn-secondary">📥 Bulk add</span>
+      </button>
+    </div>
 </div>
 
 
