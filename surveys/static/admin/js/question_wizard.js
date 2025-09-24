@@ -230,6 +230,10 @@ document.addEventListener("DOMContentLoaded", function () {
       return tr;
     }
 
+    function isSideBySideMode() {
+      return document.getElementById('id_matrix_mode')?.value === 'side_by_side';
+    }
+
     function buildMatrixCol(index) {
       const tr = document.createElement('tr');
       tr.className = 'border-t border-gray-700';
@@ -261,6 +265,15 @@ document.addEventListener("DOMContentLoaded", function () {
       typ.className='w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
       ['text','select','radio','checkbox'].forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v.charAt(0).toUpperCase()+v.slice(1); typ.appendChild(o); });
       cType.appendChild(typ); tr.appendChild(cType);
+
+      // 🧠 if not side_by_side, hide & disable advanced cells immediately
+     const sbs = isSideBySideMode();
+     if (!sbs) {
+       cGroup.style.display = 'none';
+       cType.style.display = 'none';
+       grp.disabled = true; grp.value = '';
+       typ.disabled = true; typ.value = '';
+    }
 
       // 5) required
       const cReq = td('px-3 py-2 align-middle text-center');
@@ -416,7 +429,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (tr) {
           // apply SBS visibility rules for matrix cols on new row
           if (prefix === 'matrix_cols' && typeof applyMatrixColsAdvancedVisibility === 'function') {
-            applyMatrixColsAdvancedVisibility(tr);
+            applyMatrixColsAdvancedVisibility(document);
           }
           tr.querySelectorAll('input, select, textarea').forEach(el => {
             el.addEventListener('input', updatePreview);
@@ -484,53 +497,81 @@ document.addEventListener("DOMContentLoaded", function () {
     // 🔍 Generate live question preview
     function updatePreview() {
       const preview = document.getElementById("question-preview");
-      const type = document.getElementById("id_question_type")?.value;
-      const text = document.getElementById("id_text")?.value || "";
+      if (!preview) return;
+
+      const type   = document.getElementById("id_question_type")?.value || "";
+      const text   = document.getElementById("id_text")?.value || "";
       const helper = document.getElementById("id_helper_text")?.value || "";
 
-      let html = `<h3 class="font-bold text-lg">${text}</h3>`;
-      if (helper) html += `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`;
+      const parts = [];
+      let hasContent = false;
 
-      // Show choices
+      // Question text
+      if (text.trim()) {
+        parts.push(`<h3 class="font-bold text-lg">${text}</h3>`);
+        hasContent = true;
+      }
+
+      // Helper text
+      if (helper.trim()) {
+        parts.push(
+          `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`
+        );
+        hasContent = true;
+      }
+
+      // Choices (single/multi/dropdown/image choice)
       if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
-        html += "<ul class='list-disc list-inside'>";
-        document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
-          if (input.value.trim()) html += `<li>${input.value}</li>`;
-        });
-        html += "</ul>";
+        const labels = Array.from(
+          document.querySelectorAll('[id^="id_choices-"][id$="-text"]')
+        ).map(i => i.value.trim()).filter(Boolean);
+
+        if (labels.length) {
+          parts.push("<ul class='list-disc list-inside'>");
+          labels.forEach(l => parts.push(`<li>${l}</li>`));
+          parts.push("</ul>");
+          hasContent = true;
+        }
       }
 
-      // Show matrix table
+      // Matrix (simple signal that something is configured)
       if (type === "MATRIX") {
-        const rows = document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]');
-        const cols = document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]');
+        const rows = Array.from(
+          document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]')
+        ).map(i => i.value.trim()).filter(Boolean);
 
-        html += "<table class='table-auto w-full border text-left mt-2 text-sm'>";
-        html += "<thead><tr><th></th>";
-        cols.forEach(col => {
-          if (col.value.trim()) html += `<th class="px-2 py-1 border">${col.value}</th>`;
-        });
-        html += "</tr></thead><tbody>";
+        const cols = Array.from(
+          document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]')
+        ).map(i => i.value.trim()).filter(Boolean);
 
-        rows.forEach(row => {
-          if (row.value.trim()) {
-            html += `<tr><td class="px-2 py-1 border font-semibold">${row.value}</td>`;
-            cols.forEach(() => {
-              html += "<td class='px-2 py-1 border'><input type='radio' disabled></td>";
-            });
-            html += "</tr>";
-          }
-        });
+        if (rows.length && cols.length) {
+          // Lightweight table preview (no radios when empty)
+          let table = "<table class='table-auto w-full border text-left mt-2 text-sm'><thead><tr><th></th>";
+          cols.forEach(c => (table += `<th class="px-2 py-1 border">${c}</th>`));
+          table += "</tr></thead><tbody>";
 
-        html += "</tbody></table>";
+          rows.forEach(r => {
+            table += `<tr><td class="px-2 py-1 border font-semibold">${r}</td>`;
+            cols.forEach(() => (table += "<td class='px-2 py-1 border'><span class='opacity-50'>·</span></td>"));
+            table += "</tr>";
+          });
+
+          table += "</tbody></table>";
+          parts.push(table);
+          hasContent = true;
+        }
       }
 
-      // ✅ Use template-provided placeholder (lets you control color), fallback if missing
+      // Placeholder (prefer <template>, then data-placeholder, then hardcoded)
       const tpl = document.getElementById("preview-placeholder");
-      const placeholder = tpl ? tpl.innerHTML
-                              : "<em class='text-gray-400 dark:text-gray-500 italic'>Start typing…</em>";
-      preview.innerHTML = html || placeholder;
+      const placeholder =
+        (tpl && tpl.innerHTML.trim()) ||
+        preview.dataset.placeholder ||
+        "<em class='text-gray-400 dark:text-gray-500 italic'>Start typing…</em>";
+
+      preview.innerHTML = hasContent ? parts.join("") : placeholder;
     }
+
 
     previousQuestionType = document.getElementById("id_question_type")?.value;
     let previousMatrixMode = document.getElementById('id_matrix_mode')?.value || null;
@@ -711,6 +752,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (orderEl) orderEl.value = col.order ?? '';
 
                 });
+            }
+
+            if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+              applyMatrixColsAdvancedVisibility(document);
             }
 
             updatePreview();

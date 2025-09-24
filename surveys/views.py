@@ -453,7 +453,8 @@ def survey_question(request, survey_id, question_id=None):
                 next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
             elif question.question_type == 'NUMBER':
-                if question.required and not answer:
+                raw = (answer or '').strip()
+                if question.required and raw == '':
                     messages.error(request, "This question is required. Please enter a number.")
                     return render(request, 'surveys/survey_question.html', {
                         'survey': survey,
@@ -464,9 +465,9 @@ def survey_question(request, survey_id, question_id=None):
                         'previous_response': None,
                         'time_left': time_left,
                     })
-                if answer:
+                if raw != '':
                     try:
-                        number_value = float(answer)
+                        number_value = float(raw)
                     except (TypeError, ValueError):
                         messages.error(request, "Invalid number input.")
                         return render(request, 'surveys/survey_question.html', {
@@ -483,7 +484,7 @@ def survey_question(request, survey_id, question_id=None):
                         survey=survey,
                         question=question,
                         text_answer=str(number_value),
-                        value=number_value if number_value else ''
+                        value=number_value
                     )
                 next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
@@ -680,7 +681,7 @@ def survey_question(request, survey_id, question_id=None):
                 duration = int((now() - start_time).total_seconds())
                 submission = Submission.objects.create(user=request.user, survey=survey, duration_seconds=duration)
                 Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(submission=submission)
-                # request.user.add_points(survey.points_reward)
+                request.user.add_points(survey.points_reward)
                 # Clean up session key
                 request.session.pop(session_key, None)
             return redirect('surveys:survey_submit', survey_id=survey.id)
@@ -711,8 +712,6 @@ def survey_submit(request, survey_id):
     # Prevent awarding points multiple times if needed
     if not Response.objects.filter(user=request.user, survey=survey).exists():
         return redirect('surveys:survey_list')  # No answers? Don't reward
-
-    request.user.add_points(survey.points_reward)
 
     return render(request, 'surveys/survey_submit.html', {
         'survey': survey,

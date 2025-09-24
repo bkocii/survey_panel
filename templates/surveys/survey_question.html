@@ -88,7 +88,7 @@ survey
 
         {% elif question.question_type == 'DATE' %}
             <div class="input-group">
-                <input type="text" name="answer" class="form-control date-input" placeholder="Select a date" required>
+                <input type="text" name="answer" class="form-control date-input" placeholder="Select a date" {% if question.required %}required{% endif %}>
                 <button class="btn btn-outline-secondary calendar-btn" type="button">
                     <i class="bi bi-calendar"></i>
                 </button>
@@ -146,7 +146,7 @@ survey
                                                name="rating_{{ choice.id }}"
                                                id="rating_{{ choice.id }}_{{ i }}"
                                                value="{{ i }}"
-                                               required="{{ question.required|yesno:'required,' }}">
+                                               {% if question.required %}required{% endif %}>
                                         <label class="form-check-label" for="rating_{{ choice.id }}_{{ i }}">{{ i }}</label>
                                     </div>
                                 {% endfor %}
@@ -159,19 +159,19 @@ survey
 
         {% elif question.question_type == 'PHOTO_UPLOAD' %}
             <label for="photo">Upload Photo:</label>
-            <input type="file" name="answer_file" class="form-control" accept="image/*" {% if question.allow_multiple_files %} multiple {% endif %} required>
+            <input type="file" name="answer_file" class="form-control" accept="image/*" {% if question.allow_multiple_files %} multiple {% endif %} {% if question.required %}required{% endif %}>
 
         {% elif question.question_type == 'PHOTO_MULTI_UPLOAD' %}
             <label for="photos">Upload Multiple Photos:</label>
-            <input type="file" name="answer_file" class="form-control" accept="image/*" multiple required>
+            <input type="file" name="answer_file" class="form-control" accept="image/*" multiple {% if question.required %}required{% endif %}>
 
         {% elif question.question_type == 'VIDEO_UPLOAD' %}
             <label for="video">Upload Video:</label>
-            <input type="file" name="answer_file" class="form-control" accept="video/*" required>
+            <input type="file" name="answer_file" class="form-control" accept="video/*" {% if question.required %}required{% endif %}>
 
         {% elif question.question_type == 'AUDIO_UPLOAD' %}
             <label for="audio">Upload Audio:</label>
-            <input type="file" name="answer_file" class="form-control" accept="audio/*" required>
+            <input type="file" name="answer_file" class="form-control" accept="audio/*" {% if question.required %}required{% endif %}>
 
 
 
@@ -332,7 +332,6 @@ survey
                             {% endfor %}
                         </tbody>
                     </table>
-                <p>Grouped: {{ grouped_matrix_columns|length }}</p>
                 {% elif question.matrix_mode == 'multi' %}
                     <table class="table">
                         <thead>
