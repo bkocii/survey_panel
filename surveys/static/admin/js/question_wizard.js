@@ -297,7 +297,7 @@ document.addEventListener("DOMContentLoaded", function () {
         th.style.display = isSBS ? '' : 'none';
       });
 
-      //columns (colgroup)
+      // columns (colgroup)
       const table = (root.getElementById ? root.getElementById('matrix_cols-forms') : document.getElementById('matrix_cols-forms'))?.closest('table');
       if (table) {
         table.querySelectorAll('colgroup col[data-advcol]').forEach(c => {
@@ -305,12 +305,17 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      // cells + disable inputs when hidden
+      // cells: hide when not SBS, but DO NOT disable
       root.querySelectorAll('[data-advcol]').forEach(td => {
         td.style.display = isSBS ? '' : 'none';
         td.querySelectorAll('input,select,textarea').forEach(ip => {
-          ip.disabled = !isSBS;
-          if (!isSBS) ip.value = ''; // optional: clear to avoid stray posts
+          // never disable; keep values posting
+          ip.disabled = false;
+
+          // for non-SBS, force input_type to 'radio' so formset is valid
+          if (!isSBS && ip.name && /-input_type$/.test(ip.name)) {
+            ip.value = 'radio';
+          }
         });
       });
     }

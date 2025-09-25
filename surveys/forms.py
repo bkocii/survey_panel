@@ -1,5 +1,49 @@
 from django import forms
-from .models import Survey, Question
+from .models import Survey, Question, MatrixColumn, MatrixRow, Choice
+
+
+BASE_INPUT = 'w-full rounded border bg-gray-900 text-white border-gray-700 h-9 px-2'
+BASE_FILE  = 'w-full text-white'
+BASE_CHECK = ''  # you can style checkboxes via CSS if needed
+BASE_SELECT = BASE_INPUT
+
+
+class ChoiceWizardForm(forms.ModelForm):
+    class Meta:
+        model = Choice
+        fields = ('text', 'value', 'next_question', 'image')
+        widgets = {
+            'text':  forms.TextInput(attrs={'class': BASE_INPUT}),
+            'value': forms.NumberInput(attrs={'class': BASE_INPUT}),
+            'next_question': forms.Select(attrs={'class': BASE_SELECT}),
+            'image': forms.ClearableFileInput(attrs={'class': BASE_FILE}),
+        }
+
+
+class MatrixRowWizardForm(forms.ModelForm):
+    class Meta:
+        model = MatrixRow
+        fields = ('text', 'value', 'required')
+        widgets = {
+            'text':  forms.TextInput(attrs={'class': BASE_INPUT}),
+            'value': forms.NumberInput(attrs={'class': BASE_INPUT}),
+            'required': forms.CheckboxInput(attrs={'class': BASE_CHECK}),
+        }
+
+
+class MatrixColWizardForm(forms.ModelForm):
+    class Meta:
+        model = MatrixColumn
+        fields = ('label', 'value', 'input_type', 'required', 'group', 'order')
+        widgets = {
+            'label':  forms.TextInput(attrs={'class': BASE_INPUT}),
+            'value':  forms.NumberInput(attrs={'class': BASE_INPUT}),
+            'input_type': forms.Select(attrs={'class': BASE_SELECT}),
+            'required': forms.CheckboxInput(attrs={'class': BASE_CHECK}),
+            # 'next_question': forms.Select(attrs={'class': BASE_SELECT}),
+            'group': forms.TextInput(attrs={'class': BASE_INPUT}),
+            'order': forms.NumberInput(attrs={'class': BASE_INPUT}),
+        }
 
 
 class QuestionAdminForm(forms.ModelForm):

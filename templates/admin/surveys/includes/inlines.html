@@ -257,6 +257,7 @@
             {# advanced-only cells #}
             <td class="px-3 py-2 align-middle" data-advcol="true">
               {{ f.group }}
+                {% if f.errors.group %}<div class="mt-1 text-xs text-red-500">{{ f.errors.group.0 }}</div>{% endif %}
             </td>
             <td class="px-3 py-2 align-middle" data-advcol="true">
               {{ f.input_type }}
@@ -268,10 +269,10 @@
             <td class="px-3 py-2 align-middle">
               {{ f.required }}
             </td>
-            <td class="px-3 py-2 align-middle">
-              {{ f.next_question }}
-              {% for e in f.next_question.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}
-            </td>
+{#            <td class="px-3 py-2 align-middle">#}
+{#              {{ f.next_question }}#}
+{#              {% for e in f.next_question.errors %}<div class="mt-1 text-xs text-red-500">{{ e }}</div>{% endfor %}#}
+{#            </td>#}
             <td class="px-3 py-2 align-middle text-center">
               {% if f.DELETE %}{{ f.DELETE }}{% else %}-{% endif %}
             </td>

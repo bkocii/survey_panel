@@ -5,7 +5,7 @@ from django.urls import path
 from unfold.sites import UnfoldAdminSite
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from django import forms
-from .forms import QuestionAdminForm, WizardQuestionForm
+from .forms import QuestionAdminForm, WizardQuestionForm, ChoiceWizardForm, MatrixColWizardForm, MatrixRowWizardForm
 from datetime import date
 import csv
 from django.utils.html import format_html
@@ -148,87 +148,183 @@ class SurveyAdmin(ModelAdmin):
         all_questions_full = Question.objects.all()
 
         ChoiceFormSet = inlineformset_factory(
-            Question,
-            Choice,
+            Question, Choice,
+            form=ChoiceWizardForm,
             fields=('text', 'value', 'next_question', 'image'),
             fk_name='question',
-            extra=0,
-            can_delete=True
+            extra=0, can_delete=True
         )
         MatrixRowFormSet = inlineformset_factory(
-            Question,
-            MatrixRow,
+            Question, MatrixRow,
+            form=MatrixRowWizardForm,
             fields=('text', 'value', 'required'),
-            extra=0,
-            can_delete=True
+            extra=0, can_delete=True
         )
         MatrixColFormSet = inlineformset_factory(
-            Question,
-            MatrixColumn,
+            Question, MatrixColumn,
+            form=MatrixColWizardForm,
             fields=('label', 'value', 'input_type', 'required', 'next_question', 'group', 'order'),
             fk_name='question',
-            extra=0,
-            can_delete=True
+            extra=0, can_delete=True
         )
 
+        # ---------- POST ----------
         if request.method == 'POST':
             form = WizardQuestionForm(request.POST, request.FILES)
-            choice_formset = ChoiceFormSet(request.POST, request.FILES, prefix='choices')
-            row_formset = MatrixRowFormSet(request.POST, request.FILES, prefix='matrix_rows')
-            col_formset = MatrixColFormSet(request.POST, request.FILES, prefix='matrix_cols')
 
-            if form.is_valid() and choice_formset.is_valid() and row_formset.is_valid() and col_formset.is_valid():
-                question = form.save(commit=False)
-                question.survey = survey
-                question.save()
-                form.save_m2m()
+            # Peek at mode early (from POST is fine; the form will validate it later)
+            qtype = request.POST.get('question_type')
+            mode = request.POST.get('matrix_mode')
 
-                choice_formset.instance = question
-                choice_formset.save()
+            # If MATRIX but NOT side_by_side, force input_type='radio' for all column forms
+            patched_post = request.POST
+            if qtype == 'MATRIX' and mode != 'side_by_side':
+                from django.http import QueryDict
+                patched = QueryDict(mutable=True)
+                patched.update(request.POST)
 
-                row_formset.instance = question
-                row_formset.save()
+                total_cols = int(request.POST.get('id_matrix_cols-TOTAL_FORMS', '0') or 0)
+                for i in range(total_cols):
+                    key = f'matrix_cols-{i}-input_type'
+                    if not patched.get(key):
+                        patched[key] = 'radio'  # force default
 
-                col_formset.instance = question
-                col_formset.save()
+                patched_post = patched
 
-                return redirect('admin:surveys_survey_change', object_id=survey.id)
+            choice_formset = ChoiceFormSet(patched_post, request.FILES, prefix='choices')
+            row_formset = MatrixRowFormSet(patched_post, request.FILES, prefix='matrix_rows')
+            col_formset = MatrixColFormSet(patched_post, request.FILES, prefix='matrix_cols')
 
-            else:
-                print("❌ Form or formsets invalid")
-                print("Form errors:", form.errors)
-                print("Choice errors:", choice_formset.errors)
-                print("Matrix row errors:", row_formset.errors)
-                print("Matrix column errors:", col_formset.errors)
-                for idx, form in enumerate(col_formset.forms):
-                    print(f"Col form {idx} cleaned_data:", getattr(form, "cleaned_data", None))
+            def render_wizard():
+                ctx = {
+                    'form': form,
+                    'survey': survey,
+                    'title': f"Add Question Wizard for {survey.title}",
+                    'choice_inline': choice_formset,
+                    'matrix_row_inline': row_formset,
+                    'matrix_column_inline': col_formset,
+                    'all_questions': all_questions,
+                    'all_questions_full': all_questions_full,
+                    "site_title": "Survey Wizard",
+                    "site_header": "Survey Builder",
+                    "has_permission": True,
+                    "available_apps": [],
+                    "current_app": "surveys",
+                }
+                return render(request, 'admin/surveys/add_question_wizard.html', ctx)
+
+            # 1) basic validity
+            if not (
+                    form.is_valid() and choice_formset.is_valid() and row_formset.is_valid() and col_formset.is_valid()):
+                return render_wizard()
+
+            # 2) relational checks
+            qtype = form.cleaned_data.get('question_type')
+            mode = form.cleaned_data.get('matrix_mode')
+
+            def active_count(fs):
+                return sum(1 for f in fs.forms if f.cleaned_data and not f.cleaned_data.get('DELETE', False))
+
+            rel_error = False
+            needs_choices = {'SINGLE_CHOICE', 'MULTI_CHOICE', 'RATING', 'DROPDOWN', 'IMAGE_CHOICE', 'IMAGE_RATING'}
+            if qtype in needs_choices and active_count(choice_formset) == 0:
+                choice_formset._non_form_errors = choice_formset.error_class(['Add at least one choice.'])
+                rel_error = True
+
+            if qtype == 'MATRIX':
+                if active_count(row_formset) == 0:
+                    row_formset._non_form_errors = row_formset.error_class(['Add at least one row.'])
+                    rel_error = True
+                if active_count(col_formset) == 0:
+                    col_formset._non_form_errors = col_formset.error_class(['Add at least one column.'])
+                    rel_error = True
+
+            if rel_error:
+                return render_wizard()
+
+            # --- image required on image-based questions ---
+            if qtype in {'IMAGE_CHOICE', 'IMAGE_RATING'}:
+                img_error_any = False
+                for f in choice_formset.forms:
+                    cd = getattr(f, 'cleaned_data', {}) or {}
+                    if cd.get('DELETE'):
+                        continue
+                    # Either a new upload in this POST or an existing instance image (in edits)
+                    uploaded = cd.get('image')
+                    existing = getattr(f.instance, 'image', None)
+                    if not uploaded and not existing:
+                        f.add_error('image', 'Image is required for image-based questions.')
+                        img_error_any = True
+                if img_error_any:
+                    # also show a banner on the choices formset
+                    choice_formset._non_form_errors = choice_formset.error_class(
+                        ['Each choice must include an image for IMAGE_CHOICE / IMAGE_RATING.']
+                    )
+                    return render_wizard()
+
+            # Extra: side_by_side requires group + input_type for each non-deleted column
+            if qtype == 'MATRIX' and mode == 'side_by_side':
+                sbs_any_error = False
+                for f in col_formset.forms:
+                    cd = getattr(f, 'cleaned_data', {}) or {}
+                    if cd.get('DELETE'):
+                        continue
+                    if not cd.get('group'):
+                        f.add_error('group', 'Required in side-by-side mode.')
+                        sbs_any_error = True
+                    if not cd.get('input_type'):
+                        f.add_error('input_type', 'Required in side-by-side mode.')
+                        sbs_any_error = True
+
+                if sbs_any_error:
+                    # show a banner at the formset level too
+                    col_formset._non_form_errors = col_formset.error_class(
+                        ['In Side-by-Side mode, each column must have a Group and an Input Type.']
+                    )
+                    return render_wizard()
+
+            # 3) save
+            question = form.save(commit=False)
+            question.survey = survey
+            question.save()
+            form.save_m2m()
+
+            choice_formset.instance = question
+            choice_formset.save()
+
+            row_formset.instance = question
+            row_formset.save()
+
+            col_formset.instance = question
+            col_formset.save()
+
+            return redirect('admin:surveys_survey_change', object_id=survey.id)
+
+        # ---------- GET (initial render) ----------
         else:
+            # use a dummy instance so inline formsets render their management forms correctly
             fake_question = Question(survey=survey)
             form = WizardQuestionForm()
             choice_formset = ChoiceFormSet(instance=fake_question, prefix='choices')
             row_formset = MatrixRowFormSet(instance=fake_question, prefix='matrix_rows')
             col_formset = MatrixColFormSet(instance=fake_question, prefix='matrix_cols')
 
-        # ✅ Add Unfold-compatible context
-        context = {
-            'form': form,
-            'survey': survey,
-            'title': f"Add Question Wizard for {survey.title}",
-            'choice_inline': choice_formset,
-            'matrix_row_inline': row_formset,
-            'matrix_column_inline': col_formset,
-            'all_questions': all_questions,
-            'all_questions_full': all_questions_full,
-
-            # 🌀 Unfold admin context
-            "site_title": "Survey Wizard",
-            "site_header": "Survey Builder",
-            "has_permission": True,
-            "available_apps": [],
-            "current_app": "surveys",
-        }
-
-        return render(request, 'admin/surveys/add_question_wizard.html', context)
+            ctx = {
+                'form': form,
+                'survey': survey,
+                'title': f"Add Question Wizard for {survey.title}",
+                'choice_inline': choice_formset,
+                'matrix_row_inline': row_formset,
+                'matrix_column_inline': col_formset,
+                'all_questions': all_questions,
+                'all_questions_full': all_questions_full,
+                "site_title": "Survey Wizard",
+                "site_header": "Survey Builder",
+                "has_permission": True,
+                "available_apps": [],
+                "current_app": "surveys",
+            }
+            return render(request, 'admin/surveys/add_question_wizard.html', ctx)
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}

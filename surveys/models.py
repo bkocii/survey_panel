@@ -2,6 +2,8 @@
 from django.db import models
 from users.models import CustomUser
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 
 # Model for surveys, storing title, description, and status
@@ -89,6 +91,68 @@ class Question(models.Model):
     def __str__(self):
         return self.text  # String representation for admin
 
+    def clean(self):
+        errors = {}
+
+        # MATRIX requires a mode; non-MATRIX must NOT carry a mode
+        if self.question_type == 'MATRIX':
+            if not self.matrix_mode:
+                errors['matrix_mode'] = 'Select a matrix mode for MATRIX questions.'
+        else:
+            if self.matrix_mode:
+                errors['matrix_mode'] = 'Matrix mode must be empty unless the question type is MATRIX.'
+
+        # SLIDER requires min/max (and sane values)
+        if self.question_type == 'SLIDER':
+            if self.min_value is None or self.max_value is None:
+                errors['min_value'] = 'Min value is required for slidersss.'
+                errors['max_value'] = 'Max value is required for sliders.'
+            elif self.min_value >= self.max_value:
+                errors['max_value'] = 'Max must be greater than Min.'
+            if self.step_value is not None and self.step_value <= 0:
+                errors['step_value'] = 'Step must be a positive integer.'
+
+        # Helper media pair
+        if self.helper_media and not self.helper_media_type:
+            errors['helper_media_type'] = 'Pick a media type when uploading a helper file.'
+        if self.helper_media_type and not self.helper_media:
+            errors['helper_media'] = 'Upload a helper file when selecting a media type.'
+
+        # Allows-multiple: only for IMAGE_CHOICE
+        if self.allows_multiple and self.question_type != 'IMAGE_CHOICE':
+            errors['allows_multiple'] = 'This option is only valid for Image Choice.'
+
+        # allow_multiple_files: only for *_UPLOAD types
+        upload_types = {'PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD'}
+        if self.allow_multiple_files and self.question_type not in upload_types:
+            errors['allow_multiple_files'] = 'Multiple files is only valid for upload-type questions.'
+
+        if errors:
+            raise ValidationError(errors)
+
+    class Meta:
+        constraints = [
+            # matrix_mode only when MATRIX
+            models.CheckConstraint(
+                name="matrix_mode_only_for_matrix",
+                check=Q(question_type='MATRIX', matrix_mode__isnull=False) | ~Q(question_type='MATRIX')
+            ),
+            # allows_multiple only for IMAGE_CHOICE
+            models.CheckConstraint(
+                name="allows_multiple_only_for_image_choice",
+                check=Q(question_type='IMAGE_CHOICE') | Q(allows_multiple=False)
+            ),
+            # allow_multiple_files only for upload types
+            models.CheckConstraint(
+                name="multi_files_only_for_uploads",
+                check=(
+                        Q(question_type__in=['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD'])
+                        | Q(allow_multiple_files=False)
+                )
+            ),
+        ]
+
+
 class MatrixRow(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matrix_rows')
     text = models.CharField(max_length=255)
@@ -97,6 +161,7 @@ class MatrixRow(models.Model):
 
     def __str__(self):
         return self.text
+
 
 class MatrixColumn(models.Model):
     INPUT_TYPES = [
