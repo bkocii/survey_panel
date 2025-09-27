@@ -213,6 +213,16 @@ class SurveyAdmin(ModelAdmin):
                 }
                 return render(request, 'admin/surveys/add_question_wizard.html', ctx)
 
+            # IMPORTANT: decide SBS early from the raw POST (don’t wait for form.is_valid())
+            posted_mode = (request.POST.get('matrix_mode') or '').strip()
+
+            # Make SBS-only fields conditionally required BEFORE calling is_valid()
+            for f in col_formset.forms:
+                if 'group' in f.fields:
+                    f.fields['group'].required = (posted_mode == 'side_by_side')
+                if 'input_type' in f.fields:
+                    f.fields['input_type'].required = (posted_mode == 'side_by_side')
+
             # 1) basic validity
             if not (
                     form.is_valid() and choice_formset.is_valid() and row_formset.is_valid() and col_formset.is_valid()):
