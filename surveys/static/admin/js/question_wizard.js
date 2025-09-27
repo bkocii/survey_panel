@@ -35,8 +35,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Media-specific flag
-        if (["PHOTO_UPLOAD", "PHOTO_MULTI_UPLOAD", "VIDEO_UPLOAD", "AUDIO_UPLOAD"].includes(type)) {
-            document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
+        if (type === "PHOTO_UPLOAD") {
+          document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
         }
 
         // For multiple image choice

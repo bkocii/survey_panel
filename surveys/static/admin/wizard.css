@@ -393,6 +393,55 @@
 .dark .btn-secondary { border-color: rgba(255,255,255,.22); }
 
 
+/* Reuse compact switch style for the other two toggles */
+#id_allows_multiple,
+#id_allow_multiple_files {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #374151;         /* gray-700 */
+  border: 1px solid #4b5563;   /* gray-600 */
+  cursor: pointer;
+  outline: none;
+  transition: background-color .2s ease;
+  vertical-align: middle;      /* avoid “stretched” look */
+  display: inline-block;       /* avoid full-width stretch */
+}
+#id_allows_multiple::before,
+#id_allow_multiple_files::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.125rem;
+  height: 1.125rem;
+  background: #fff;
+  border-radius: 9999px;
+  transition: transform .2s ease;
+}
+#id_allows_multiple:checked,
+#id_allow_multiple_files:checked {
+  background: #4f46e5;         /* indigo-600 */
+  border-color: #4f46e5;
+}
+#id_allows_multiple:checked::before,
+#id_allow_multiple_files:checked::before {
+  transform: translateX(1.25rem);
+}
+#id_allows_multiple:focus-visible,
+#id_allow_multiple_files:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.45);
+}
+
+/* Optional: keep label + switch compact side-by-side */
+.switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
 
 
 

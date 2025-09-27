@@ -33,7 +33,7 @@ QUESTION_TYPES = [
     ('DROPDOWN', 'Dropdown'),
     ('MATRIX', 'Matrix'),
     ('PHOTO_UPLOAD', 'Photo Upload'),
-    ('PHOTO_MULTI_UPLOAD', 'Multiple Photos'),
+    # ('PHOTO_MULTI_UPLOAD', 'Multiple Photos'),
     ('VIDEO_UPLOAD', 'Video Upload'),
     ('AUDIO_UPLOAD', 'Audio Upload'),
     ('DATE', 'Date Picker'),
@@ -126,6 +126,9 @@ class Question(models.Model):
         upload_types = {'PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD'}
         if self.allow_multiple_files and self.question_type not in upload_types:
             errors['allow_multiple_files'] = 'Multiple files is only valid for upload-type questions.'
+
+        if self.allow_multiple_files and self.question_type != 'PHOTO_UPLOAD':
+            raise ValidationError("“Allow multiple files” is only valid for Photo Upload.")
 
         if errors:
             raise ValidationError(errors)
