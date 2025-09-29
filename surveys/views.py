@@ -748,6 +748,7 @@ def get_question_data(request, question_id):
     )
 
     return JsonResponse({
+        "id": question.id,
         "code": question.code,
         "text": question.text,
         "question_type": question.question_type,

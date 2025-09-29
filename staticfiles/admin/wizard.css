@@ -11,3 +11,467 @@
   -webkit-box-shadow: 0 0 0 1000px #111827 inset !important;
   -webkit-text-fill-color: #fff !important;
 }
+
+/* ~4–5 chars wide, grows a bit on md screens */
+#id_code { width: 6.5rem; }           /* ≈ w-26 */
+@media (min-width: 768px) {
+  #id_code { width: 7.5rem; }         /* ≈ w-30 */
+}
+
+/* Row 1 alignment + sizing */
+#wizard-row-1 label { margin-bottom: 0.25rem; line-height: 1.25rem; }
+
+/* Make the three controls the same height */
+#id_code,
+#id_question_type,
+#question_lookup_search {
+  height: 2.5rem;           /* ~ h-10 */
+}
+
+/* Narrow width for the Code input (~4–5 chars) */
+#id_code { width: 7.5rem; } /* tweak to taste */
+@media (min-width: 768px) {
+  #id_code { width: 8rem; }
+}
+
+/* Kill any stray top margin on the lookup input wrapper */
+#question_lookup_container .relative { margin-top: 0 !important; }
+
+
+/* Row 2 alignment */
+#wizard-row-2 label { margin-bottom: .25rem; line-height: 1.25rem; }
+
+/* Make text + required controls visually same height */
+#wizard-row-2 #id_text { height: 2.5rem; }          /* ~ h-10 */
+#wizard-row-2 .h-10 { height: 2.5rem; }
+
+/* Turn the Required checkbox into a compact switch (no template changes needed) */
+#wizard-row-2 #id_required {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  width: 2.75rem;        /* ~44px */
+  height: 1.5rem;        /* ~24px */
+  border-radius: 9999px; /* full */
+  background: #374151;   /* gray-700 */
+  border: 1px solid #4b5563; /* gray-600 */
+  cursor: pointer;
+  outline: none;
+  transition: background-color .2s ease;
+}
+#wizard-row-2 #id_required::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.125rem;     /* ~18px */
+  height: 1.125rem;
+  background: #fff;    /* knob */
+  border-radius: 9999px;
+  transition: transform .2s ease;
+}
+.dark #wizard-row-2 #id_required { background: #1f2937; border-color: #374151; } /* dark: gray-800/700 */
+#wizard-row-2 #id_required:checked { background: #4f46e5; border-color: #4f46e5; } /* indigo-600 */
+#wizard-row-2 #id_required:checked::after { transform: translateX(1.25rem); }     /* move knob */
+
+/* Keyboard focus ring */
+#wizard-row-2 #id_required:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.45);
+}
+
+/* Let the Question text input truly fill available width */
+#question-form .text-field input#id_text {
+  width: 100%;
+  max-width: none;
+  height: 2.5rem; /* match h-10 */
+}
+
+/* Keep the switch row the same height */
+#question-form #wizard-row-2 .h-10 { height: 2.5rem; }
+
+/* Make the "Question text" block truly fill its side */
+#question-form #wizard-row-2 .text-field { flex: 1 1 0%; min-width: 0; }
+
+/* Kill admin/Unfold width caps (Django uses .vTextField) and force full width */
+#question-form #wizard-row-2 input#id_text,
+#question-form #wizard-row-2 input.vTextField {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* (Keep your existing height alignment) */
+#question-form #wizard-row-2 #id_text { height: 2.5rem; } /* h-10 */
+#question-form #wizard-row-2 .h-10 { height: 2.5rem; }
+
+/* Row 3: smaller labels & controls, tight spacing */
+#wizard-row-3 label { margin-bottom: .125rem; line-height: 1.1rem; }
+
+/* Smaller control height & font for helper fields */
+#wizard-row-3 .compact input[type="text"],
+#wizard-row-3 .compact input[type="search"],
+#wizard-row-3 .compact select {
+  height: 2.0rem;                 /* ≈ h-8 */
+  line-height: 2rem;
+  font-size: .775rem;           /* text-sm */
+  padding: .25rem .5rem;        /* tighter */
+  width: 100%;
+  max-width: none;              /* beat admin caps */
+}
+
+/* File input: visually compact */
+#wizard-row-3 input[type="file"] {
+  height: 2.0rem;
+  font-size: .7125rem;          /* ~13px */
+  line-height: 1.25rem;
+  padding: .25rem .5rem;
+  width: 100%;
+  max-width: none;
+}
+
+/* Dark theme consistency */
+#wizard-row-3 .compact input,
+#wizard-row-3 .compact select,
+#wizard-row-3 input[type="file"] {
+  background-color: #111827;    /* gray-900 */
+  color: #fff;
+  border-color: #374151;        /* gray-700 */
+}
+
+/* If admin theme adds extra top margins anywhere, neutralize here */
+#wizard-row-3 .question-field > .w-full { margin-top: 0 !important; }
+
+}
+
+/* neutral shells that won't fight admin resets */
+#wizard-actions .btn-shell {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  cursor: pointer;
+}
+#wizard-actions .btn-link {
+  text-decoration: none !important;
+}
+
+/* the real visual button lives here */
+#wizard-actions .btn-ui {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .5rem 1rem;            /* ~ py-2 px-4 */
+  border-radius: .5rem;           /* rounded-md */
+  font-size: .875rem;             /* text-sm */
+  line-height: 1.25rem;
+  font-weight: 600;               /* semibold */
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+/* variants */
+#wizard-actions .btn-primary {
+  background: #1e3a7b;            /* blue-600 */
+  color: #fff;
+  border-color: #1d4ed8;          /* blue-700 */
+}
+#wizard-actions .btn-primary:hover {
+  background: #1d4ed8;            /* blue-700 */
+  border-color: #1e40af;          /* blue-800 */
+}
+
+#wizard-actions .btn-secondary {
+  background: transparent;
+  color: #e5e7eb;                  /* gray-200 */
+  border-color: #4b5563;           /* gray-600 */
+}
+#wizard-actions .btn-secondary:hover {
+  background: rgba(255,255,255,.06);
+}
+
+/* dark tune */
+.dark #wizard-actions .btn-primary {
+  background: #4f46e5;            /* indigo-600 */
+  border-color: #4338ca;          /* indigo-700 */
+}
+.dark #wizard-actions .btn-primary:hover {
+  background: #4338ca;            /* indigo-700 */
+}
+/* ---- Card with thick border + outer frame ---- */
+#confirm-switch-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;            /* gray-900 */
+  color: #fff !important;
+  border: 1px solid #ffffff !important;       /* <-- guaranteed visible border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+}
+
+/* Optional indigo border instead of white: swap the color above to #4f46e5 */
+
+/* Outer frame ring (subtle) */
+#confirm-switch-modal .confirm-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;                                /* outside the card */
+  /*border: 2px solid rgba(99,102,241,.6);      !* indigo-500-ish *!*/
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+/* Title & message */
+#confirm-switch-modal .modal-title   { font-size: 1.125rem; font-weight: 600; }   /* ~text-lg */
+#confirm-switch-modal .modal-message { font-size: .9375rem; line-height: 1.6; }   /* ~text-sm+ */
+#confirm-switch-modal [data-modal-title],
+#confirm-switch-modal [data-modal-message] { overflow-wrap: anywhere; }
+
+/* Buttons: identical size, rounded */
+#confirm-switch-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;                          /* same width */
+  padding: 0.625rem 1rem;                     /* ~py-2.5 px-4 */
+  border-radius: 0.5rem;                      /* rounded-md */
+  font-size: .875rem;                         /* text-sm */
+  line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#confirm-switch-modal .btn-modal:active { transform: translateY(1px); }
+
+#confirm-switch-modal .btn-cancel {
+  background: #374151;                        /* gray-700 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-cancel:hover { background: #4b5563; }  /* gray-600 */
+
+#confirm-switch-modal .btn-confirm {
+  background: #dc2626;                        /* red-600 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-confirm:hover { background: #b91c1c; } /* red-700 */
+
+/* Pop-in animation (optional) */
+#confirm-switch-modal .confirm-modal-card {
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#confirm-switch-modal:not(.hidden) .confirm-modal-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ---- BULK MODAL: solid background, thick frame, white text ---- */
+#bulk-add-modal .bulk-card {
+  position: relative;
+  background: #111827 !important;            /* gray-900 */
+  color: #ffffff !important;                  /* all text white */
+  border: 1px solid #ffffff !important;       /* clear, thick border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+}
+
+/* Outer frame (indigo ring around the card) */
+#bulk-add-modal .bulk-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;                                /* sits outside the card */
+  /*border: 2px solid rgba(99,102,241,.65);     !* indigo-500-ish *!*/
+  /*border-radius: 12px;*/
+  pointer-events: none;
+}
+
+/* Headline & description wrap nicely on long text */
+#bulk-add-modal h3,
+#bulk-add-modal p { overflow-wrap: anywhere; }
+
+/* Buttons: same size, rounded, centered */
+#bulk-add-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;                          /* equal width */
+  padding: 0.625rem 1rem;                     /* ~py-2.5 px-4 */
+  font-size: .875rem;
+  line-height: 1.25rem;
+  border-radius: 0.5rem;
+  /*border: 1px solid rgba(255,255,255,.18);*/
+  transition: background-color .15s ease, transform .05s ease;
+}
+#bulk-add-modal .btn-modal:active { transform: translateY(1px); }
+
+#bulk-add-modal .btn-cancel {
+  background: #374151;                        /* gray-700 */
+  color: #fff;
+}
+#bulk-add-modal .btn-cancel:hover { background: #4b5563; }  /* gray-600 */
+
+#bulk-add-modal .btn-confirm {
+  background: #2563eb;                        /* blue-600 */
+  color: #fff;
+}
+#bulk-add-modal .btn-confirm:hover { background: #1d4ed8; } /* blue-700 */
+
+/* Pop-in animation (optional) */
+#bulk-add-modal .bulk-card {
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#bulk-add-modal:not(.hidden) .bulk-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Force light textarea with dark text inside the dark modal */
+#bulk-add-modal #bulk-add-input {
+  background: #ffffff !important;        /* white */
+  color: #111827 !important;             /* gray-900 (near-black) */
+  border-color: rgba(0,0,0,.2) !important;
+  caret-color: #111827 !important;
+}
+
+/* Keep placeholder readable */
+#bulk-add-modal #bulk-add-input::placeholder {
+  color: #6b7280 !important;             /* gray-500 */
+  opacity: 1;
+}
+
+/* If you want a very light gray instead of pure white in dark mode */
+.dark #bulk-add-modal #bulk-add-input {
+  background: #f9fafb !important;        /* gray-50 */
+  color: #111827 !important;
+  border-color: rgba(0,0,0,.25) !important;
+  border-radius: 12px !important;
+}
+
+/* Shell (lets the inner pill handle visuals) */
+.btn-shell {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+/* Shared pill look */
+.btn-ui {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .625rem .9rem;         /* ~py-2.5 px-3.5 */
+  border-radius: .5rem;           /* rounded-md */
+  font-weight: 600;
+  font-size: .875rem;             /* text-sm */
+  line-height: 1.0rem;
+  border: 1px solid transparent;
+  transition: background-color .15s ease, transform .05s ease, border-color .15s ease;
+}
+.btn-ui:active { transform: translateY(1px); }
+
+/* Primary (match Save) */
+.btn-primary {
+  background: #1e3a7b;            /* blue-600 */
+  color: #fff;
+  border-color: rgba(255,255,255,.18);
+}
+.btn-primary:hover { background: #1d4ed8; }  /* blue-700 */
+.btn-primary:focus-visible { outline: 2px solid rgba(37,99,235,.45); outline-offset: 2px; }
+
+/* Secondary (match Clear / Back shell) */
+.btn-secondary {
+  background: #374151;            /* gray-700 */
+  color: #fff;
+  border-color: rgba(255,255,255,.18);
+}
+.btn-secondary:hover { background: #4b5563; } /* gray-600 */
+.btn-secondary:focus-visible { outline: 2px solid rgba(255,255,255,.28); outline-offset: 2px; }
+
+/* Dark mode tweaks (optional) */
+.dark .btn-primary { border-color: rgba(255,255,255,.22); }
+.dark .btn-secondary { border-color: rgba(255,255,255,.22); }
+
+
+/* Reuse compact switch style for the other two toggles */
+#id_allows_multiple,
+#id_allow_multiple_files {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #374151;         /* gray-700 */
+  border: 1px solid #4b5563;   /* gray-600 */
+  cursor: pointer;
+  outline: none;
+  transition: background-color .2s ease;
+  vertical-align: middle;      /* avoid “stretched” look */
+  display: inline-block;       /* avoid full-width stretch */
+}
+#id_allows_multiple::before,
+#id_allow_multiple_files::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.125rem;
+  height: 1.125rem;
+  background: #fff;
+  border-radius: 9999px;
+  transition: transform .2s ease;
+}
+#id_allows_multiple:checked,
+#id_allow_multiple_files:checked {
+  background: #4f46e5;         /* indigo-600 */
+  border-color: #4f46e5;
+}
+#id_allows_multiple:checked::before,
+#id_allow_multiple_files:checked::before {
+  transform: translateX(1.25rem);
+}
+#id_allows_multiple:focus-visible,
+#id_allow_multiple_files:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.45);
+}
+
+/* Optional: keep label + switch compact side-by-side */
+.switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+
+/* Preview list cards */
+.preview-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: .75rem;
+  margin-bottom: .5rem;
+}
+.preview-card .card-head {
+  display: flex; align-items: center; gap: .5rem; justify-content: space-between;
+  margin-bottom: .5rem;
+}
+.preview-card .meta {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+}
+.preview-card .badge {
+  font-size: .70rem; padding: .15rem .4rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.2);
+}
+.preview-card .body { font-size: .875rem; }
+.preview-card.draft { border-style: dashed; }
+
+
+#question-preview-list {
+  min-height: 260px;           /* keeps a decent canvas even when empty */
+  max-height: 520px;           /* your existing height cap is fine */
+  overflow-y: auto;
+}
+
+
+
+

@@ -1,5 +1,6 @@
 // question_wizard.js
 let previousQuestionType = null;
+let previousMatrixMode = document.getElementById('id_matrix_mode')?.value || null;
 
 document.addEventListener("DOMContentLoaded", function () {
 
@@ -15,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field"
+            "helper_text-field", "helper_media-field", "helper_media_type-field", "lookup-field"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");
@@ -34,8 +35,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Media-specific flag
-        if (["PHOTO_UPLOAD", "PHOTO_MULTI_UPLOAD", "VIDEO_UPLOAD", "AUDIO_UPLOAD"].includes(type)) {
-            document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
+        if (type === "PHOTO_UPLOAD") {
+          document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
         }
 
         // For multiple image choice
@@ -50,7 +51,6 @@ document.addEventListener("DOMContentLoaded", function () {
         window.updatePreview = updatePreview;
 
     }
-
 
     // 📦 Show/hide and reset inline form blocks (Choices, Matrix rows/cols)
     let previousQuestionType = null;
@@ -110,102 +110,477 @@ document.addEventListener("DOMContentLoaded", function () {
         if (typeof updatePreview === "function") updatePreview();
     }
 
+    function buildChoiceRow(index) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-t border-gray-700';
+
+      // helper
+      const td = (cls='px-3 py-2 align-middle') => { const el=document.createElement('td'); el.className=cls; return el; };
+
+      // ---- 1) Value
+      const tdValue = td();
+      const inpValue = document.createElement('input');
+      inpValue.type = 'number';
+      inpValue.name = `choices-${index}-value`;
+      inpValue.id   = `id_choices-${index}-value`;
+      inpValue.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      tdValue.appendChild(inpValue);
+      tr.appendChild(tdValue);
+
+      // ---- 2) Text
+      const tdText = td();
+      const inpText = document.createElement('input');
+      inpText.type = 'text';
+      inpText.name = `choices-${index}-text`;
+      inpText.id   = `id_choices-${index}-text`;
+      inpText.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      tdText.appendChild(inpText);
+      tr.appendChild(tdText);
+
+     // ---- 3) Next question
+    const tdNext = td();
+    const sel = document.createElement('select');
+    sel.name = `choices-${index}-next_question`;
+    sel.id   = `id_choices-${index}-next_question`;
+    sel.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+
+    // Prefer the hidden pool rendered by the template
+    const pool = document.getElementById('next-question-options');
+    if (pool && pool.options && pool.options.length) {
+      // clone all options from the pool (first one should already be the placeholder)
+      for (const o of pool.options) sel.appendChild(o.cloneNode(true));
+    } else {
+      // fallback: try copying from any existing next_question select on the page
+      const serverSelect = document.querySelector('[id^="id_choices-"][id$="-next_question"]');
+      if (serverSelect && serverSelect.options.length) {
+        for (const o of serverSelect.options) sel.appendChild(o.cloneNode(true));
+      } else {
+        // final fallback: just a placeholder
+        const opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = '---------';
+        sel.appendChild(opt0);
+      }
+    }
+
+    tdNext.appendChild(sel);
+    tr.appendChild(tdNext);
+
+      // ---- 4) Image (ONLY if image type)
+      const tdImg = td();
+      tdImg.dataset.col = 'image'; // mark column
+      if (isImageChoiceType()) {
+        const inpFile = document.createElement('input');
+        inpFile.type = 'file';
+        inpFile.name = `choices-${index}-image`;
+        inpFile.id   = `id_choices-${index}-image`;
+        inpFile.className = 'block w-full text-sm';
+        tdImg.appendChild(inpFile);
+        tdImg.style.display = '';   // visible
+      } else {
+        // do NOT create the file input at all; keep the cell hidden to match the table structure
+        tdImg.style.display = 'none';
+      }
+      tr.appendChild(tdImg);
+
+      // ---- 5) DELETE
+      const tdDel = td('px-3 py-2 align-middle text-center');
+      const del = document.createElement('input');
+      del.type = 'checkbox';
+      del.name = `choices-${index}-DELETE`;
+      del.id   = `id_choices-${index}-DELETE`;
+      tdDel.appendChild(del);
+      tr.appendChild(tdDel);
+
+      return tr;
+    }
+
+    function buildMatrixRow(index) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-t border-gray-700';
+      const td = (cls='px-3 py-2 align-middle') => { const el=document.createElement('td'); el.className=cls; return el; };
+
+      // 1) value
+      const tdVal = td();
+      const val = document.createElement('input');
+      val.type = 'number'; val.name = `matrix_rows-${index}-value`; val.id = `id_matrix_rows-${index}-value`;
+      val.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      tdVal.appendChild(val); tr.appendChild(tdVal);
+
+      // 2) text
+      const tdText = td();
+      const txt = document.createElement('input');
+      txt.type = 'text'; txt.name = `matrix_rows-${index}-text`; txt.id = `id_matrix_rows-${index}-text`;
+      txt.className = 'w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      tdText.appendChild(txt); tr.appendChild(tdText);
+
+      // 3) required
+      const tdReq = td('px-3 py-2 align-middle text-center');
+      const req = document.createElement('input');
+      req.type = 'checkbox'; req.name = `matrix_rows-${index}-required`; req.id = `id_matrix_rows-${index}-required`;
+      req.checked = true; // your default
+      tdReq.appendChild(req); tr.appendChild(tdReq);
+
+
+      // 4) delete
+      const tdDel = td('px-3 py-2 align-middle text-center');
+      const del = document.createElement('input'); del.type='checkbox'; del.name=`matrix_rows-${index}-DELETE`; del.id=`id_matrix_rows-${index}-DELETE`;
+      tdDel.appendChild(del); tr.appendChild(tdDel);
+
+      return tr;
+    }
+
+    function isSideBySideMode() {
+      return document.getElementById('id_matrix_mode')?.value === 'side_by_side';
+    }
+
+    function buildMatrixCol(index) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-t border-gray-700';
+      const td = (cls='px-3 py-2 align-middle') => { const el=document.createElement('td'); el.className=cls; return el; };
+
+      // 1) value
+      const cVal = td(); const val = document.createElement('input');
+      val.type='number'; val.name=`matrix_cols-${index}-value`; val.id=`id_matrix_cols-${index}-value`;
+      val.className='w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      cVal.appendChild(val); tr.appendChild(cVal);
+
+      // 2) label
+      const cLab = td(); const lab = document.createElement('input');
+      lab.type='text'; lab.name=`matrix_cols-${index}-label`; lab.id=`id_matrix_cols-${index}-label`;
+      lab.className='w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      cLab.appendChild(lab); tr.appendChild(cLab);
+
+      // 3) group (advanced)
+      const cGroup = td(); cGroup.dataset.advcol = 'true';
+      const grp = document.createElement('input');
+      grp.type='text'; grp.name=`matrix_cols-${index}-group`; grp.id=`id_matrix_cols-${index}-group`;
+      grp.className='w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      cGroup.appendChild(grp); tr.appendChild(cGroup);
+
+      // 4) input_type (advanced)
+      const cType = td(); cType.dataset.advcol = 'true';
+      const typ = document.createElement('select');
+      typ.name=`matrix_cols-${index}-input_type`; typ.id=`id_matrix_cols-${index}-input_type`;
+      typ.className='w-full rounded border border-gray-700 bg-gray-900 text-white h-9 px-2';
+      ['text','select','radio','checkbox'].forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v.charAt(0).toUpperCase()+v.slice(1); typ.appendChild(o); });
+      cType.appendChild(typ); tr.appendChild(cType);
+
+      // 🧠 if not side_by_side, hide & disable advanced cells immediately
+     const sbs = isSideBySideMode();
+     if (!sbs) {
+       cGroup.style.display = 'none';
+       cType.style.display = 'none';
+       grp.disabled = true; grp.value = '';
+       typ.disabled = true; typ.value = '';
+    }
+
+      // 5) required
+      const cReq = td('px-3 py-2 align-middle text-center');
+      const req = document.createElement('input'); req.type='checkbox'; req.name=`matrix_cols-${index}-required`; req.id=`id_matrix_cols-${index}-required`;
+      cReq.appendChild(req); tr.appendChild(cReq);
+
+      // 6) delete
+      const cDel = td('px-3 py-2 align-middle text-center');
+      const del = document.createElement('input'); del.type='checkbox'; del.name=`matrix_cols-${index}-DELETE`; del.id=`id_matrix_cols-${index}-DELETE`;
+      cDel.appendChild(del); tr.appendChild(cDel);
+
+      return tr;
+}
+
+    function applyMatrixColsAdvancedVisibility(root=document) {
+      const modeEl = document.getElementById('id_matrix_mode');
+      const isSBS = modeEl && modeEl.value === 'side_by_side';
+
+      // headers
+      root.querySelectorAll('th[data-advcol]').forEach(th => {
+        th.style.display = isSBS ? '' : 'none';
+      });
+
+      // columns (colgroup)
+      const table = (root.getElementById ? root.getElementById('matrix_cols-forms') : document.getElementById('matrix_cols-forms'))?.closest('table');
+      if (table) {
+        table.querySelectorAll('colgroup col[data-advcol]').forEach(c => {
+          c.style.display = isSBS ? '' : 'none';
+        });
+      }
+
+      // cells: hide when not SBS, but DO NOT disable
+      root.querySelectorAll('[data-advcol]').forEach(td => {
+        td.style.display = isSBS ? '' : 'none';
+        td.querySelectorAll('input,select,textarea').forEach(ip => {
+          // never disable; keep values posting
+          ip.disabled = false;
+
+          // for non-SBS, force input_type to 'radio' so formset is valid
+          if (!isSBS && ip.name && /-input_type$/.test(ip.name)) {
+            ip.value = 'radio';
+          }
+        });
+      });
+    }
+
+    // run now (we're already inside DOMContentLoaded) and wire change listener
+    applyMatrixColsAdvancedVisibility(document);
+
+
+    // --- Matrix mode helpers ---
+    // wipe one inline formset table and reset its management form
+    function resetFormset(prefix) {
+      const container   = document.getElementById(`${prefix}-forms`);
+      const totalForms  = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      if (!container || !totalForms) return;
+
+      container.innerHTML = "";       // remove all rows
+      totalForms.value = "0";         // reset management count
+    }
+
+    // clear both matrix formsets
+    function clearMatrixFormsets() {
+      resetFormset('matrix_rows');
+      resetFormset('matrix_cols');
+      if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+        applyMatrixColsAdvancedVisibility(document);
+      }
+      if (typeof updatePreview === 'function') updatePreview();
+    }
+
+    function applyChoiceImageVisibility(root = document) {
+      const typeEl = document.getElementById("id_question_type");
+      if (!typeEl) return;
+
+      // only show for image choice/rating
+      const show = (typeEl.value === "IMAGE_CHOICE" || typeEl.value === "IMAGE_RATING");
+
+      // find the choices table
+      const tbody = (root.getElementById ? root.getElementById('choices-forms')
+                                         : document.getElementById('choices-forms'));
+      if (!tbody) return;
+      const table = tbody.closest('table');
+      if (!table) return;
+
+      // helper: find column index either by header label OR by detecting a file input in first row
+      const getImageColIndex = () => {
+        // 1) try header text
+        if (table.tHead && table.tHead.rows.length) {
+          const ths = Array.from(table.tHead.rows[0].cells);
+          const byText = ths.findIndex(th => th.textContent.trim().toLowerCase() === 'image');
+          if (byText >= 0) return byText;
+        }
+        // 2) try to detect file input in first body row
+        const tr0 = table.tBodies[0] && table.tBodies[0].rows[0];
+        if (tr0) {
+          for (let i = 0; i < tr0.cells.length; i++) {
+            if (tr0.cells[i].querySelector('input[type="file"]')) return i;
+          }
+        }
+        // 3) fallback to the most common layout (Value, Text, Next, Image, Delete)
+        return 3;
+      };
+
+      const imgColIdx = getImageColIndex();
+
+      // hide/show header cell (if present)
+      if (table.tHead && table.tHead.rows.length) {
+        const th = table.tHead.rows[0].cells[imgColIdx];
+        if (th) th.style.display = show ? '' : 'none';
+      }
+
+      // hide/show the <col> so width is reclaimed
+      const col = table.querySelector('colgroup col[data-col="image"]');
+      if (col) col.style.display = show ? '' : 'none';
+
+      // hide/show each row’s cell and disable the input when hidden
+      Array.from(tbody.rows).forEach(tr => {
+        const td = tr.cells[imgColIdx];
+        if (!td) return;
+        td.style.display = show ? '' : 'none';
+        td.querySelectorAll('input[type="file"]').forEach(inp => {
+          inp.disabled = !show;
+          if (!show) { try { inp.value = ''; } catch (_) {} }
+        });
+      });
+    }
+    // export function for other files
+    window.applyChoiceImageVisibility = applyChoiceImageVisibility;
+
     // 🧩 Add a new form to the specified formset (choices, rows, cols)
     function addForm(prefix) {
-        const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
-        const container = document.getElementById(`${prefix}-forms`);
-        const template = document.getElementById(`${prefix}-template`);
+      const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      const container  = document.getElementById(`${prefix}-forms`);
+      const template   = document.getElementById(`${prefix}-template`);
 
-        if (!totalForms || !container || !template) {
-            console.error("Missing elements for prefix:", prefix);
-            return;
+      if (!totalForms || !container) {
+        console.error("Missing elements for prefix:", prefix);
+        return null;
+      }
+
+      // remove placeholder empty row if present
+      const emptyRow = container.querySelector('tr[data-empty-row]');
+      if (emptyRow) emptyRow.remove();
+
+      const formCount = parseInt(totalForms.value || '0', 10);
+
+      // TABLE PATH: build a proper <tr> for TBODY containers
+      if (container.tagName === 'TBODY') {
+        let tr = null;
+        if (prefix === 'choices') {
+          tr = buildChoiceRow(formCount);
+        } else if (prefix === 'matrix_rows') {
+          tr = buildMatrixRow(formCount);
+        } else if (prefix === 'matrix_cols') {
+          tr = buildMatrixCol(formCount);
+        }
+        if (tr) {
+          // apply SBS visibility rules for matrix cols on new row
+          if (prefix === 'matrix_cols' && typeof applyMatrixColsAdvancedVisibility === 'function') {
+            applyMatrixColsAdvancedVisibility(document);
+          }
+          tr.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', updatePreview);
+            el.addEventListener('change', updatePreview);
+          });
+          container.appendChild(tr);
+          totalForms.value = formCount + 1;
+          updatePreview();
+          return { node: tr, index: formCount };
+        }
+      }
+
+      // FALLBACK PATH: legacy template (may return <div>)
+      if (!template) {
+        console.error("Missing template for prefix:", prefix);
+        return null;
+      }
+
+      const html = template.innerHTML.trim().replaceAll('__prefix__', formCount);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      let newNode = doc.body.firstElementChild; // NOTE: no re-declare (fixed)
+
+      if (!newNode) {
+        console.error("Could not parse new form");
+        return null;
+      }
+
+      // If inserting into TBODY and template isn't a TR, wrap it
+        if (container.tagName === 'TBODY' && newNode.tagName !== 'TR') {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-gray-700';
+          const td = document.createElement('td');
+          td.className = 'px-3 py-2 align-top';
+          // detect header length for the table this TBODY belongs to
+          const head = container.closest('table')?.tHead;
+          td.colSpan = head?.rows?.[0]?.cells?.length || 1;
+          td.appendChild(newNode);
+          tr.appendChild(td);
+          newNode = tr;
         }
 
-        const formCount = parseInt(totalForms.value);
-        const html = template.innerHTML.trim().replaceAll('__prefix__', formCount);
-
-        // Create new DOM element safely
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-        const newForm = doc.body.firstElementChild;
-
-        if (!newForm) {
-            console.error("Could not parse new form");
-            return;
-        }
-
-        // ✅ Pre-check "required" on dynamically added matrix rows
-        if (prefix === 'matrix_rows') {
-        const req = newForm.querySelector("input[type='checkbox'][name$='-required']");
+      // Pre-check "required" for matrix rows
+      if (prefix === 'matrix_rows') {
+        const req = newNode.querySelector("input[type='checkbox'][name$='-required']");
         if (req) req.checked = true;
-        }
+      }
 
-        // Add new form and increment total count
-        container.appendChild(newForm);
-        totalForms.value = formCount + 1;
+      container.appendChild(newNode);
+      totalForms.value = formCount + 1;
 
-        // Hook preview events to new inputs
-        newForm.querySelectorAll("input, select, textarea").forEach(input => {
-            input.addEventListener("input", updatePreview);
-            input.addEventListener("change", updatePreview);
-        });
+      newNode.querySelectorAll("input, select, textarea").forEach(input => {
+        input.addEventListener("input", updatePreview);
+        input.addEventListener("change", updatePreview);
+      });
 
-        updatePreview();
+      updatePreview();
+
+      // If we just added a choice row, re-apply image visibility so the new row follows the rule
+      if (prefix === 'choices') applyChoiceImageVisibility(document);   // <= add this line
+
+      return { node: newNode, index: formCount };
     }
 
     // 🔍 Generate live question preview
-    function updatePreview() {
-      const preview = document.getElementById("question-preview");
-      const type = document.getElementById("id_question_type")?.value;
-      const text = document.getElementById("id_text")?.value || "";
-      const helper = document.getElementById("id_helper_text")?.value || "";
+    // function updatePreview() {
+    //   const preview = document.getElementById("question-preview");
+    //   if (!preview) return;
+    //
+    //   const type   = document.getElementById("id_question_type")?.value || "";
+    //   const text   = document.getElementById("id_text")?.value || "";
+    //   const helper = document.getElementById("id_helper_text")?.value || "";
+    //
+    //   const parts = [];
+    //   let hasContent = false;
+    //
+    //   // Question text
+    //   if (text.trim()) {
+    //     parts.push(`<h3 class="font-bold text-lg">${text}</h3>`);
+    //     hasContent = true;
+    //   }
+    //
+    //   // Helper text
+    //   if (helper.trim()) {
+    //     parts.push(
+    //       `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`
+    //     );
+    //     hasContent = true;
+    //   }
+    //
+    //   // Choices (single/multi/dropdown/image choice)
+    //   if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
+    //     const labels = Array.from(
+    //       document.querySelectorAll('[id^="id_choices-"][id$="-text"]')
+    //     ).map(i => i.value.trim()).filter(Boolean);
+    //
+    //     if (labels.length) {
+    //       parts.push("<ul class='list-disc list-inside'>");
+    //       labels.forEach(l => parts.push(`<li>${l}</li>`));
+    //       parts.push("</ul>");
+    //       hasContent = true;
+    //     }
+    //   }
+    //
+    //   // Matrix (simple signal that something is configured)
+    //   if (type === "MATRIX") {
+    //     const rows = Array.from(
+    //       document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]')
+    //     ).map(i => i.value.trim()).filter(Boolean);
+    //
+    //     const cols = Array.from(
+    //       document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]')
+    //     ).map(i => i.value.trim()).filter(Boolean);
+    //
+    //     if (rows.length && cols.length) {
+    //       // Lightweight table preview (no radios when empty)
+    //       let table = "<table class='table-auto w-full border text-left mt-2 text-sm'><thead><tr><th></th>";
+    //       cols.forEach(c => (table += `<th class="px-2 py-1 border">${c}</th>`));
+    //       table += "</tr></thead><tbody>";
+    //
+    //       rows.forEach(r => {
+    //         table += `<tr><td class="px-2 py-1 border font-semibold">${r}</td>`;
+    //         cols.forEach(() => (table += "<td class='px-2 py-1 border'><span class='opacity-50'>·</span></td>"));
+    //         table += "</tr>";
+    //       });
+    //
+    //       table += "</tbody></table>";
+    //       parts.push(table);
+    //       hasContent = true;
+    //     }
+    //   }
+    //
+    //   // Placeholder (prefer <template>, then data-placeholder, then hardcoded)
+    //   const tpl = document.getElementById("preview-placeholder");
+    //   const placeholder =
+    //     (tpl && tpl.innerHTML.trim()) ||
+    //     preview.dataset.placeholder ||
+    //     "<em class='text-gray-400 dark:text-gray-500 italic'>Start typing…</em>";
+    //
+    //   preview.innerHTML = hasContent ? parts.join("") : placeholder;
+    // }
 
-      let html = `<h3 class="font-bold text-lg">${text}</h3>`;
-      if (helper) html += `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`;
-
-      // Show choices
-      if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
-        html += "<ul class='list-disc list-inside'>";
-        document.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(input => {
-          if (input.value.trim()) html += `<li>${input.value}</li>`;
-        });
-        html += "</ul>";
-      }
-
-      // Show matrix table
-      if (type === "MATRIX") {
-        const rows = document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]');
-        const cols = document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]');
-
-        html += "<table class='table-auto w-full border text-left mt-2 text-sm'>";
-        html += "<thead><tr><th></th>";
-        cols.forEach(col => {
-          if (col.value.trim()) html += `<th class="px-2 py-1 border">${col.value}</th>`;
-        });
-        html += "</tr></thead><tbody>";
-
-        rows.forEach(row => {
-          if (row.value.trim()) {
-            html += `<tr><td class="px-2 py-1 border font-semibold">${row.value}</td>`;
-            cols.forEach(() => {
-              html += "<td class='px-2 py-1 border'><input type='radio' disabled></td>";
-            });
-            html += "</tr>";
-          }
-        });
-
-        html += "</tbody></table>";
-      }
-
-      // ✅ Use template-provided placeholder (lets you control color), fallback if missing
-      const placeholder =
-        preview?.dataset?.placeholder ||
-        "<em class='text-gray-400 dark:text-gray-500'>Start typing or adding options to see a live preview...</em>";
-
-      preview.innerHTML = html || placeholder;
-    }
 
     previousQuestionType = document.getElementById("id_question_type")?.value;
+    let previousMatrixMode = document.getElementById('id_matrix_mode')?.value || null;
+
 
     // Initialize modal manager with the current question type
     ModalManager.init(document.getElementById("id_question_type")?.value);
@@ -214,6 +589,7 @@ document.addEventListener("DOMContentLoaded", function () {
     toggleInlinesByType();
     updateFieldVisibility();
     updatePreview();
+    applyChoiceImageVisibility(document);
 
     // 🔁 Bind dynamic preview to existing inputs
     document.querySelectorAll("input, select, textarea").forEach(input => {
@@ -229,22 +605,68 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // 🧩 Re-run logic on question type change
+  // 🧩 Re-run logic on question type change
+    // 🧩 Question type change via modal; also clear text & lookup after confirm
     document.getElementById("id_question_type")?.addEventListener("change", function () {
-        const newType = this.value;
+      const newType = this.value;
 
-        ModalManager.handleQuestionTypeSwitch(
-            previousQuestionType,
-            newType,
-            function confirmedSwitch(type) {
-                document.getElementById("id_question_type").value = type;
-                toggleInlinesByType();
-                updateFieldVisibility();
-                updatePreview();
-                previousQuestionType = type;
-            }
-        );
+      ModalManager.handleQuestionTypeSwitch(
+        previousQuestionType,
+        newType,
+        function confirmedSwitch(type) {
+          // lock select to confirmed type
+          document.getElementById("id_question_type").value = type;
+
+          // reset fields + inlines for the new type (your existing helper)
+          resetFieldsForType(type);
+
+          // 👉 additionally clear the question text to avoid leftover cloned content
+          const textEl = document.getElementById('id_text');
+          if (textEl) textEl.value = '';
+
+          // 👉 also clear the clone lookup widgets so we’re no longer “on” that question
+          if (typeof clearLookupWidgets === 'function') clearLookupWidgets();
+
+          // refresh preview (resetFieldsForType already calls, but safe to call again)
+          if (typeof updatePreview === 'function') updatePreview();
+
+          // remember new type
+          previousQuestionType = type;
+        }
+      );
     });
+
+
+
+    // 🔁 Re-run logic on matrix mode change (standard <-> side_by_side)
+    document.getElementById('id_matrix_mode')?.addEventListener('change', function () {
+      const newMode = this.value;
+
+      ModalManager.handleMatrixModeSwitch(
+        previousMatrixMode,
+        newMode,
+        function confirmedSwitch(mode) {
+          // set the select value to the confirmed mode
+          document.getElementById('id_matrix_mode').value = mode;
+
+          // clear rows & cols because the structures differ per mode
+          clearInline('matrix_rows');
+          clearInline('matrix_cols');
+
+          // keep matrix inlines visible if question type is MATRIX
+          toggleInlinesByType();
+
+          // apply SBS visibility rules to columns and update preview
+          if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+            applyMatrixColsAdvancedVisibility(document);
+          }
+          if (typeof updatePreview === 'function') updatePreview();
+
+          previousMatrixMode = mode;
+        }
+      );
+    });
+
 
     // Handle question lookup and auto-fill form
     document.getElementById("question_lookup")?.addEventListener("change", async function () {
@@ -331,11 +753,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     document.getElementById(`${prefix}-input_type`).value = col.input_type;
                     document.getElementById(`${prefix}-required`).checked = col.required;
                     document.getElementById(`${prefix}-group`).value = col.group || "";
-                    document.getElementById(`${prefix}-order`).value = col.order || "";
+                    const orderEl = document.getElementById(`${prefix}-order`);
+                    if (orderEl) orderEl.value = col.order ?? '';
+
                 });
             }
 
+            if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+              applyMatrixColsAdvancedVisibility(document);
+            }
+
             updatePreview();
+            applyChoiceImageVisibility(document);
         } catch (error) {
             console.error("Failed to load question data:", error);
             alert("Error loading question data. Please try again.");
@@ -355,6 +784,85 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+    function clearInline(prefix) {
+      const container = document.getElementById(`${prefix}-forms`);
+      const total = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      if (container) container.innerHTML = '';
+      if (total) total.value = '0';
+    }
+
+    // Clear the server-side lookup UI as well
+    function clearLookupWidgets() {
+      const sel  = document.getElementById('question_lookup');
+      const inp  = document.getElementById('question_lookup_search');
+      const list = document.getElementById('question_lookup_results');
+      if (sel)  { sel.innerHTML = '<option value=""></option>'; sel.value = ''; }
+      if (inp)  { inp.value = ''; inp.setAttribute('aria-expanded', 'false'); }
+      if (list) { list.innerHTML = ''; list.classList.add('hidden'); }
+    }
+
+    // One-click clear
+    document.getElementById('clear-wizard-btn')?.addEventListener('click', () => {
+      // Default: clear code & text too. If you want to keep code, pass {clearCode:false}
+      clearWizard({ clearCode: true, clearText: true });
+    });
+
+
+    // One-click clear while keeping current question_type (and matrix_mode if MATRIX)
+    function clearWizard(opts = { clearCode: true, clearText: true }) {
+      const currentType = document.getElementById('id_question_type')?.value || '';
+
+      // Reuse your existing reset routine (clears helper/media/flags + inlines + visibility + preview)
+      if (typeof resetFieldsForType === 'function') {
+        resetFieldsForType(currentType);
+      } else {
+        // Fallback if helper not present:
+        clearInline('choices');
+        clearInline('matrix_rows');
+        clearInline('matrix_cols');
+        const helperText = document.getElementById('id_helper_text');
+        if (helperText) helperText.value = '';
+        const helperMedia = document.getElementById('id_helper_media');
+        if (helperMedia) try { helperMedia.value = ''; } catch(_) {}
+        const helperMediaLabel = document.getElementById('helper-media-label');
+        if (helperMediaLabel) helperMediaLabel.remove();
+        const allowsMultiple  = document.getElementById('id_allows_multiple');
+        const allowMultiFiles = document.getElementById('id_allow_multiple_files');
+        if (allowsMultiple)  allowsMultiple.checked  = false;
+        if (allowMultiFiles) allowMultiFiles.checked = false;
+        const minEl = document.getElementById('id_min_value');
+        const maxEl = document.getElementById('id_max_value');
+        const stepEl = document.getElementById('id_step_value');
+        if (minEl)  minEl.value  = '';
+        if (maxEl)  maxEl.value  = '';
+        if (stepEl) stepEl.value = '';
+        updateFieldVisibility?.();
+        toggleInlinesByType?.();
+        applyChoiceImageVisibility?.(document);
+        applyMatrixColsAdvancedVisibility?.(document);
+      }
+
+      // Optionally clear code/text (defaults: both true)
+      if (opts.clearText) {
+        const t = document.getElementById('id_text');
+        if (t) t.value = '';
+      }
+      if (opts.clearCode) {
+        const c = document.getElementById('id_code');
+        if (c) c.value = '';
+      }
+
+      // Don’t touch Required checkbox; leave as-is by design
+
+      // Clear the lookup widgets so nothing is “selected”
+      clearLookupWidgets();
+
+      // Refresh preview to placeholder
+      updatePreview?.();
+    }
+
+
 
     // === Helper to reset all input fields to blank/default ===
     function resetFormFields() {
@@ -376,6 +884,64 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const existingLabel = document.getElementById("helper-media-label");
         if (existingLabel) existingLabel.remove();
+    }
+
+    //wipes any stray values that don’t belong to the new type and re-runs visibility logic + preview.
+    function resetFieldsForType(newType) {
+      // Text helpers
+      const helperText = document.getElementById('id_helper_text');
+      if (helperText) helperText.value = '';
+
+      // Media helper
+      const helperMedia = document.getElementById('id_helper_media');
+      if (helperMedia) {
+        try { helperMedia.value = ''; } catch (_) {}
+      }
+      const helperMediaLabel = document.getElementById('helper-media-label');
+      if (helperMediaLabel) helperMediaLabel.remove();
+
+      // Slider fields
+      const minEl = document.getElementById('id_min_value');
+      const maxEl = document.getElementById('id_max_value');
+      const stepEl = document.getElementById('id_step_value');
+      if (minEl)  minEl.value  = '';
+      if (maxEl)  maxEl.value  = '';
+      if (stepEl) stepEl.value = '';
+
+      // Image-choice multi select flag (only applies to IMAGE_CHOICE)
+      const allowsMultiple = document.getElementById('id_allows_multiple');
+      if (allowsMultiple) allowsMultiple.checked = false;
+
+      // Media uploads multiple flag (only applies to *_UPLOAD types)
+      const allowMultiFiles = document.getElementById('id_allow_multiple_files');
+      if (allowMultiFiles) allowMultiFiles.checked = false;
+
+      // Matrix mode (only meaningful for MATRIX)
+      const matrixModeEl = document.getElementById('id_matrix_mode');
+      if (matrixModeEl && newType !== 'MATRIX') {
+        // reset to blank (so nothing posts) if not Matrix
+        matrixModeEl.value = '';
+      }
+
+      // Clear all inlines; new type decides which ones re-appear
+      clearInline('choices');
+      clearInline('matrix_rows');
+      clearInline('matrix_cols');
+
+      // Recompute visibility
+      updateFieldVisibility();
+      toggleInlinesByType();
+
+      // Apply per-inline UI visibility helpers
+      if (typeof applyChoiceImageVisibility === 'function') {
+        applyChoiceImageVisibility(document);
+      }
+      if (typeof applyMatrixColsAdvancedVisibility === 'function') {
+        applyMatrixColsAdvancedVisibility(document);
+      }
+
+      // Refresh preview
+      if (typeof updatePreview === 'function') updatePreview();
     }
 
     // === Server-side question lookup (keeps dropdown visible) ===
@@ -606,6 +1172,12 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
       });
     }
+
+    function isImageChoiceType() {
+      const t = document.getElementById('id_question_type')?.value;
+      return t === 'IMAGE_CHOICE' || t === 'IMAGE_RATING';
+}
+
 
 
     // 🔓 Make `addForm` accessible globally (optional)
