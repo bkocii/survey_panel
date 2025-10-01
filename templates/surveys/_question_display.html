@@ -1,0 +1,311 @@
+{# templates/surveys/_question_display.html #}
+{# Context expects:#}
+{#   question (Question),#}
+{#   preview (bool),#}
+{#   grouped_matrix_columns (dict)  # only needed for side_by_side#}
+{##}
+
+<h2>{{ survey.title }}</h2>
+<p>{{ question.text }}</p>
+
+<p class="text-muted small mt-2">
+  {% if question.helper_text %}
+    <em>{{ question.helper_text|linebreaksbr|safe }}</em>
+  {% endif %}
+</p>
+
+{# Helper media (image, video, audio) #}
+{% if question.helper_media and question.helper_media_type %}
+  {% if question.helper_media_type == 'image' %}
+    <div class="mt-3">
+      <img src="{{ question.helper_media.url }}"
+           class="img-fluid rounded border"
+           style="max-height: 250px; max-width: 100%; object-fit: contain;"
+           alt="Helper Image">
+    </div>
+  {% elif question.helper_media_type == 'video' %}
+    {% if preview %}
+      <div class="mt-3 border rounded p-3 text-center text-muted">Video (preview)</div>
+    {% else %}
+      <div class="mt-3">
+        <video controls width="100%" style="max-width: 400px;">
+          <source src="{{ question.helper_media.url }}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    {% endif %}
+  {% elif question.helper_media_type == 'audio' %}
+    {% if preview %}
+      <div class="mt-3 border rounded p-2 text-center text-muted">Audio (preview)</div>
+    {% else %}
+      <div class="mt-3">
+        <audio controls>
+          <source src="{{ question.helper_media.url }}" type="audio/mpeg">
+          Your browser does not support the audio element.
+        </audio>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{# --- BODY BY TYPE --- #}
+
+{% if question.question_type == 'SINGLE_CHOICE' %}
+  {% for choice in question.choices.all %}
+    <label class="form-label d-block">
+      <input type="radio" name="answer" value="{{ choice.id }}" {% if preview %}disabled{% endif %}>
+      {{ choice.text }}
+    </label>
+  {% endfor %}
+
+{% elif question.question_type == 'MULTI_CHOICE' %}
+  {% for choice in question.choices.all %}
+    <label class="form-label d-block">
+      <input type="checkbox" name="answer" value="{{ choice.id }}" {% if preview %}disabled{% endif %}>
+      {{ choice.text }}
+    </label>
+  {% endfor %}
+
+{% elif question.question_type == 'GEOLOCATION' %}
+  {% if preview %}
+    <div class="border rounded" style="height: 220px; background:#0b0b0f22; display:flex; align-items:center; justify-content:center;">
+      <span class="small text-muted">Map preview</span>
+    </div>
+  {% else %}
+    <div id="map" style="height: 400px; width: 100%; margin-top: 1rem;"></div>
+    <input type="hidden" name="location" id="locationInput">
+    <input type="hidden" name="latitude" id="latitude">
+    <input type="hidden" name="longitude" id="longitude">
+  {% endif %}
+
+{% elif question.question_type == 'DROPDOWN' %}
+  <select name="answer" class="form-select" {% if preview %}disabled{% endif %}>
+    <option value="" disabled selected>-- Select an option --</option>
+    {% for choice in question.choices.all %}
+      <option value="{{ choice.id }}">{{ choice.text }}</option>
+    {% endfor %}
+  </select>
+
+{% elif question.question_type == 'DATE' %}
+  {% if preview %}
+    <div class="input-group">
+      <input type="text" class="form-control" placeholder="Select a date" disabled>
+      <button class="btn btn-outline-secondary" type="button" disabled><i class="bi bi-calendar"></i></button>
+    </div>
+  {% else %}
+    <div class="input-group">
+      <input type="text" name="answer" class="form-control date-input" placeholder="Select a date" required>
+      <button class="btn btn-outline-secondary calendar-btn" type="button">
+        <i class="bi bi-calendar"></i>
+      </button>
+    </div>
+  {% endif %}
+
+{% elif question.question_type == 'YESNO' %}
+  <label class="form-label me-3">
+    <input type="radio" name="answer" value="yes" {% if preview %}disabled{% endif %}> Yes
+  </label>
+  <label class="form-label">
+    <input type="radio" name="answer" value="no" {% if preview %}disabled{% endif %}> No
+  </label>
+
+{% elif question.question_type == 'NUMBER' %}
+  <input type="number" name="answer" class="form-control" {% if preview %}disabled{% endif %}>
+
+{% elif question.question_type == 'SLIDER' %}
+  <label>Value: <span>{{ question.min_value|default:0 }}</span></label>
+  <input type="range"
+         name="answer"
+         class="form-range"
+         min="{{ question.min_value|default:0 }}"
+         max="{{ question.max_value|default:100 }}"
+         step="{{ question.step_value|default:1 }}"
+         value="{{ question.min_value|default:0 }}"
+         {% if preview %}disabled{% endif %}>
+
+{% elif question.question_type == 'RATING' %}
+  <div class="form-check form-check-inline">
+    {% for choice in question.choices.all %}
+      <label class="form-check-label me-3">
+        <input type="radio" name="answer" value="{{ choice.id }}" {% if preview %}disabled{% endif %}>
+        {{ choice.text }}
+      </label>
+    {% endfor %}
+  </div>
+
+{% elif question.question_type == 'IMAGE_RATING' %}
+  <div class="image-rating-container">
+    <div class="row">
+      {% for choice in question.choices.all %}
+        <div class="col-md-4 text-center mb-4">
+          {% if choice.image %}
+            <img src="{{ choice.image.url }}" class="img-thumbnail mb-2" alt="Image" style="max-width:100%;height:auto;max-height:140px;object-fit:contain;">
+          {% else %}
+            <div class="img-thumbnail mb-2 d-flex align-items-center justify-content-center" style="height:140px;">No image</div>
+          {% endif %}
+          <div class="mt-2 mb-2">
+            {% for i in "12345" %}
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio"
+                       name="rating_{{ choice.id }}"
+                       value="{{ i }}"
+                       {% if preview %}disabled{% endif %}>
+                <label class="form-check-label">{{ i }}</label>
+              </div>
+            {% endfor %}
+          </div>
+          <div>{{ choice.text }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif question.question_type == 'PHOTO_UPLOAD' %}
+  <input type="file" class="form-control" accept="image/*" {% if question.allow_multiple_files %}multiple{% endif %} {% if preview %}disabled{% endif %}>
+
+{% elif question.question_type == 'VIDEO_UPLOAD' %}
+  <input type="file" class="form-control" accept="video/*" {% if preview %}disabled{% endif %}>
+
+{% elif question.question_type == 'AUDIO_UPLOAD' %}
+  <input type="file" class="form-control" accept="audio/*" {% if preview %}disabled{% endif %}>
+
+{% elif question.question_type == 'TEXT' %}
+  <textarea class="form-control" name="answer" rows="4" {% if preview %}disabled{% endif %}></textarea>
+
+{% elif question.question_type == 'IMAGE_CHOICE' %}
+  <div class="image-choice-container">
+    <div class="row">
+      {% for choice in question.choices.all %}
+        <div class="col-md-3 text-center mb-3">
+          <label class="image-choice-label" style="cursor: default;">
+            <div class="form-check">
+              <input type="{{ question.allows_multiple|yesno:'checkbox,radio' }}"
+                     name="answer"
+                     value="{{ choice.id }}"
+                     class="form-check-input me-2"
+                     {% if preview %}disabled{% endif %}>
+            </div>
+            {% if choice.image %}
+              <img src="{{ choice.image.url }}" class="img-thumbnail img-select mt-2" alt="Option" style="max-height:140px;object-fit:contain;">
+            {% else %}
+              <div class="img-thumbnail mt-2 d-flex align-items-center justify-content-center" style="height:140px;">No image</div>
+            {% endif %}
+            <div class="mt-2 small">{{ choice.text }}</div>
+          </label>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif question.question_type == 'MATRIX' %}
+  <div class="matrix-block">
+    {% if question.matrix_mode == 'side_by_side' %}
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle" style="table-layout:fixed;">
+          <thead>
+            <tr>
+              <th rowspan="2" class="align-middle" style="width:28%;">Item</th>
+              {% for group, cols in grouped_matrix_columns.items %}
+                <th class="text-center align-middle">{{ group }}</th>
+              {% endfor %}
+            </tr>
+            <tr>
+              {% for group, cols in grouped_matrix_columns.items %}
+                <th class="text-center">
+                  {% if cols.0.input_type in 'radio,checkbox' %}
+                    <div class="d-flex justify-content-around flex-wrap gap-2">
+                      {% for col in cols %}<span class="small text-nowrap">{{ col.label }}</span>{% endfor %}
+                    </div>
+                  {% else %}
+                    &nbsp;
+                  {% endif %}
+                </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in question.matrix_rows.all %}
+              <tr>
+                <td style="word-break:break-word;">{{ row.text }}</td>
+                {% for group, cols in grouped_matrix_columns.items %}
+                  {% if cols.0.input_type == 'text' %}
+                    <td><input type="text" class="form-control" {% if preview %}disabled{% endif %}></td>
+                  {% elif cols.0.input_type == 'select' %}
+                    <td>
+                      <select class="form-select" {% if preview %}disabled{% endif %}>
+                        <option value="">-- Choose --</option>
+                        {% for col in cols %}
+                          <option value="{{ col.value }}">{{ col.label }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                  {% elif cols.0.input_type == 'radio' %}
+                    <td class="align-middle">
+                      <div class="d-flex justify-content-around">
+                        {% for col in cols %}
+                          <input type="radio" class="form-check-input" {% if preview %}disabled{% endif %}>
+                        {% endfor %}
+                      </div>
+                    </td>
+                  {% elif cols.0.input_type == 'checkbox' %}
+                    <td class="align-middle">
+                      <div class="d-flex justify-content-around">
+                        {% for col in cols %}
+                          <input type="checkbox" class="form-check-input" {% if preview %}disabled{% endif %}>
+                        {% endfor %}
+                      </div>
+                    </td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    {% elif question.matrix_mode == 'multi' %}
+      <div class="table-responsive">
+        <table class="table table-bordered" style="table-layout:fixed;">
+          <thead>
+            <tr>
+              <th style="width:28%;"></th>
+              {% for col in question.matrix_columns.all %}<th>{{ col.label }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in question.matrix_rows.all %}
+              <tr>
+                <td style="word-break:break-word;">{{ row.text }}</td>
+                {% for col in question.matrix_columns.all %}
+                  <td><input type="checkbox" class="form-check-input" {% if preview %}disabled{% endif %}></td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-bordered" style="table-layout:fixed;">
+          <thead>
+            <tr>
+              <th style="width:28%;"></th>
+              {% for col in question.matrix_columns.all %}<th>{{ col.label }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in question.matrix_rows.all %}
+              <tr>
+                <td style="word-break:break-word;">{{ row.text }}</td>
+                {% for col in question.matrix_columns.all %}
+                  <td><input type="radio" class="form-check-input" {% if preview %}disabled{% endif %}></td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}

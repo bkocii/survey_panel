@@ -154,6 +154,7 @@ class SurveyAdmin(ModelAdmin):
         ChoiceFormSet = inlineformset_factory(
             Question,
             Choice,
+            form=ChoiceWizardForm,
             fields=('text', 'value', 'next_question', 'image'),
             fk_name='question',
             extra=0,
@@ -162,6 +163,7 @@ class SurveyAdmin(ModelAdmin):
         MatrixRowFormSet = inlineformset_factory(
             Question,
             MatrixRow,
+            form=MatrixRowWizardForm,
             fields=('text', 'value', 'required'),
             extra=0,
             can_delete=True
@@ -169,6 +171,7 @@ class SurveyAdmin(ModelAdmin):
         MatrixColFormSet = inlineformset_factory(
             Question,
             MatrixColumn,
+            form=MatrixColWizardForm,
             fields=('label', 'value', 'input_type', 'required', 'next_question', 'group', 'order'),
             fk_name='question',
             extra=0,

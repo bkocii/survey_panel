@@ -444,26 +444,69 @@
 }
 
 
-/* Preview list cards */
+/* ---------- Preview list layout ---------- */
+#question-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;             /* space between cards */
+}
+
+/* ---------- Card ---------- */
 .preview-card {
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 10px;
-  padding: .75rem;
-  margin-bottom: .5rem;
+  background: #111827;      /* gray-900 */
+  color: #e5e7eb;           /* gray-200 */
+  border: 1px solid #374151;/* gray-700 */
+  border-radius: 12px;
+  padding: .75rem 1rem;
+  box-shadow: 0 8px 20px -6px rgba(0,0,0,.45);
 }
+
+.preview-card:hover {
+  border-color: #4f46e5;    /* indigo-600 */
+  box-shadow: 0 10px 24px -6px rgba(79,70,229,.25);
+}
+
+/* Make the draft card visually distinct */
+.preview-card.draft {
+  border-style: dashed;
+  background: #0f172a;      /* slate-900-ish */
+}
+
+/* ---------- Card header ---------- */
 .preview-card .card-head {
-  display: flex; align-items: center; gap: .5rem; justify-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
   margin-bottom: .5rem;
 }
-.preview-card .meta {
-  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+
+/* inline meta clusters */
+.preview-card .card-head .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem;
+  align-items: center;
 }
+
+/* ---------- Badges ---------- */
 .preview-card .badge {
-  font-size: .70rem; padding: .15rem .4rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.2);
+  display: inline-block;
+  padding: .125rem .5rem;
+  font-size: .75rem;
+  line-height: 1;
+  border-radius: 9999px;
+  background: rgba(99,102,241,.12);  /* indigo tint */
+  color: #a5b4fc;                    /* indigo-300 */
+  border: 1px solid rgba(99,102,241,.35);
 }
-.preview-card .body { font-size: .875rem; }
-.preview-card.draft { border-style: dashed; }
+
+/* ---------- Body ---------- */
+.preview-card .body .small { color: #9ca3af; } /* gray-400 */
+
+/* Optional: subtle divider between header and body if needed
+.preview-card .card-head { border-bottom: 1px solid #1f2937; padding-bottom: .5rem; }
+*/
 
 
 #question-preview-list {
@@ -473,5 +516,13 @@
 }
 
 
+/* Card list spacing already in place from earlier step */
+.preview-card .body {
+  max-height: 260px;           /* clamp card body height */
+  overflow-y: auto;            /* scroll if content is long */
+}
 
-
+/* Constrain heavy tables/images inside preview */
+.preview-card table { table-layout: fixed; }
+.preview-card th, .preview-card td { word-break: break-word; }
+.preview-card img.img-thumbnail { max-height: 140px; object-fit: contain; }
