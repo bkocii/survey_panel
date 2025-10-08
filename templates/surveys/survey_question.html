@@ -8,11 +8,47 @@ survey
 {% block content %}
 
 <div class="container mt-5">
+    <div class="q-card">
+        <div class="q-title">
+          <h3 class="q-title mb-0">{{ current_index }}. {{ question.text }}</h3>
+        </div>
 
+        {% if question.helper_text %}
+          <p class="q-helper"><em>{{ question.helper_text|linebreaksbr|safe }}</em></p>
+        {% endif %}
+
+        {% if question.helper_media and question.helper_media_type %}
+          <div class="q-media mb-3">
+            {% if question.helper_media_type == 'image' %}
+              <img src="{{ question.helper_media.url }}" alt="Helper Image">
+            {% elif question.helper_media_type == 'video' %}
+              <video controls style="max-width:100%; height:auto;">
+                <source src="{{ question.helper_media.url }}" type="video/mp4">
+              </video>
+            {% elif question.helper_media_type == 'audio' %}
+              <audio controls>
+                <source src="{{ question.helper_media.url }}" type="audio/mpeg">
+              </audio>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% if messages %}
+          <div class="alert alert-danger mt-2 mb-3">
+            {% for message in messages %}
+              <div>{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="q-body">
+          {% csrf_token %}
+        <br>
+        <br>
+        <div class="q-quest">
         {% comment %} Old giant IF/ELIF block replaced by a partial {% endcomment %}
         {% include "surveys/_question_display.html" with question=question preview=False grouped_matrix_columns=grouped_matrix_columns %}
-
-
+        </div>
                 <!-- “Other” input field -->
         <div id="other-input" style="display: none;" class="mt-3">
             <label for="other_text">Please specify:</label>
@@ -20,23 +56,22 @@ survey
         </div>
 
         <script>
-        function toggleOther(input) {
-            const otherDiv = document.getElementById('other-input');
-            const selectedText = (
-                input.tagName === 'SELECT'
-                    ? input.options[input.selectedIndex].text
-                    : input.nextSibling.textContent || ''
-            ).trim().toLowerCase();
+            function toggleOther(input) {
+                const otherDiv = document.getElementById('other-input');
+                const selectedText = (
+                    input.tagName === 'SELECT'
+                        ? input.options[input.selectedIndex].text
+                        : input.nextSibling.textContent || ''
+                ).trim().toLowerCase();
 
-            if (selectedText === 'other') {
-                otherDiv.style.display = 'block';
-            } else {
-                otherDiv.style.display = 'none';
-                document.getElementById('other_text').value = '';
+                if (selectedText === 'other') {
+                    otherDiv.style.display = 'block';
+                } else {
+                    otherDiv.style.display = 'none';
+                    document.getElementById('other_text').value = '';
+                }
             }
-        }
         </script>
-
 
         <script>
           document.addEventListener("DOMContentLoaded", function () {
@@ -52,20 +87,31 @@ survey
             });
           });
         </script>
-
-
-        <button type="submit" class="btn btn-primary mt-3">Next</button>
         <br>
+        <br>
+        {# actions row just ABOVE the progress bar #}
+        <div class="q-card__actions">
+          <button type="submit" class="btn-shell">
+            <span class="btn-ui btn-primary btn-wide">➡️ Next</span>
+          </button>
+        </div>
+        <br>
+            {# place this as the LAST element inside your card #}
+    <div class="q-card__footer">
+      <div class="q-progress"
+           role="progressbar"
+           aria-label="Survey progress"
+           aria-valuenow="{{ progress_percent }}"
+           aria-valuemin="0"
+           aria-valuemax="100">
+        <div class="q-progress__bar" style="width: {{ progress_percent }}%;"></div>
+        <span class="q-progress__text">{{ current_index }} of {{ total_questions }}</span>
+      </div>
+    </div>
     </form>
 
     <br>
-    <div class="progress mb-3">
-        <div class="progress-bar" role="progressbar"
-           style="width: {{ progress_percent }}%;"
-           aria-valuenow="{{ progress_percent }}" aria-valuemin="0" aria-valuemax="100">
-        {{ current_index }} of {{ total_questions }}
-        </div>
-    </div>
+
     {% if time_left %}
         <div id="survey-timer" class="alert alert-warning">
             Time left: <span id="survey-time">{{ time_left }}</span> seconds

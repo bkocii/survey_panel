@@ -325,6 +325,7 @@
     return html.trim() || `<em class="text-indigo-300/90 italic">Start typing…</em>`;
   }
 
+
   function renderQuestionFromPayload(p) {
     // Use the same Tailwind structure as renderCurrentQuestionHTML, but from payload fields.
     // Only a few types shown here; extend as needed.
@@ -537,7 +538,7 @@
     const bodyHTML = renderQuestionFromPayload(payload); // Tailwind rendering from API payload
 
     return `
-      <div class="preview-card mb-3 rounded-2xl border border-slate-800 bg-slate-900/70 shadow-lg">
+      <div class="preview-card q-card-p mb-3 rounded-2xl border border-slate-800 bg-slate-900/70 shadow-lg">
         <div class="flex items-center justify-between px-4 pt-3">
           <div class="flex items-center gap-2">
             <span class="${twBadge()}">${h(code)}</span>
@@ -561,7 +562,7 @@
     const bodyHTML = renderCurrentQuestionHTML();
 
     return `
-      <div class="preview-card draft mb-3 rounded-2xl border border-indigo-700/60 bg-indigo-950/40 shadow-lg ring-1 ring-inset ring-indigo-700/40">
+      <div class="preview-card draft q-card-p mb-3 rounded-2xl border border-indigo-700/60 bg-indigo-950/40 shadow-lg ring-1 ring-inset ring-indigo-700/40">
         <div class="flex items-center justify-between px-4 pt-3">
           <div class="flex items-center gap-2">
             <span class="${twBadge()}">${h(code)}</span>

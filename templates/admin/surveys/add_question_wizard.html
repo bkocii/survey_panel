@@ -7,7 +7,7 @@
 <section class="min-h-screen w-full px-6 py-8 bg-gray dark:bg-gray-900">
 
 
-  <div class="flex flex-col lg:flex-row gap-8 max-w-screen-xl mx-auto">
+  <div class="flex flex-col lg:flex-row gap-8 max-w-screen-xl mx-auto min-h-screen">
 
       <!-- LEFT: FORM (spans 2 cols) -->
       <div class="lg:w-2/3 w-full">
@@ -107,7 +107,7 @@
             <div id="wizard-row-3" class="flex flex-col md:flex-row md:flex-wrap md:items-end gap-6 mt-0">
 
               {# Helper text — half #}
-              <div class="question-field helper_text-field compact md:basis-1/2 md:flex-[0_0_50%] min-w-0">
+              <div class="question-field helper_text-field compact md:basis-1/2 md:flex-[0_0_45%] min-w-0">
                 <label for="{{ form.helper_text.id_for_label }}"
                        class="block text-xs font-medium text-white dark:text-gray-300 mb-0.5">
                   Helper text
@@ -120,7 +120,7 @@
               </div>
 
               {# Media type — quarter #}
-              <div class="question-field helper_media_type-field compact md:basis-1/4 md:flex-[0_0_25%] min-w-0">
+              <div class="question-field helper_media_type-field compact md:basis-1/4 md:flex-[0_0_30%] min-w-0">
                 <label for="{{ form.helper_media_type.id_for_label }}"
                        class="block text-xs font-medium text-white dark:text-gray-300 mb-0.5">
                   Media type
@@ -205,14 +205,15 @@
 
 
       <div class="lg:w-1/3 w-full border-l lg:pl-6 mt-8 lg:mt-0 ">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">🔍 Live Preview</h2>
-        <div id="question-preview-list"
-             class="bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl p-4 text-sm text-slate-200 overflow-y-auto"
-             style="max-height: 520px;"
-             data-api-base="/surveys/api/question-data/"
-             data-preview-api-base="/surveys/api/question-preview/">
-          <!-- Cards inserted by JS -->
-        </div>
+          <div class="preview-sticky lg:sticky lg:top-4 self-start">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">🔍 Live Preview</h2>
+            <div id="question-preview-list"
+                 class="bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl p-4 text-sm text-slate-200 overflow-y-auto"
+                 data-api-base="/surveys/api/question-data/"
+                 data-preview-api-base="/surveys/api/question-preview/">
+              <!-- Cards inserted by JS -->
+            </div>
+          </div>
           <script>
           (function () {
             const el = document.getElementById('wizard-qids');
@@ -222,6 +223,46 @@
         </script>
 
           <script src="{% static 'admin/js/wizard/preview.js' %}"></script>
+
+          <script>
+            (function () {
+              function sizePreview() {
+                var sticky = document.querySelector('.preview-sticky');
+                if (!sticky) return;
+
+                // Distance from top of viewport; when sticky is pinned this ~ equals the 'top' offset.
+                var top = sticky.getBoundingClientRect().top;
+
+                // Leave a little breathing room at the bottom (16px).
+                var available = window.innerHeight - top - 16;
+                if (available > 0) {
+                  sticky.style.height = available + 'px';
+                  // Ensure the inner list uses the full height
+                  var list = document.getElementById('question-preview-list');
+                  if (list) list.style.height = '100%';
+                }
+              }
+
+              // Throttle scroll handler for performance
+              var ticking = false;
+              function onScrollResize() {
+                if (!ticking) {
+                  window.requestAnimationFrame(function () {
+                    sizePreview();
+                    ticking = false;
+                  });
+                  ticking = true;
+                }
+              }
+
+              document.addEventListener('DOMContentLoaded', sizePreview);
+              window.addEventListener('resize', onScrollResize);
+              window.addEventListener('scroll', onScrollResize, { passive: true });
+
+              // One more pass after fonts/layout settle
+              setTimeout(sizePreview, 0);
+            })();
+            </script>
 
       </div>
 

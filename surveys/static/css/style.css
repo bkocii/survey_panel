@@ -59,5 +59,550 @@
 }
 
 
+/* --- Survey Card (matches preview vibe) --- */
+.q-card {
+  background: #111827;            /* dark slate */
+  min-height: 520px;              /* bigger by default */
+  border: 1px solid #1f2937;      /* slate-700 */
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  color: #e5e7eb;                 /* gray-200 */
+}
+.q-card + .q-card { margin-top: 1rem; }
+
+.q-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .5rem;
+}
+.q-title {
+  font-weight: 600;
+  font-size: 2rem;
+  color: #f3f4f6;                 /* gray-100 */
+  margin: 1.4rem;
+}
+.q-helper {
+  color: #9ca3af;                 /* gray-400 */
+  font-size: .9rem;
+  margin-left: 3rem;
+}
+.q-quest {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #f3f4f6;
+  margin-left: 4rem;
+}
+.q-media img,
+.q-media video,
+.q-media audio {
+  max-width: 250px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  margin-left: 3rem;
+}
+.q-body { margin-top: .5rem; }
+
+/* progress + timer chip look */
+.q-chips { display:flex; gap:.5rem; margin-top:.75rem; flex-wrap: wrap; }
+.q-chip {
+  background: #111827;            /* gray-900 */
+  border: 1px solid #374151;
+  border-radius: 999px;
+  padding: .25rem .6rem;
+  font-size: .8rem;
+  color: #d1d5db;
+}
+
+/* --- Tables inside the card (match dark style) --- */
+.q-card table,
+.q-card .table {
+  background-color: transparent !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.q-card .table thead th,
+.q-card table thead th {
+  background-color: #1f2937 !important;  /* slate-800 */
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.q-card .table tbody td,
+.q-card table tbody td,
+.q-card .table tbody th,
+.q-card table tbody th {
+  background-color: #0f172a !important;  /* slate-900 */
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.q-card .table.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: #0c1324 !important;
+}
+.q-card .table.table-bordered > :not(caption) > * > * {
+  border-color: #374151 !important;
+}
+
+/* --- Inputs inside the card (dark background, unified look) --- */
+.q-card .form-control,
+.q-card .form-select,
+.q-card input[type="text"],
+.q-card input[type="number"],
+.q-card input[type="file"],
+.q-card select,
+.q-card textarea {
+  background-color: #0f172a !important;  /* slate-900 */
+  color: #e5e7eb !important;
+  border: 1px solid #374151 !important;
+}
+.q-card .form-control::placeholder { color: #9ca3af !important; }
+
+/* Make labels clickable + aligned (but do NOT give them input bg) */
+.q-card .form-check,
+.q-card label.form-label,
+.q-card .form-check-label {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  cursor: pointer;
+  margin-bottom: .45rem;
+  background: transparent;        /* ensure labels don't inherit input bg */
+  border: 0;
+}
+
+/* Base size, color and spacing for all radios/checkboxes (single/multi + matrix) */
+.q-card input[type="radio"],
+.q-card input[type="checkbox"],
+.q-card .form-check-input {
+  width: 1.1rem;
+  height: 1.1rem;
+  min-width: 1.1rem;
+  min-height: 1.1rem;
+  margin: 0;                      /* remove bootstrap vertical offsets */
+  accent-color: #4f46e5;          /* indigo theme (native) */
+  background-color: #0f172a;      /* same dark bg as matrix */
+  border: 2px solid #374151;
+  box-shadow: none;
+}
+
+/* Round radios, slightly rounded checkboxes — force with !important to beat overrides */
+.q-card input[type="radio"],
+.q-card .form-check-input[type="radio"] {
+  border-radius: 999px !important;
+}
+.q-card input[type="checkbox"],
+.q-card .form-check-input[type="checkbox"] {
+  border-radius: .35rem !important;
+}
+
+/* Hover + focus states */
+.q-card input[type="radio"]:hover,
+.q-card input[type="checkbox"]:hover,
+.q-card .form-check-input:hover {
+  border-color: #6366f1;          /* indigo-500/600 */
+}
+.q-card input[type="radio"]:focus,
+.q-card input[type="checkbox"]:focus,
+.q-card .form-check-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.25);
+  border-color: #6366f1;
+}
+
+/* Checked state pop */
+.q-card input[type="radio"]:checked,
+.q-card input[type="checkbox"]:checked,
+.q-card .form-check-input:checked {
+  border-color: #4f46e5;
+  background-color: #4f46e5;
+}
+
+/* Disabled */
+.q-card input[type="radio"]:disabled,
+.q-card input[type="checkbox"]:disabled,
+.q-card .form-check-input:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Inline groups (ratings etc.) */
+.q-card .form-check-inline { margin-right: .9rem; }
+
+/* Matrix cells: center inputs */
+.q-card table .form-check,
+.q-card table .form-check-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin: 0;
+}
+.q-card table td input[type="radio"],
+.q-card table td input[type="checkbox"] {
+  display: inline-block;
+}
+
+/* --- Page background for survey views --- */
+body.survey-dark {
+  background: #0c1324;            /* deep slate */
+  color: #e5e7eb;
+}
+/* Keep containers readable on dark bg */
+body.survey-dark .container { color: #0c1324; }
+
+
+.q-card .form-control::placeholder { color: #9ca3af !important; }
+
+/* Ensure cards can pin footer at the bottom */
+.q-card,
+.survey-card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Footer sits at the bottom of the card content */
+.q-card__footer,
+.survey-card__footer {
+  margin-top: auto;
+}
+
+/* Row for actions above the progress bar */
+.q-card__actions {
+  display: flex;
+  font-size: 2rem;
+  justify-content: flex-end;
+  gap: .5rem;
+  margin-top: .75rem;
+  margin-bottom: .5rem; /* space from the progress bar */
+}
+
+/* Make the button a bit wider/taller without touching your base styles */
+.btn-wide {
+  padding: .675rem 1.5rem;      /* taller/wider */
+  font-size: 2rem;             /* slightly larger text */
+  line-height: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .btn-wide {
+    padding: .75rem 1.5rem;      /* even roomier on md+ */
+    font-size: 2rem;
+  }
+}
+
+/* Optional: full-width on very small screens */
+@media (max-width: 480px) {
+  .q-card__actions .btn-ui {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Let the main body take available height so actions/footer are at the bottom */
+.q-card__body { flex: 1; }
+
+/* Make the Next button feel wider without messing other buttons */
+
+.btn-wide {
+  padding: .75rem 1.5rem;   /* wider/taller */
+  font-size: 2rem;          /* readable, not huge */
+}
+
+/* Chip-like progress container */
+.q-progress {
+  position: relative;
+  background: #111827;          /* same as .q-chip */
+  border: 1px solid #374151;     /* same as .q-chip */
+  border-radius: 999px;
+  height: 30px;                  /* pill height */
+  overflow: hidden;
+}
+
+/* Fill bar */
+.q-progress__bar {
+  position: absolute;
+  inset: 0 0 0 0;                /* top/right/bottom/left: 0 */
+  width: 0%;
+  background: linear-gradient(90deg, #4f46e5, #4338ca); /* indigo-ish */
+  border-radius: 999px;
+  transition: width .25s ease;
+  /* Slight inner glow */
+  box-shadow: inset 0 0 8px rgba(0,0,0,.25);
+}
+
+/* Centered label above the fill */
+.q-progress__text {
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  line-height: 30px;
+  font-size: .8rem;
+  color: #e5e7eb;                /* gray-200 */
+}
+
+/* (Optional) keep your old chips around for tags if you use them elsewhere */
+.q-chips { display:flex; gap:.5rem; margin-top:.75rem; flex-wrap: wrap; }
+.q-chip {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 999px;
+  padding: .25rem .6rem;
+  font-size: .8rem;
+  color: #d1d5db;
+}
+
+
+/* Neutral shells that won’t fight Bootstrap */
+.btn-shell {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  cursor: pointer;
+}
+.btn-ui {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .5rem 1rem;        /* ≈ py-2 px-4 */
+  border-radius: .5rem;       /* rounded-md */
+  font-size: 1.2rem;         /* text-sm */
+  line-height: 1.25rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  user-select: none;
+  transition: background-color .15s ease, transform .05s ease, border-color .15s ease;
+}
+.btn-ui:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: #1e3a7b;        /* blue-600 (light mode) */
+  color: #fff;
+  border-color: rgba(255,255,255,.18);
+}
+.btn-primary:hover { background: #1d4ed8; }  /* blue-700 */
+
+
+/* --- Page background to match preview (optional) --- */
+body {
+  background: #0b0b0f; /* deep slate */
+}
+
+/* --- Grid layout --- */
+.survey-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* --- Card --- */
+.survey-card {
+  position: relative;
+  background: #111827;                 /* gray-900 */
+  border: 1px solid #1f2937;           /* gray-800 */
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  color: #e5e7eb;                      /* gray-200 */
+  box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+  overflow: hidden;
+}
+
+/* Glow ring (like preview) */
+.survey-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: .0;
+  box-shadow: 0 0 0 2px rgba(99,102,241,.45); /* indigo-500-ish */
+  transition: opacity .15s ease;
+}
+.survey-card:hover {
+  transform: translateY(-1px);
+  border-color: #374151; /* gray-700 */
+  box-shadow: 0 10px 28px rgba(0,0,0,.35);
+}
+.survey-card:hover::before {
+  opacity: 1;
+}
+
+/* Head row */
+.survey-card__head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+/* Title */
+.survey-card__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 .25rem;
+}
+.survey-card__title a {
+  color: #f9fafb;                      /* near-white */
+  text-decoration: none;
+}
+.survey-card__title a:hover {
+  text-decoration: underline;
+}
+
+/* Points badge */
+.survey-card__points {
+  background: rgba(79,70,229,.15);     /* indigo glass */
+  color: #a5b4fc;                      /* indigo-300 */
+  border: 1px solid rgba(99,102,241,.35);
+  font-size: .75rem;
+  padding: .25rem .5rem;
+  border-radius: .5rem;
+  white-space: nowrap;
+}
+
+/* Description (clamped) */
+.survey-card__desc {
+  margin: .35rem 0 .8rem;
+  color: #d1d5db;                      /* gray-300 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;               /* show up to 3 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Actions */
+.survey-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Empty state uses your q-card look */
+.survey-empty {
+  text-align: center;
+}
+
+/* === Unify radios/checkboxes inside .q-card (beats Bootstrap/native) === */
+.q-card input[type="radio"],
+.q-card input[type="checkbox"],
+.q-card .form-check-input {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: #0f172a !important;         /* dark bg (same as matrix) */
+  border: 2px solid #374151 !important;   /* slate border */
+  width: 1.15rem;
+  height: 1.15rem;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  margin: 0;
+  box-shadow: none !important;
+  position: relative;                      /* for ::after dot/tick */
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Radios = perfect circle; Checkboxes = subtle rounded square */
+.q-card input[type="radio"],
+.q-card .form-check-input[type="radio"] {
+  border-radius: 999px !important;
+}
+.q-card input[type="checkbox"],
+.q-card .form-check-input[type="checkbox"] {
+  border-radius: .35rem !important;
+}
+
+/* Hover & focus rings */
+.q-card input[type="radio"]:hover,
+.q-card input[type="checkbox"]:hover,
+.q-card .form-check-input:hover {
+  border-color: #6366f1 !important;       /* indigo-ish */
+}
+.q-card input[type="radio"]:focus,
+.q-card input[type="checkbox"]:focus,
+.q-card .form-check-input:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.25) !important;
+  border-color: #6366f1 !important;
+}
+
+/* Checked base fill */
+.q-card input[type="radio"]:checked,
+.q-card input[type="checkbox"]:checked,
+.q-card .form-check-input:checked {
+  background-color: #4f46e5 !important;   /* indigo fill */
+  border-color: #4f46e5 !important;
+}
+
+/* Radio: white dot when checked */
+.q-card input[type="radio"]:checked::after,
+.q-card .form-check-input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: .5rem;
+  height: .5rem;
+  border-radius: 999px;
+  background: #fff;                        /* inner dot */
+}
+
+/* Checkbox: white tick when checked */
+.q-card input[type="checkbox"]:checked::after,
+.q-card .form-check-input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: .35rem;
+  height: .65rem;
+  border: .16rem solid #fff;
+  border-top: 0;
+  border-left: 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+
+/* Disabled */
+.q-card input[type="radio"]:disabled,
+.q-card input[type="checkbox"]:disabled,
+.q-card .form-check-input:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Make labels clickable/aligned but never styled like inputs */
+.q-card .form-check,
+.q-card label.form-label,
+.q-card .form-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  cursor: pointer;
+  margin-bottom: .45rem;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* Matrix cells center inputs consistently */
+.q-card table .form-check,
+.q-card table .form-check-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin: 0;
+}
+
+
+
+
+
+
+
+
+
 
 

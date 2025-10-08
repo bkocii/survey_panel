@@ -1,22 +1,36 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="container mt-5">
-        <!-- Page header -->
-        <h1>Available Surveys</h1>
-        <!-- List of active surveys -->
-        <ul class="list-group">
-            {% for survey in surveys %}
-                <!-- Display each survey with title, description, and points -->
-                <li class="list-group-item">
-                    <a href="{% url 'surveys:survey_start' survey.id %}">{{ survey.title }}</a>
-                    <p>{{ survey.description }}</p>
-                    <p>Points: {{ survey.points_reward }}</p>
-                </li>
-            {% empty %}
-                <!-- Message if no surveys are available -->
-                <li class="list-group-item">No surveys available.</li>
-            {% endfor %}
-        </ul>
-    </div>
+  <div class="container my-5">
+    <h1 class="mb-4 text-white">Available Surveys</h1>
+
+    {% if surveys %}
+      <div class="survey-grid">
+        {% for survey in surveys %}
+          <article class="survey-card">
+            <div class="survey-card__head">
+              <h2 class="survey-card__title">
+                <a href="{% url 'surveys:survey_start' survey.id %}">{{ survey.title }}</a>
+              </h2>
+              <span class="survey-card__points">+{{ survey.points_reward }} pts</span>
+            </div>
+
+            {% if survey.description %}
+              <p class="survey-card__desc">{{ survey.description }}</p>
+            {% endif %}
+
+            <div class="survey-card__actions">
+              <a href="{% url 'surveys:survey_start' survey.id %}" class="btn-shell">
+                <span class="btn-ui btn-primary">Start survey</span>
+              </a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="survey-empty q-card">
+        No surveys available.
+      </div>
+    {% endif %}
+  </div>
 {% endblock %}

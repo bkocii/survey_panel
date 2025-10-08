@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div class="container" style="max-width: 700px; margin: auto; padding: 2rem; text-align: center;">
+<div class="container" style="max-width: 700px; margin: auto; padding: 2rem; text-align: center; color: white;">
 
   <h1>Survey Submitted</h1>
 
@@ -12,7 +12,7 @@
     <p>🎉 You have been awarded <strong>{{ rewarded }}</strong> points.</p>
   {% endif %}
 
-  <a href="{% url 'surveys:survey_list' %}" class="button" style="margin-top: 2rem; display: inline-block; padding: 0.5rem 1rem; background: #4CAF50; color: white; border-radius: 4px; text-decoration: none;">
+  <a href="{% url 'surveys:survey_list' %}" class="button" style="margin-top: 2rem; display: inline-block; padding: 0.5rem 1rem; background: #1e3a7b; color: white; border-radius: 4px; text-decoration: none;">
     Back to Surveys
   </a>
 
