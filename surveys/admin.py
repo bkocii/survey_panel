@@ -150,6 +150,18 @@ class SurveyAdmin(ModelAdmin):
         all_questions_full = Question.objects.all()
         all_question_ids = list(all_questions.values_list('id', flat=True))
 
+        # --- Early: handle delete from preview ---
+        if request.method == 'POST' and 'delete_id' in request.POST:
+            del_id = request.POST.get('delete_id')
+            if del_id:
+                q = Question.objects.filter(pk=del_id, survey=survey).first()
+                if q:
+                    q.delete()
+                    self.message_user(request, "Question deleted.")
+                else:
+                    self.message_user(request, "Could not delete: question not found for this survey.", level='error')
+            return redirect(request.path)  # back to clean add-mode
+
         # Inline formsets (no "extra"; we add via JS)
         ChoiceFormSet = inlineformset_factory(
             Question,

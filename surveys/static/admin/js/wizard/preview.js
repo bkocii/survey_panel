@@ -532,29 +532,43 @@
     return "—";
   }
 
-  function renderExistingCard(payload) {
-    const code = payload.code || "(no code)";
-    const type = payload.question_type || "—";
-    const bodyHTML = renderQuestionFromPayload(payload); // Tailwind rendering from API payload
+  function renderExistingCard(p) {
+    const code    = p.code || "(no code)";
+    const type    = p.question_type || "";
+    const helper  = p.helper_text || "";
+    const summary = summarizePayload(p);
 
     return `
-      <div class="preview-card q-card-p mb-3 rounded-2xl border border-slate-800 bg-slate-900/70 shadow-lg">
-        <div class="flex items-center justify-between px-4 pt-3">
-          <div class="flex items-center gap-2">
-            <span class="${twBadge()}">${h(code)}</span>
-            <span class="${twBadge()}">${h(type)}</span>
+      <div class="preview-card q-card-p" data-qid="${h(String(p.id || ''))}">
+        <div class="card-head d-flex justify-content-between align-items-center mb-2">
+          <div class="meta d-flex gap-2">
+            <span class="badge">${h(code)}</span>
+            <span class="badge">${h(type)}</span>
           </div>
-          <button type="button"
-                  class="rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-800"
-                  data-action="edit-in-wizard" data-qid="${payload.id || ''}">
-            Edit
-          </button>
+          <div class="d-flex gap-2">
+            <button type="button"
+                    class="btn-shell"
+                    data-action="edit-in-wizard"
+                    data-qid="${h(String(p.id || ''))}">
+              <span class="btn-ui btn-primary">✏️ </span>
+            </button>
+            <button type="button"
+                    class="btn-shell"
+                    data-action="delete-in-wizard"
+                    data-qid="${h(String(p.id || ''))}">
+              <span class="btn-ui" style="background:#7f1d1d;color:#fff;border-color:rgba(255,255,255,.18)">🗑️ </span>
+            </button>
+          </div>
         </div>
-        <div class="body px-4 pb-4 max-h-80 overflow-y-auto">
-          ${bodyHTML}
+        <div class="body">
+          <div class="fw-semibold mb-1">${h(p.text || '')}</div>
+          ${helper ? `<div class="small text-muted mb-1">${h(helper)}</div>` : ""}
+          <div class="small">${h(summary)}</div>
         </div>
-      </div>`;
+      </div>
+    `;
   }
+
 
   function renderDraftCard() {
     const code = v("id_code") || "(no code)";
@@ -683,6 +697,48 @@
       window.location.href = url.toString();
     });
     w.SurveyWizard._editHookReady = true;
+  }
+
+      // ✅ One-time delegation for "Edit" buttons in the preview list
+  if (!w.SurveyWizard._editHookReady) {
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action="edit-in-wizard"]');
+      if (!btn) return;
+      ev.preventDefault();           // block link defaults if any
+      ev.stopPropagation();          // avoid other global handlers
+      const qid = btn.getAttribute('data-qid');
+      if (!qid) return;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('edit', qid);
+      window.location.href = url.toString();
+    });
+    w.SurveyWizard._editHookReady = true;
+  }
+
+  // One-time DELETE hook
+  if (!w.SurveyWizard._deleteHookReady) {
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action="delete-in-wizard"]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const qid = btn.getAttribute('data-qid');
+      if (!qid) return;
+
+      if (!confirm('Delete this question? This cannot be undone.')) return;
+
+      const form  = document.getElementById('wizard-delete-form');
+      const input = document.getElementById('wizard-delete-id');
+      if (!form || !input) {
+        console.warn('Delete form/field not found');
+        return;
+      }
+      input.value = qid;
+      form.submit();
+    });
+    w.SurveyWizard._deleteHookReady = true;
   }
 
     // Re-render draft on changes from the wizard bus, if present

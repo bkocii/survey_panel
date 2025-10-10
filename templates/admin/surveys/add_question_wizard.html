@@ -193,6 +193,12 @@
         {% include "admin/surveys/includes/partials/bulk_add_modal.html" %}
         {% include "admin/surveys/includes/partials/confirm_switch_modal.html" %}
 
+      <form id="wizard-delete-form" method="post" style="display:none;">
+          {% csrf_token %}
+          <input type="hidden" name="delete_id" id="wizard-delete-id">
+        </form>
+
+
       </div>
         <template id="preview-placeholder">
           <em class="placeholder text-indigo-400 dark:text-indigo-300 italic">
