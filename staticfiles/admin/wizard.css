@@ -579,3 +579,164 @@
   .preview-scroll { max-height: none; overflow: visible; }
 }
 
+/* --- Preview Card (compact, no min-height) --- */
+.q-card-p {
+  background: #111827;           /* same tone as .q-card */
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: .75rem 1rem;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  color: #e5e7eb;
+}
+
+/* spacing between preview cards */
+.q-card-p + .q-card-p { margin-top: .75rem; }
+
+/* Tables inside preview cards */
+.q-card-p table,
+.q-card-p .table {
+  background: transparent !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+  margin-bottom: .5rem;
+}
+.q-card-p .table thead th {
+  background: #1f2937 !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.q-card-p .table tbody td,
+.q-card-p .table tbody th {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.q-card-p .table.table-bordered > :not(caption) > * > * {
+  border-color: #374151 !important;
+}
+.q-card-p .table.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: #0c1324 !important;
+}
+
+/* Inputs inside preview (match survey look) */
+.q-card-p .form-control,
+.q-card-p .form-select,
+.q-card-p input[type="text"],
+.q-card-p input[type="number"],
+.q-card-p input[type="file"],
+.q-card-p select,
+.q-card-p textarea {
+  background-color: #0f172a !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.q-card-p .form-control::placeholder { color: #9ca3af !important; }
+
+/* Center inputs inside matrix cells */
+.q-card-p table .form-check,
+.q-card-p table .form-check-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin: 0;
+}
+
+/* --- Unified radios/checkboxes for preview --- */
+.q-card-p input[type="radio"],
+.q-card-p input[type="checkbox"],
+.q-card-p .form-check-input,
+.preview-card input[type="radio"],
+.preview-card input[type="checkbox"],
+.preview-card .form-check-input {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: #0f172a !important;
+  border: 2px solid #374151 !important;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  margin: 0;
+  box-shadow: none !important;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Radios round, checkboxes rounded */
+.q-card-p input[type="radio"],
+.q-card-p .form-check-input[type="radio"],
+.preview-card input[type="radio"],
+.preview-card .form-check-input[type="radio"] { border-radius: 999px !important; }
+
+.q-card-p input[type="checkbox"],
+.q-card-p .form-check-input[type="checkbox"],
+.preview-card input[type="checkbox"],
+.preview-card .form-check-input[type="checkbox"] { border-radius: .35rem !important; }
+
+/* Hover/focus */
+.q-card-p input[type="radio"]:hover,
+.q-card-p input[type="checkbox"]:hover,
+.q-card-p .form-check-input:hover,
+.preview-card input[type="radio"]:hover,
+.preview-card input[type="checkbox"]:hover,
+.preview-card .form-check-input:hover { border-color: #6366f1 !important; }
+
+.q-card-p input[type="radio"]:focus,
+.q-card-p input[type="checkbox"]:focus,
+.q-card-p .form-check-input:focus,
+.preview-card input[type="radio"]:focus,
+.preview-card input[type="checkbox"]:focus,
+.preview-card .form-check-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.25) !important;
+  border-color: #6366f1 !important;
+}
+
+/* Checked */
+.q-card-p input[type="radio"]:checked,
+.q-card-p input[type="checkbox"]:checked,
+.q-card-p .form-check-input:checked,
+.preview-card input[type="radio"]:checked,
+.preview-card input[type="checkbox"]:checked,
+.preview-card .form-check-input:checked {
+  border-color: #4f46e5 !important;
+  background-color: #4f46e5 !important;
+}
+
+/* Radio dot */
+.q-card-p input[type="radio"]:checked::after,
+.q-card-p .form-check-input[type="radio"]:checked::after,
+.preview-card input[type="radio"]:checked::after,
+.preview-card .form-check-input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: .5rem;
+  height: .5rem;
+  border-radius: 999px;
+  background: #fff;
+}
+
+/* Checkbox tick */
+.q-card-p input[type="checkbox"]:checked::after,
+.q-card-p .form-check-input[type="checkbox"]:checked::after,
+.preview-card input[type="checkbox"]:checked::after,
+.preview-card .form-check-input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: .35rem; height: .65rem;
+  border: .16rem solid #fff;
+  border-top: 0; border-left: 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+
+
+
+
+
+
+

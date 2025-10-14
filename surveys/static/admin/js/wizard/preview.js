@@ -1,9 +1,11 @@
 // surveys/static/admin/js/wizard/preview.js
 (function (w, d) {
+  // ---------- utils ----------
   function h(s) { return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function v(id) { const el = d.getElementById(id); return el ? el.value || "" : ""; }
   function bool(id) { const el = d.getElementById(id); return !!(el && el.checked); }
 
+  // Small Tailwind helpers (for draft only)
   function twInput(base = "") {
     return `block w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-slate-100 placeholder-slate-400 ${base}`;
   }
@@ -14,8 +16,7 @@
     return "inline-flex items-center rounded-md bg-slate-800/70 px-2 py-0.5 text-[11px] font-medium text-slate-300 ring-1 ring-inset ring-slate-700";
   }
 
-
-  // ------- Collectors (robust to deletions/reordering) -------
+  // ---------- collectors (for draft only) ----------
   function collectChoices() {
     const items = [];
     d.querySelectorAll('[id^="id_choices-"][id$="-text"]').forEach(inp => {
@@ -94,13 +95,7 @@
     return cols;
   }
 
-  function renderStars(count = 5) {
-    let s = '<div class="d-flex gap-1 fs-5 lh-1">';
-    for (let i = 0; i < count; i++) s += '<span aria-hidden="true">☆</span>';
-    return s + '</div>';
-  }
-
-  // ---------- Single-question renderer (current draft) ----------
+  // ---------- draft renderer (client-side) ----------
   function renderCurrentQuestionHTML() {
     const type   = v("id_question_type");
     const text   = v("id_text").trim();
@@ -113,7 +108,6 @@
         ${helper ? `<p class="text-xs text-slate-400">${h(helper)}</p>` : ""}
     `;
 
-    // Controls by type (Tailwind only; disabled visuals)
     if (type === "SINGLE_CHOICE") {
       html += `<div class="space-y-2">` +
         choices.map(c => `
@@ -201,17 +195,27 @@
     }
 
     if (type === "IMAGE_CHOICE") {
-      const multi = bool("id_allows_multiple");
-      html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">` +
-        choices.map(c => `
-          <div class="rounded-xl border border-slate-700 p-3 text-center">
-            <input type="${multi ? "checkbox" : "radio"}" disabled class="${twCheck()}">
-            <div class="mt-2 h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
-              ${c.imageName ? h(c.imageName) : "image"}
+    const multi = bool("id_allows_multiple");
+
+    // Horizontal scroller; each item is a compact vertical card
+    html += `
+      <div class="overflow-x-auto">
+        <div class="flex gap-3 pb-2" style="min-height: 10rem;">
+          ${choices.map(c => `
+            <div class="shrink-0 w-40 rounded-xl border border-slate-700 p-3 text-center bg-slate-900/40">
+              <div class="flex justify-center mb-2">
+                <input type="${multi ? "checkbox" : "radio"}" disabled class="${twCheck()}">
+              </div>
+              <div class="h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
+                ${c.imageName ? h(c.imageName) : "image"}
+              </div>
+              <div class="mt-2 text-xs text-slate-300 truncate">${h(c.text)}</div>
             </div>
-            <div class="mt-2 text-xs text-slate-300">${h(c.text)}</div>
-          </div>`).join("") + `</div>`;
-    }
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
 
     if (type === "IMAGE_RATING") {
       html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">` +
@@ -220,7 +224,7 @@
             <div class="mb-2 h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
               ${c.imageName ? h(c.imageName) : "image"}
             </div>
-            <div class="flex justify-center gap-1 text-yellow-400 text-xl select-none" aria-hidden="true">★★★★★</div>
+            <div class="flex justify-content-center gap-1 text-yellow-400 text-xl select-none" aria-hidden="true">★★★★★</div>
             <div class="mt-2 text-xs text-slate-300">${h(c.text)}</div>
           </div>`).join("") + `</div>`;
     }
@@ -325,250 +329,68 @@
     return html.trim() || `<em class="text-indigo-300/90 italic">Start typing…</em>`;
   }
 
+  // ---------- existing (server fragments) ----------
+  let existingFragments = []; // [{id, code, question_type, html}]
 
-  function renderQuestionFromPayload(p) {
-    // Use the same Tailwind structure as renderCurrentQuestionHTML, but from payload fields.
-    // Only a few types shown here; extend as needed.
-    let html = `
-      <div class="space-y-2">
-        ${p.text ? `<h4 class="text-base font-semibold text-slate-100">${h(p.text)}</h4>` : ""}
-        ${p.helper_text ? `<p class="text-xs text-slate-400">${h(p.helper_text)}</p>` : ""}
-    `;
-
-    const t = p.question_type;
-
-    if (t === "SINGLE_CHOICE") {
-      html += `<div class="space-y-2">` +
-        (p.choices || []).map(c => `
-          <label class="flex items-center gap-2 text-sm text-slate-200">
-            <input type="radio" disabled class="${twCheck()}">
-            <span>${h(c.text)}</span>
-          </label>`).join("") + `</div>`;
-    }
-
-    if (t === "MULTI_CHOICE") {
-      html += `<div class="space-y-2">` +
-        (p.choices || []).map(c => `
-          <label class="flex items-center gap-2 text-sm text-slate-200">
-            <input type="checkbox" disabled class="${twCheck()}">
-            <span>${h(c.text)}</span>
-          </label>`).join("") + `</div>`;
-    }
-
-    if (t === "DROPDOWN") {
-      html += `<select disabled class="${twInput()}">
-        <option>-- Select an option --</option>
-        ${(p.choices || []).map(c => `<option>${h(c.text)}</option>`).join("")}
-      </select>`;
-    }
-
-    if (t === "TEXT") {
-      html += `<textarea disabled rows="3" class="${twInput()}"></textarea>`;
-    }
-
-    if (t === "YESNO") {
-      html += `
-        <div class="flex gap-6 text-sm">
-          <label class="flex items-center gap-2"><input type="radio" disabled class="${twCheck()}"><span>Yes</span></label>
-          <label class="flex items-center gap-2"><input type="radio" disabled class="${twCheck()}"><span>No</span></label>
-        </div>`;
-    }
-
-    if (t === "NUMBER") {
-      html += `<input disabled type="number" class="${twInput()}" />`;
-    }
-
-    if (t === "SLIDER") {
-      const min = p.min_value ?? 0, max = p.max_value ?? 100, step = p.step_value ?? 1;
-      html += `<div class="text-xs text-slate-400">Value: <span>${min}</span></div>
-               <input disabled type="range" min="${min}" max="${max}" step="${step}" class="w-full accent-indigo-500">`;
-    }
-
-    if (t === "RATING") {
-      const hasChoices = (p.choices || []).length;
-      html += hasChoices
-        ? `<div class="flex flex-wrap gap-3 text-sm">` +
-          p.choices.map(c => `
-            <label class="inline-flex items-center gap-2">
-              <input type="radio" disabled class="${twCheck()}"><span>${h(c.text)}</span>
-            </label>`).join("") + `</div>`
-        : `<div class="flex gap-1 text-xl text-yellow-400 select-none" aria-hidden="true">★★★★★</div>`;
-    }
-
-    if (t === "IMAGE_CHOICE") {
-      html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">` +
-        (p.choices || []).map(c => `
-          <div class="rounded-xl border border-slate-700 p-3 text-center">
-            <input type="radio" disabled class="${twCheck()}">
-            <div class="mt-2 h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
-              image
-            </div>
-            <div class="mt-2 text-xs text-slate-300">${h(c.text)}</div>
-          </div>`).join("") + `</div>`;
-    }
-
-    if (t === "IMAGE_RATING") {
-      html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">` +
-        (p.choices || []).map(c => `
-          <div class="rounded-xl border border-slate-700 p-3 text-center">
-            <div class="mb-2 h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
-              image
-            </div>
-            <div class="flex justify-center gap-1 text-yellow-400 text-xl select-none" aria-hidden="true">★★★★★</div>
-            <div class="mt-2 text-xs text-slate-300">${h(c.text)}</div>
-          </div>`).join("") + `</div>`;
-    }
-
-    if (t === "MATRIX") {
-      const rows = p.matrix_rows || [];
-      const cols = p.matrix_cols || [];
-      const mode = p.matrix_mode || "single";
-
-      if (!rows.length || !cols.length) {
-        html += `<div class="text-xs text-slate-400">Add rows and columns to preview the matrix…</div>`;
-      } else if (mode === "multi") {
-        html += `
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full table-auto text-sm">
-            <thead class="bg-slate-800/70 text-slate-100">
-              <tr><th class="px-3 py-2"></th>${cols.map(c => `<th class="px-3 py-2 text-center">${h(c.label)}</th>`).join("")}</tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800">
-              ${rows.map(r => `<tr class="text-slate-200"><td class="px-3 py-2">${h(r.text)}</td>${
-                cols.map(() => `<td class="px-3 py-2 text-center"><input disabled type="checkbox" class="${twCheck()}"></td>`).join("")
-              }</tr>`).join("")}
-            </tbody>
-          </table>
-        </div>`;
-      } else if (mode === "side_by_side") {
-        const groups = {};
-        cols.forEach(c => { (groups[c.group || "Ungrouped"] ||= []).push(c); });
-        html += `
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full table-auto text-sm">
-            <thead class="bg-slate-800/70 text-slate-100">
-              <tr>
-                <th class="px-3 py-2 text-left align-middle">Item</th>
-                ${Object.keys(groups).map(g => `<th class="px-3 py-2 text-center">${h(g)}</th>`).join("")}
-              </tr>
-              <tr>
-                <th></th>
-                ${Object.values(groups).map(colsInGroup => {
-                  const t = colsInGroup[0]?.input_type || "radio";
-                  if (t === "radio" || t === "checkbox") {
-                    return `<th class="px-3 py-2"><div class="flex justify-center gap-3 flex-wrap">
-                      ${colsInGroup.map(c => `<span class="text-xs text-slate-300">${h(c.label)}</span>`).join("")}
-                    </div></th>`;
-                  }
-                  return `<th class="px-3 py-2"></th>`;
-                }).join("")}
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800">
-              ${rows.map(r => `
-                <tr class="text-slate-200">
-                  <td class="px-3 py-2">${h(r.text)}</td>
-                  ${Object.values(groups).map(colsInGroup => {
-                    const t = colsInGroup[0]?.input_type || "radio";
-                    if (t === "text")   return `<td class="px-3 py-2"><input disabled type="text" class="${twInput()}"></td>`;
-                    if (t === "select") return `<td class="px-3 py-2"><select disabled class="${twInput()}">
-                      <option>-- Choose --</option>${colsInGroup.map(c => `<option>${h(c.label)}</option>`).join("")}
-                    </select></td>`;
-                    if (t === "radio" || t === "checkbox")
-                      return `<td class="px-3 py-2"><div class="flex justify-center gap-3">
-                        ${colsInGroup.map(() => `<input disabled type="${t}" class="${twCheck()}">`).join("")}
-                      </div></td>`;
-                    return `<td class="px-3 py-2"></td>`;
-                  }).join("")}
-                </tr>`).join("")}
-            </tbody>
-          </table>
-        </div>`;
-      } else {
-        // single
-        html += `
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full table-auto text-sm">
-            <thead class="bg-slate-800/70 text-slate-100">
-              <tr><th class="px-3 py-2"></th>${cols.map(c => `<th class="px-3 py-2 text-center">${h(c.label)}</th>`).join("")}</tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800">
-              ${rows.map(r => `<tr class="text-slate-200"><td class="px-3 py-2">${h(r.text)}</td>${
-                cols.map(() => `<td class="px-3 py-2 text-center"><input disabled type="radio" class="${twCheck()}"></td>`).join("")
-              }</tr>`).join("")}
-            </tbody>
-          </table>
-        </div>`;
-      }
-    }
-
-    html += `</div>`;
-    return html;
-  }
-
-
-  // ---------- Existing questions list (fetched) ----------
-  let existing = []; // array of API payloads
-
-  function summarizePayload(p) {
-    const t = p.question_type;
-    if (["SINGLE_CHOICE","MULTI_CHOICE","DROPDOWN","RATING","IMAGE_CHOICE","IMAGE_RATING"].includes(t)) {
-      return p.choices?.map(c => c.text).slice(0,6).join(" • ") || "—";
-    }
-    if (t === "MATRIX") {
-      const rows = p.matrix_rows?.length || 0;
-      const cols = p.matrix_cols?.length || 0;
-      return `${rows} rows × ${cols} cols (${p.matrix_mode || "single"})`;
-    }
-    if (t === "SLIDER") return `min=${p.min_value ?? 0}, max=${p.max_value ?? 100}, step=${p.step_value ?? 1}`;
-    if (t === "DATE") return "Date picker";
-    if (t === "NUMBER") return "Number input";
-    if (t === "YESNO") return "Yes / No";
-    if (t === "PHOTO_UPLOAD") return p.allow_multiple_files ? "Photo upload (multiple)" : "Photo upload";
-    if (t === "VIDEO_UPLOAD") return "Video upload";
-    if (t === "AUDIO_UPLOAD") return "Audio upload";
-    if (t === "GEOLOCATION") return "Geolocation";
-    if (t === "TEXT") return "Text answer";
-    return "—";
-  }
-
-  function renderExistingCard(p) {
-    const code    = p.code || "(no code)";
-    const type    = p.question_type || "";
-    const helper  = p.helper_text || "";
-    const summary = summarizePayload(p);
+  function wrapExistingCard(fragment) {
+    const codeBadge = fragment.code ? `<span class="badge">${h(fragment.code)}</span>` : "";
+    const typeBadge = fragment.question_type ? `<span class="badge">${h(fragment.question_type)}</span>` : "";
 
     return `
-      <div class="preview-card q-card-p" data-qid="${h(String(p.id || ''))}">
+      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}" data-qtype="${h(String(fragment.question_type || ""))}">
         <div class="card-head d-flex justify-content-between align-items-center mb-2">
-          <div class="meta d-flex gap-2">
-            <span class="badge">${h(code)}</span>
-            <span class="badge">${h(type)}</span>
-          </div>
+          <div class="meta d-flex gap-2">${codeBadge}${typeBadge}</div>
           <div class="d-flex gap-2">
             <button type="button"
                     class="btn-shell"
                     data-action="edit-in-wizard"
-                    data-qid="${h(String(p.id || ''))}">
-              <span class="btn-ui btn-primary">✏️ </span>
+                    data-qid="${h(String(fragment.id))}">
+              <span class="btn-ui btn-primary">✏️</span>
             </button>
             <button type="button"
                     class="btn-shell"
                     data-action="delete-in-wizard"
-                    data-qid="${h(String(p.id || ''))}">
-              <span class="btn-ui" style="background:#7f1d1d;color:#fff;border-color:rgba(255,255,255,.18)">🗑️ </span>
+                    data-qid="${h(String(fragment.id))}">
+              <span class="btn-ui" style="background:#7f1d1d;color:#fff;border-color:rgba(255,255,255,.18)">🗑️</span>
             </button>
           </div>
         </div>
         <div class="body">
-          <div class="fw-semibold mb-1">${h(p.text || '')}</div>
-          ${helper ? `<div class="small text-muted mb-1">${h(helper)}</div>` : ""}
-          <div class="small">${h(summary)}</div>
+          <div class="pv-scroll">
+            ${fragment.html}
+          </div>
         </div>
       </div>
     `;
   }
 
+  async function fetchExisting() {
+    const list = d.getElementById("question-preview-list");
+    if (!list) return;
+
+    // collect ids
+    let ids = [];
+    const el = d.getElementById('wizard-qids');
+    if (el) {
+      try { ids = JSON.parse(el.textContent || '[]'); } catch (e) { ids = []; }
+    } else if (w.SurveyWizard && Array.isArray(w.SurveyWizard.initialIds)) {
+      ids = w.SurveyWizard.initialIds;
+    }
+    if (!ids.length) { existingFragments = []; return; }
+
+    // hit fragment endpoint
+    const base = "/surveys/api/question-fragment/";
+    const reqs = ids.map(id =>
+      fetch(`${base}${id}/`, { credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null)
+    );
+    const res = (await Promise.all(reqs)).filter(Boolean);
+
+    // keep original order
+    const order = new Map(ids.map((id, i) => [String(id), i]));
+    existingFragments = res.sort((a, b) => (order.get(String(a.id)) ?? 1e9) - (order.get(String(b.id)) ?? 1e9));
+  }
 
   function renderDraftCard() {
     const code = v("id_code") || "(no code)";
@@ -584,91 +406,45 @@
           </div>
           <span class="${twBadge()}">Draft</span>
         </div>
-        <div class="body px-4 pb-4 max-h-80 overflow-y-auto">
-          ${bodyHTML}
+        <div class="body px-4 pb-4">
+          <div class="pv-scroll">
+            ${bodyHTML}
+          </div>
         </div>
       </div>`;
-  }
-
-  async function fetchExisting() {
-    const list = document.getElementById("question-preview-list");
-    if (!list) return;
-
-    // Prefer inline JSON; fall back to bootstrapped window var
-    let ids = [];
-    const el = document.getElementById('wizard-qids');
-    if (el) {
-      try { ids = JSON.parse(el.textContent || '[]'); } catch (e) { ids = []; }
-    } else if (window.SurveyWizard && Array.isArray(window.SurveyWizard.initialIds)) {
-      ids = window.SurveyWizard.initialIds;
-    }
-
-    if (!ids.length) { existing = []; return; }
-
-    const base = list.dataset.apiBase || "/surveys/api/question-data/";
-    // const reqs = ids.map(id => fetch(`${base}${id}/`).then(r => r.ok ? r.json() : null).catch(() => null));
-    const reqs = ids.map(id => fetch(`${base}${id}/`, { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : (console.warn('Preview fetch failed', id, r.status), null))).catch(err => (console.warn('Preview fetch error', id, err), null)));
-    const res = await Promise.all(reqs);
-    // Sort by the original id order to keep positions stable
-    const order = new Map(ids.map((id, i) => [String(id), i]));
-    existing = res
-      .filter(Boolean)
-      .sort((a, b) => (order.get(String(a.id)) ?? 1e9) - (order.get(String(b.id)) ?? 1e9));
   }
 
   function renderList() {
     const list = d.getElementById("question-preview-list");
     if (!list) return;
 
-    // Existing saved questions
-    const existingHTML = existing.map(renderExistingCard).join("");
-
-    // Current draft (always last)
+    const existingHTML = existingFragments.map(wrapExistingCard).join("");
     const draftHTML = renderDraftCard();
 
     list.innerHTML = existingHTML + draftHTML;
 
-    // neutralize accidental anchors with same data-qid
-    list.querySelectorAll('[data-action="edit-in-wizard"][href]').forEach(a => a.removeAttribute('href'));
+    // disable any interactive inputs inside preview cards (existing only)
+    list.querySelectorAll('.preview-card:not(.draft) input, .preview-card:not(.draft) select, .preview-card:not(.draft) textarea, .preview-card:not(.draft) button[type="submit"]').forEach(el => {
+      el.disabled = true;
+    });
 
-    // Auto-scroll to the bottom so the draft is in view
+    // Auto-scroll so draft is visible
     list.scrollTop = list.scrollHeight;
   }
 
-  // Public API for other scripts
   function updatePreview() {
-    // Just re-render the draft portion (existing list stays as-is)
+    // Only the draft portion changes live
     renderList();
   }
 
-  async function hydrateExistingPreviews() {
-    const list = document.getElementById("question-preview-list");
-    if (!list) return;
-    const cards = list.querySelectorAll('.preview-card[data-qid]:not(.draft)');
-    const base = list.dataset.previewApiBase || "/surveys/api/question-preview/"; // add this data-attr in HTML
-
-    await Promise.all(Array.from(cards).map(async card => {
-      const qid = card.getAttribute('data-qid');
-      if (!qid) return;
-      try {
-        const res = await fetch(`${base}${qid}/`);
-        if (!res.ok) return;
-        const { html } = await res.json();
-        const body = card.querySelector('.body');
-        if (body) body.innerHTML = html;
-      } catch (e) {
-        /* fail silently */
-      }
-    }));
-  }
-
+  // ---------- init & handlers ----------
   async function init() {
-    // Namespace + updatePreview exposure
+    // namespace
     w.SurveyWizard = w.SurveyWizard || {};
     w.SurveyWizard.updatePreview = updatePreview;
     w.updatePreview = updatePreview; // legacy global
 
-    // Lightweight event bus (only if not already present)
+    // simple bus if missing
     if (!w.SurveyWizard.bus) {
       const handlers = {};
       w.SurveyWizard.bus = {
@@ -677,74 +453,55 @@
       };
     }
 
-    // Load existing once and render list
     await fetchExisting();
     renderList();
-    hydrateExistingPreviews();
 
-    // ✅ One-time delegation for "Edit" buttons in the preview list
-  if (!w.SurveyWizard._editHookReady) {
-    document.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-action="edit-in-wizard"]');
-      if (!btn) return;
-      ev.preventDefault();           // block link defaults if any
-      ev.stopPropagation();          // avoid other global handlers
-      const qid = btn.getAttribute('data-qid');
-      if (!qid) return;
+    // edit click → reload wizard with ?edit=<id>
+    if (!w.SurveyWizard._editHookReady) {
+      d.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-action="edit-in-wizard"]');
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const qid = btn.getAttribute('data-qid');
+        if (!qid) return;
 
-      const url = new URL(window.location.href);
-      url.searchParams.set('edit', qid);
-      window.location.href = url.toString();
-    });
-    w.SurveyWizard._editHookReady = true;
-  }
+        const url = new URL(window.location.href);
+        url.searchParams.set('edit', qid);
+        window.location.href = url.toString();
+      });
+      w.SurveyWizard._editHookReady = true;
+    }
 
-      // ✅ One-time delegation for "Edit" buttons in the preview list
-  if (!w.SurveyWizard._editHookReady) {
-    document.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-action="edit-in-wizard"]');
-      if (!btn) return;
-      ev.preventDefault();           // block link defaults if any
-      ev.stopPropagation();          // avoid other global handlers
-      const qid = btn.getAttribute('data-qid');
-      if (!qid) return;
+    // delete click → post to hidden form
+    if (!w.SurveyWizard._deleteHookReady) {
+      d.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-action="delete-in-wizard"]');
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
 
-      const url = new URL(window.location.href);
-      url.searchParams.set('edit', qid);
-      window.location.href = url.toString();
-    });
-    w.SurveyWizard._editHookReady = true;
-  }
+        const qid = btn.getAttribute('data-qid');
+        if (!qid) return;
 
-  // One-time DELETE hook
-  if (!w.SurveyWizard._deleteHookReady) {
-    document.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-action="delete-in-wizard"]');
-      if (!btn) return;
-      ev.preventDefault();
-      ev.stopPropagation();
+        if (!confirm('Delete this question? This cannot be undone.')) return;
 
-      const qid = btn.getAttribute('data-qid');
-      if (!qid) return;
+        const form  = d.getElementById('wizard-delete-form');
+        const input = d.getElementById('wizard-delete-id');
+        if (!form || !input) {
+          console.warn('Delete form/field not found');
+          return;
+        }
+        input.value = qid;
+        form.submit();
+      });
+      w.SurveyWizard._deleteHookReady = true;
+    }
 
-      if (!confirm('Delete this question? This cannot be undone.')) return;
-
-      const form  = document.getElementById('wizard-delete-form');
-      const input = document.getElementById('wizard-delete-id');
-      if (!form || !input) {
-        console.warn('Delete form/field not found');
-        return;
-      }
-      input.value = qid;
-      form.submit();
-    });
-    w.SurveyWizard._deleteHookReady = true;
-  }
-
-    // Re-render draft on changes from the wizard bus, if present
+    // re-render draft on edits in the wizard
     w.SurveyWizard.bus?.on('changed', updatePreview);
 
-    // Also listen to generic input/change events to be safe
+    // generic watchers
     d.addEventListener('input', (e) => {
       if (
         e.target &&
@@ -765,33 +522,7 @@
         updatePreview();
       }
     });
-
-    // Handle Edit / Load buttons on the preview list
-    const list = d.getElementById("question-preview-list");
-    if (list) {
-      list.addEventListener('click', (ev) => {
-        const btn = ev.target.closest('[data-action]');
-        if (!btn) return;
-
-        const id = parseInt(btn.dataset.qid, 10);
-        const payload = existing.find(q => q.id === id);
-        if (!payload) return;
-
-        if (btn.dataset.action === 'edit') {
-          // Open the admin change page in a new tab
-          window.open(`/admin/surveys/question/${id}/change/`, '_blank');
-          return;
-        }
-
-        if (btn.dataset.action === 'load') {
-          // Ask the bridge to load this question into the wizard form + formsets
-          w.SurveyWizard.bus.emit('loadIntoWizard', payload);
-        }
-      });
-    }
   }
-
-
 
   d.addEventListener('DOMContentLoaded', init);
 })(window, document);

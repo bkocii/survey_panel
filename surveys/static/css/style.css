@@ -596,6 +596,21 @@ body {
   margin: 0;
 }
 
+/* Optional: apply same row layout on live survey screens too */
+.image-rating-container .mt-2.mb-2 {
+  display: flex;
+  justify-content: center;
+  gap: .5rem;
+  flex-wrap: nowrap;
+}
+.image-rating-container .form-check-inline,
+.image-rating-container .form-check {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 .35rem;
+}
+
+
 
 
 

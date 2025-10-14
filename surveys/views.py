@@ -21,6 +21,8 @@ from django.db import connection
 import re
 from django.template.loader import render_to_string
 from django.utils.html import mark_safe
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.text import slugify
 
 # # View to list all active surveys, requires login
 @login_required
@@ -829,3 +831,36 @@ def get_question_preview_html(request, question_id):
         request=request,
     )
     return JsonResponse({"html": html})
+
+
+def _group_matrix_columns(question):
+    grouped = defaultdict(list)
+    for col in question.matrix_columns.all().order_by('group', 'order', 'value'):
+        key = col.group or "Ungrouped"
+        grouped[key].append(col)
+    # Convert to normal dict to preserve template compatibility (items)
+    return dict(grouped)
+
+
+@staff_member_required
+def question_fragment(request, pk: int):
+    """
+    Returns HTML for a single question using templates/surveys/_question_display.html
+    Used by the admin wizard preview. Read-only, no side-effects.
+    """
+    q = get_object_or_404(Question, pk=pk)
+
+    ctx = {
+        "question": q,
+        "preview": True,  # lets the partial know we're in preview (if you want to branch)
+        "grouped_matrix_columns": _group_matrix_columns(q),
+        "submitted_data": None,  # not needed for preview
+    }
+    html = render_to_string("surveys/_question_display.html", ctx, request=request)
+    # Optional small header meta for your card
+    return JsonResponse({
+        "id": q.id,
+        "code": q.code or "",
+        "question_type": q.question_type,
+        "html": html,
+    })

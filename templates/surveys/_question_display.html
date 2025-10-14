@@ -42,10 +42,14 @@
 
 {# GEOLOCATION ----------------------------------------------------------- #}
 {% elif question.question_type == 'GEOLOCATION' %}
-  <div id="map" style="height: 400px; width: 100%; margin-top: 1rem;"></div>
-  <input type="hidden" name="location" id="locationInput">
-  <input type="hidden" name="latitude" id="latitude">
-  <input type="hidden" name="longitude" id="longitude">
+    {% if not preview %}
+      <div id="map" style="height: 400px; width: 100%; margin-top: 1rem;"></div>
+      <input type="hidden" name="location" id="locationInput">
+      <input type="hidden" name="latitude" id="latitude">
+      <input type="hidden" name="longitude" id="longitude">
+    {% else %}
+        <div class="border rounded p-3 text-muted small">Map preview</div>
+      {% endif %}
 
 {# DROPDOWN -------------------------------------------------------------- #}
 {% elif question.question_type == 'DROPDOWN' %}
@@ -158,7 +162,7 @@
               </div>
             {% endfor %}
           </div>
-          <div>{{ choice.text }}</div>
+          <div class="form-choice-text">{{ choice.text }}</div>
         </div>
       {% empty %}
         <div class="text-muted small">No images to rate.</div>
