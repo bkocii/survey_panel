@@ -195,17 +195,27 @@
     }
 
     if (type === "IMAGE_CHOICE") {
-      const multi = bool("id_allows_multiple");
-      html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">` +
-        choices.map(c => `
-          <div class="rounded-xl border border-slate-700 p-3 text-center">
-            <input type="${multi ? "checkbox" : "radio"}" disabled class="${twCheck()}">
-            <div class="mt-2 h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
-              ${c.imageName ? h(c.imageName) : "image"}
+    const multi = bool("id_allows_multiple");
+
+    // Horizontal scroller; each item is a compact vertical card
+    html += `
+      <div class="overflow-x-auto">
+        <div class="flex gap-3 pb-2" style="min-height: 10rem;">
+          ${choices.map(c => `
+            <div class="shrink-0 w-40 rounded-xl border border-slate-700 p-3 text-center bg-slate-900/40">
+              <div class="flex justify-center mb-2">
+                <input type="${multi ? "checkbox" : "radio"}" disabled class="${twCheck()}">
+              </div>
+              <div class="h-24 rounded-lg border border-slate-700 bg-slate-800/40 flex items-center justify-center text-xs text-slate-400">
+                ${c.imageName ? h(c.imageName) : "image"}
+              </div>
+              <div class="mt-2 text-xs text-slate-300 truncate">${h(c.text)}</div>
             </div>
-            <div class="mt-2 text-xs text-slate-300">${h(c.text)}</div>
-          </div>`).join("") + `</div>`;
-    }
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
 
     if (type === "IMAGE_RATING") {
       html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">` +
@@ -219,101 +229,139 @@
           </div>`).join("") + `</div>`;
     }
 
+    // --- MATRIX (match survey _question_display.html markup) ---
     if (type === "MATRIX") {
-      const mode = v("id_matrix_mode") || "single";
-      const rows = collectMatrixRows();
-      const cols = collectMatrixCols();
+    const mode = v("id_matrix_mode") || "single";
+    const rows = collectMatrixRows();
+    const cols = collectMatrixCols();
 
-      if (!rows.length || !cols.length) {
-        html += `<div class="text-xs text-slate-400">Add rows and columns to preview the matrix…</div>`;
-      } else if (mode === "side_by_side") {
-        const groups = {};
-        cols.forEach(c => { (groups[c.group] ||= []).push(c); });
+    if (!rows.length || !cols.length) {
+      html += `<div class="text-xs text-slate-400">Add rows and columns to preview the matrix…</div>`;
+    } else if (mode === "side_by_side") {
+    // group columns by 'group'
+    const groups = {};
+    cols.forEach(c => {
+      const g = (c.group || "Ungrouped");
+      (groups[g] ||= []).push(c);
+    });
 
-        html += `
-          <div class="overflow-x-auto rounded-xl border border-slate-800">
-            <table class="w-full table-auto text-sm">
-              <thead class="bg-slate-800/70 text-slate-100">
-                <tr>
-                  <th class="px-3 py-2 text-left align-middle">Item</th>
-                  ${Object.keys(groups).map(g => `<th class="px-3 py-2 text-center">${h(g)}</th>`).join("")}
-                </tr>
-                <tr>
-                  <th></th>
-                  ${Object.values(groups).map(colsInGroup => {
+      html += `
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full table-auto text-sm">
+          <thead class="bg-slate-800/70 text-slate-100">
+            <tr>
+              <th class="px-3 py-2 text-left align-middle">Item</th>
+              ${Object.keys(groups).map(g => `<th class="px-3 py-2 text-center">${h(g)}</th>`).join("")}
+            </tr>
+            <tr>
+              <th class="px-3 py-2"></th>
+              ${
+                Object.values(groups).map(colsInGroup => {
+                  const t = colsInGroup[0]?.input_type || "radio";
+                  if (t === "radio" || t === "checkbox") {
+                    // HORIZONTAL labels, scrollable if many
+                    return `<th class="px-3 py-2">
+                      <div class="pv-headlabels">
+                        ${colsInGroup.map(c => `<span class="text-xs text-slate-300">${h(c.label)}</span>`).join("")}
+                      </div>
+                    </th>`;
+                  }
+                  return `<th class="px-3 py-2">&nbsp;</th>`;
+                }).join("")
+              }
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            ${rows.map(r => `
+              <tr class="text-slate-200">
+                <td class="px-3 py-2 align-middle"><div class="pv-text">${h(r.text)}</div></td>
+                ${
+                  Object.values(groups).map(colsInGroup => {
                     const t = colsInGroup[0]?.input_type || "radio";
-                    if (t === "radio" || t === "checkbox") {
-                      return `<th class="px-3 py-2">
-                        <div class="flex justify-center gap-3 flex-wrap">
-                          ${colsInGroup.map(c => `<span class="text-xs text-slate-300">${h(c.label)}</span>`).join("")}
-                        </div>
-                      </th>`;
+                    if (t === "text") {
+                      return `<td class="px-3 py-2"><input disabled type="text" class="pv-input ${twInput()}"></td>`;
                     }
-                    return `<th class="px-3 py-2"></th>`;
-                  }).join("")}
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-800">
-                ${rows.map(r => `
-                  <tr class="text-slate-200">
-                    <td class="px-3 py-2 align-middle">${h(r.text)}</td>
-                    ${Object.values(groups).map(colsInGroup => {
-                      const t = colsInGroup[0]?.input_type || "radio";
-                      if (t === "text")   return `<td class="px-3 py-2"><input disabled type="text" class="${twInput()}"></td>`;
-                      if (t === "select") return `<td class="px-3 py-2"><select disabled class="${twInput()}">
-                        <option>-- Choose --</option>${colsInGroup.map(c => `<option>${h(c.label)}</option>`).join("")}
-                      </select></td>`;
-                      if (t === "radio" || t === "checkbox")
-                        return `<td class="px-3 py-2"><div class="flex justify-center gap-3">
+                    if (t === "select") {
+                      return `<td class="px-3 py-2">
+                        <select disabled class="pv-input ${twInput()}">
+                          <option>-- Choose --</option>
+                          ${colsInGroup.map(c => `<option>${h(c.label)}</option>`).join("")}
+                        </select>
+                      </td>`;
+                    }
+                    if (t === "radio" || t === "checkbox") {
+                      // CONTROLS IN A ROW, scrollable sideways
+                      return `<td class="px-3 py-2">
+                        <div class="pv-cell">
                           ${colsInGroup.map(() => `<input disabled type="${t}" class="${twCheck()}">`).join("")}
-                        </div></td>`;
-                      return `<td class="px-3 py-2"></td>`;
-                    }).join("")}
-                  </tr>`).join("")}
-              </tbody>
-            </table>
-          </div>`;
-      } else if (mode === "multi") {
-        html += `
-          <div class="overflow-x-auto rounded-xl border border-slate-800">
-            <table class="w-full table-auto text-sm">
-              <thead class="bg-slate-800/70 text-slate-100">
+                        </div>
+                      </td>`;
+                    }
+                    return `<td class="px-3 py-2"></td>`;
+                  }).join("")
+                }
+              </tr>`
+            ).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    } else if (mode === "multi") {
+      // multi-select per cell (checkboxes)
+      html += `
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle">
+            <thead>
+              <tr>
+                <th></th>
+                ${cols.map(c => `<th>${h(c.label)}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
                 <tr>
-                  <th class="px-3 py-2"></th>
-                  ${cols.map(c => `<th class="px-3 py-2 text-center">${h(c.label)}</th>`).join("")}
+                  <td>${h(r.text)}</td>
+                  ${cols.map(() => `
+                    <td>
+                      <div class="form-check form-check-inline">
+                        <input type="checkbox" class="form-check-input" disabled>
+                      </div>
+                    </td>
+                  `).join("")}
                 </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-800">
-                ${rows.map(r => `
-                  <tr class="text-slate-200">
-                    <td class="px-3 py-2">${h(r.text)}</td>
-                    ${cols.map(() => `<td class="px-3 py-2 text-center"><input disabled type="checkbox" class="${twCheck()}"></td>`).join("")}
-                  </tr>`).join("")}
-              </tbody>
-            </table>
-          </div>`;
-      } else {
-        // single-select per row
-        html += `
-          <div class="overflow-x-auto rounded-xl border border-slate-800">
-            <table class="w-full table-auto text-sm">
-              <thead class="bg-slate-800/70 text-slate-100">
+              `).join("")}
+            </tbody>
+          </table>
+        </div>`;
+    } else {
+      // single-select per row (radios across columns)
+      html += `
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle">
+            <thead>
+              <tr>
+                <th></th>
+                ${cols.map(c => `<th>${h(c.label)}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
                 <tr>
-                  <th class="px-3 py-2"></th>
-                  ${cols.map(c => `<th class="px-3 py-2 text-center">${h(c.label)}</th>`).join("")}
+                  <td>${h(r.text)}</td>
+                  ${cols.map(() => `
+                    <td>
+                      <div class="form-check form-check-inline">
+                        <input type="radio" class="form-check-input" disabled>
+                      </div>
+                    </td>
+                  `).join("")}
                 </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-800">
-                ${rows.map(r => `
-                  <tr class="text-slate-200">
-                    <td class="px-3 py-2">${h(r.text)}</td>
-                    ${cols.map(() => `<td class="px-3 py-2 text-center"><input disabled type="radio" class="${twCheck()}"></td>`).join("")}
-                  </tr>`).join("")}
-              </tbody>
-            </table>
-          </div>`;
-      }
+              `).join("")}
+            </tbody>
+          </table>
+        </div>`;
     }
+  }
+
 
     html += `</div>`;
     return html.trim() || `<em class="text-indigo-300/90 italic">Start typing…</em>`;
@@ -325,8 +373,9 @@
   function wrapExistingCard(fragment) {
     const codeBadge = fragment.code ? `<span class="badge">${h(fragment.code)}</span>` : "";
     const typeBadge = fragment.question_type ? `<span class="badge">${h(fragment.question_type)}</span>` : "";
+
     return `
-      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}">
+      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}" data-qtype="${h(String(fragment.question_type || ""))}">
         <div class="card-head d-flex justify-content-between align-items-center mb-2">
           <div class="meta d-flex gap-2">${codeBadge}${typeBadge}</div>
           <div class="d-flex gap-2">
@@ -344,7 +393,11 @@
             </button>
           </div>
         </div>
-        <div class="body">${fragment.html}</div>
+        <div class="body">
+          <div class="pv-scroll">
+            ${fragment.html}
+          </div>
+        </div>
       </div>
     `;
   }
@@ -391,8 +444,10 @@
           </div>
           <span class="${twBadge()}">Draft</span>
         </div>
-        <div class="body px-4 pb-4 max-h-80 overflow-y-auto">
-          ${bodyHTML}
+        <div class="body px-4 pb-4">
+          <div class="pv-scroll">
+            ${bodyHTML}
+          </div>
         </div>
       </div>`;
   }

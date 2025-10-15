@@ -302,9 +302,7 @@
                         type="text"
                         name="{{ field_name }}"
                         value="{% if submitted_data %}{{ submitted_data|get_item:field_name }}{% endif %}"
-                        class="form-control"
-{#                        {% if row.required or cols.0.required %}required{% endif %}#}
-                      >
+                        class="form-control">
                     </td>
                   {% endwith %}
 
@@ -315,9 +313,7 @@
                         <td>
                           <select
                             name="{{ full_field_name }}"
-                            class="form-select"
-{#                            {% if row.required or cols.0.required %}required{% endif %}#}
-                          >
+                            class="form-select">
                             <option value="">-- Choose --</option>
                             {% for col in cols %}
                               <option value="{{ col.value }}"
@@ -346,9 +342,7 @@
                                   value="{{ col.value }}"
                                   {% if submitted_data|get_item:radio_name == col.value|stringformat:"s" %}checked{% endif %}
                                   class="form-check-input"
-                                  id="radio_{{ row.id }}_{{ col.id }}"
-{#                                  {% if row.required or col.required %}required{% endif %}#}
-                                >
+                                  id="radio_{{ row.id }}_{{ col.id }}">
                               </div>
                             {% endfor %}
                           </div>
@@ -447,9 +441,7 @@
                         value="{{ col.value }}"
                         {% if submitted_data|get_item:row_name == col.value|stringformat:"s" %}checked{% endif %}
                         class="form-check-input"
-                        id="radio_{{ row.id }}_{{ col.id }}"
-{#                        {% if row.required or col.required %}required{% endif %}#}
-                      >
+                        id="radio_{{ row.id }}_{{ col.id }}">
                     </td>
                   {% endfor %}
                 {% endwith %}

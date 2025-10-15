@@ -734,9 +734,278 @@
   transform: translate(-50%, -60%) rotate(45deg);
 }
 
+/* Stack choice items inside preview cards only */
+#question-preview-list .preview-card .body {
+  display: block !important;            /* kill any accidental flex on the body */
+}
+
+#question-preview-list .preview-card .form-check-inline {
+  display: block !important;            /* even inline checks stack */
+  margin-right: 0 !important;
+}
+
+#question-preview-list .preview-card .form-check {
+  display: block !important;
+  margin: .35rem 0 !important;
+}
+
+#question-preview-list .preview-card .form-label,
+#question-preview-list .preview-card label {
+  display: block !important;            /* labels become full-width blocks */
+  margin: .35rem 0 !important;
+}
+
+/* If a row/col wrapper is forcing flex, neutralize it */
+#question-preview-list .preview-card .choices,
+#question-preview-list .preview-card .options,
+#question-preview-list .preview-card .answers {
+  display: block !important;
+  flex-wrap: nowrap !important;
+  gap: 0 !important;
+}
+
+/* --- IMAGE_RATING: keep rating radios in a row under the image (PREVIEW ONLY) --- */
+#question-preview-list .preview-card .image-rating-container .mt-2.mb-2 {
+  display: flex !important;
+  justify-content: center;
+  gap: .5rem;
+  flex-wrap: nowrap;
+}
+
+#question-preview-list .preview-card .image-rating-container .form-check-inline {
+  display: inline-flex !important;   /* back to inline row */
+  align-items: center;
+  margin: 0 .35rem !important;
+}
 
 
+#question-preview-list .preview-card .image-rating-container .form-check {
+  display: inline-flex !important;   /* ensure row flow */
+  margin: 0 !important;
+}
+
+/* In the PREVIEW cards */
+#question-preview-list .preview-card .image-rating-container .mt-2.mb-2 {
+  display: flex !important;
+  justify-content: flex-start !important;  /* ⬅ left align */
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: nowrap;
+}
+
+#question-preview-list .preview-card .image-rating-container .form-choice-text {
+  display: flex !important;
+  justify-content: flex-start !important;  /* ⬅ left align */
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: nowrap;
+}
+
+#question-preview-list .preview-card .image-rating-container .form-check-inline,
+#question-preview-list .preview-card .image-rating-container .form-check {
+  display: inline-flex !important;
+  align-items: center;
+  margin: 0 .35rem 0 0 !important;
+}
 
 
+/* Preview pane: enforce horizontal scroller for saved IMAGE_CHOICE */
+#question-preview-list .preview-card[data-qtype="IMAGE_CHOICE"] .image-choice-container .row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .75rem;
+  overflow-x: auto;
+  padding-bottom: .25rem;
+}
 
+/* Make each tile a fixed width so they line up horizontally */
+#question-preview-list .preview-card[data-qtype="IMAGE_CHOICE"] .image-choice-container .col-md-3,
+#question-preview-list .preview-card[data-qtype="IMAGE_CHOICE"] .image-choice-container [class*="col-"] {
+  flex: 0 0 auto;
+  width: 10rem; /* ~160px */
+}
+
+/* Put the radio/checkbox above the image (your fragment already has it; this centers it) */
+#question-preview-list .preview-card[data-qtype="IMAGE_CHOICE"] .image-choice-label .form-check {
+  display: flex;
+  justify-content: center;
+  margin-bottom: .35rem;
+}
+
+/* Keep images tidy in the tile */
+#question-preview-list .preview-card[data-qtype="IMAGE_CHOICE"] .img-thumbnail {
+  display: block;
+  margin: 0 auto;
+  max-height: 6rem;
+  object-fit: contain;
+}
+
+/* Card layout */
+.preview-card { display: flex; flex-direction: column; }
+.preview-card .body { overflow: hidden; } /* contain inner scrollers */
+
+/* Scroll area in each card */
+.preview-card .pv-scroll {
+  overflow: auto;          /* both axes */
+  max-height: 260px;       /* adjust as you like */
+  max-width: 600px;
+  padding-right: 2px;      /* give scrollbar a bit of breathing room */
+}
+
+/* --- Preview: matrix look & rounded inputs --- */
+.preview-card .table,
+.preview-card .table th,
+.preview-card .table td {
+  border-color: #374151 !important;
+  color: #e5e7eb !important;
+  background-color: transparent;
+}
+.preview-card .table thead th {
+  background-color: #1f2937 !important; /* slate-800 */
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+.preview-card .table tbody td,
+.preview-card .table tbody th {
+  background-color: #0f172a !important; /* slate-900 */
+}
+
+/* keep labels/inputs on one line in SBS header/body cells */
+.preview-card .flex-nowrap { flex-wrap: nowrap !important; }
+.preview-card .text-nowrap { white-space: nowrap !important; }
+
+/* rounded controls inside preview */
+.preview-card .form-control,
+.preview-card .form-select {
+  background-color: #0f172a !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+  border-radius: .5rem !important;  /* rounded */
+}
+
+/* radios/checkboxes style in preview (match your survey dark theme) */
+.preview-card .form-check-input {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  display: inline-block !important;   /* prevent stacking */
+  background: #0f172a !important;
+  border: 2px solid #374151 !important;
+  width: 1.15rem; height: 1.15rem;
+  min-width: 1.15rem; min-height: 1.15rem;
+  margin: 0;
+  box-shadow: none !important;
+  position: relative;
+}
+.preview-card .form-check-input[type="radio"]   { border-radius: 999px !important; }
+.preview-card .form-check-input[type="checkbox"]{ border-radius: .35rem !important; }
+.preview-card .form-check-input:checked {
+  background-color: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+}
+.preview-card .form-check-input[type="radio"]:checked::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  width: .5rem; height: .5rem; border-radius: 999px; background: #fff;
+}
+.preview-card .form-check-input[type="checkbox"]:checked::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  width: .35rem; height: .65rem; border: .16rem solid #fff;
+  border-top: 0; border-left: 0; transform: translate(-50%, -60%) rotate(45deg);
+}
+
+/* Preview: keep SBS header/body rows horizontal */
+.preview-card .d-flex.justify-content-around { flex-wrap: nowrap !important; }
+.preview-card .text-nowrap { white-space: nowrap !important; }
+
+
+/* Preview card table styling (works even without Bootstrap) */
+#question-preview-list .preview-card table {
+  width: 100%;
+  border-collapse: separate;       /* keep clean corners */
+  border-spacing: 0;
+  background: transparent;
+  border: 1px solid #374151;       /* outer border */
+}
+
+#question-preview-list .preview-card thead th {
+  background: #1f2937;             /* slate-800 */
+  color: #e5e7eb;                  /* gray-200 */
+  border: 1px solid #374151;       /* header cell borders */
+  padding: .5rem .75rem;
+  vertical-align: middle;
+  text-align: center;
+}
+
+#question-preview-list .preview-card tbody td,
+#question-preview-list .preview-card tbody th {
+  background: #0f172a;             /* slate-900 */
+  color: #e5e7eb;
+  border: 1px solid #374151;       /* body cell borders */
+  padding: .5rem .75rem;
+  vertical-align: middle;
+}
+
+/* keep the label row in one line */
+#question-preview-list .preview-card .text-nowrap { white-space: nowrap !important; }
+#question-preview-list .preview-card .d-flex.justify-content-around { flex-wrap: nowrap !important; }
+
+/* make radio/checkbox row centered like in the survey view */
+#question-preview-list .preview-card .form-check,
+#question-preview-list .preview-card .form-check-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 .25rem;
+}
+
+/* --- Preview card tables: sizing & overflow --- */
+#question-preview-list .preview-card table {
+  table-layout: auto;            /* let columns size to content */
+  width: 100%;
+}
+
+/* keep cell contents from overlapping, allow scrolling if tight */
+#question-preview-list .preview-card td,
+#question-preview-list .preview-card th {
+  vertical-align: middle;
+  max-width: 1px;                /* enables flex children to drive width without exploding */
+}
+
+/* Head label row (2nd header row) laid out horizontally with scroll if needed */
+#question-preview-list .preview-card .pv-headlabels {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: nowrap;             /* keep on one line */
+  overflow-x: auto;              /* scroll sideways if too many */
+  overflow-y: hidden;
+  padding-bottom: 2px;           /* space for scrollbar */
+}
+#question-preview-list .preview-card .pv-headlabels span {
+  white-space: nowrap;           /* no wrapping for each label */
+}
+
+/* Body cells that hold multiple controls in a row */
+#question-preview-list .preview-card .pv-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: nowrap;             /* radios/checkboxes stay in a row */
+  overflow-x: auto;              /* sideways scroll instead of wrapping */
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+/* Inputs inside table cells should not force cell to overflow vertically */
+#question-preview-list .preview-card .pv-input {
+  min-width: 140px;              /* reasonable control width */
+  max-width: 100%;
+}
+
+/* Keep text from crashing into borders */
+#question-preview-list .preview-card td .pv-text {
+  white-space: normal;
+  word-break: break-word;
+}
 

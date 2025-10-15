@@ -835,7 +835,7 @@ def get_question_preview_html(request, question_id):
 
 def _group_matrix_columns(question):
     grouped = defaultdict(list)
-    for col in question.matrix_columns.all().order_by('group', 'order', 'value'):
+    for col in question.matrix_columns.all().order_by('group', 'value'):
         key = col.group or "Ungrouped"
         grouped[key].append(col)
     # Convert to normal dict to preserve template compatibility (items)
