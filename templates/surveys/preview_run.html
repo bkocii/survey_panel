@@ -1,0 +1,71 @@
+{# templates/surveys/preview_run.html #}
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<body class="survey-dark"> {# keep same dark bg as live survey #}
+<div class="container my-6">
+  <div class="q-card">
+    <div class="q-head">
+      <h2 class="q-title">{{ current_index }}. {{ question.text }}</h2>
+    </div>
+
+    {% if question %}
+        {% if question.helper_text %}
+            <p class="q-helper">{{ question.helper_text }}</p>
+        {% endif %}
+
+        {% if question.helper_media and question.helper_media_type %}
+          <div class="q-media mb-3">
+            {% if question.helper_media_type == 'image' %}
+              <img src="{{ question.helper_media.url }}" alt="Helper Image">
+            {% elif question.helper_media_type == 'video' %}
+              <video controls style="max-width:100%; height:auto;">
+                <source src="{{ question.helper_media.url }}" type="video/mp4">
+              </video>
+            {% elif question.helper_media_type == 'audio' %}
+              <audio controls>
+                <source src="{{ question.helper_media.url }}" type="audio/mpeg">
+              </audio>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      <div class="q-body">
+        {# Use the exact renderer; tell it we're in preview if you branch inside #}
+        {% include "surveys/_question_display.html" with question=question preview=True %}
+      </div>
+
+      <div class="q-card__actions">
+        {% if prev_url %}
+          <a href="{{ prev_url }}" class="btn-shell">
+            <span class="btn-ui btn-secondary">← Previous</span>
+          </a>
+        {% endif %}
+        {% if next_url %}
+          <a href="{{ next_url }}" class="btn-shell">
+            <span class="btn-ui btn-primary btn-wide">➡️ Next</span>
+          </a>
+        {% else %}
+          <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="btn-shell">
+            <span class="btn-ui btn-primary btn-wide">✅ Done</span>
+          </a>
+        {% endif %}
+      </div>
+
+      {# Progress (your existing chip bar) #}
+      <div class="q-progress mt-2">
+        <div class="q-progress__bar" style="width: {{ progress_percent }}%"></div>
+        <span class="q-progress__text">
+          {{ current_index }} of {{ total_questions }}
+        </span>
+      </div>
+
+    {% else %}
+      <div class="text-muted">No questions in this survey yet.</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+{% endblock %}

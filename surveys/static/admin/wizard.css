@@ -1156,4 +1156,26 @@
   overflow-wrap: anywhere !important;  /* break only when necessary */
 }
 
+/* modal scroll container */
+#survey-preview-modal .pv-scroll { overflow: auto; max-width: 100%; }
+
+/* --- Preview-only title line --- */
+.preview-card .pv-title {
+  margin: .25rem 0 .5rem;     /* some breathing room */
+  padding: 0 .25rem;          /* tiny inset so it doesn't stick to edges */
+  font-weight: 600;
+  font-size: 1rem;            /* ≈ text-base */
+  line-height: 1.375rem;      /* a touch taller for readability */
+  color: #f3f4f6;             /* gray-100 */
+}
+.preview-card .pv-title .pv-num {
+  opacity: .85;
+  margin-right: .35rem;
+}
+.preview-card .pv-helper {
+  margin: .125rem 0 .5rem;
+  color: #9ca3af;             /* gray-400 */
+  font-size: .85rem;
+}
+
 

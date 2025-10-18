@@ -212,7 +212,12 @@
 
       <div class="lg:w-1/3 w-full border-l lg:pl-6 mt-8 lg:mt-0 min-w-0">
           <div class="preview-sticky lg:sticky lg:top-4 self-start">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">🔍 Live Preview</h2>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-between">
+              <span>🔍 Live Preview</span>
+              <a href="{% url 'surveys:survey_preview' survey.id %}" target="_blank" class="btn-shell" title="Open live preview">
+                  <span class="btn-ui btn-secondary">👀 Preview Survey</span>
+                </a>
+            </h2>
             <div id="question-preview-list"
                  class="bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl p-4 text-sm text-slate-200 overflow-y-auto"
                  data-api-base="/surveys/api/question-data/"
@@ -220,6 +225,7 @@
               <!-- Cards inserted by JS -->
             </div>
           </div>
+
           <script>
           (function () {
             const el = document.getElementById('wizard-qids');

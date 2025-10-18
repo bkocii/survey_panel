@@ -7,6 +7,7 @@
 
 {% load custom_filters %}
 
+
 {# SINGLE / MULTI CHOICE ------------------------------------------------- #}
 {% if question.question_type == 'SINGLE_CHOICE' %}
   {% for choice in question.choices.all %}

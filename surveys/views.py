@@ -862,5 +862,46 @@ def question_fragment(request, pk: int):
         "id": q.id,
         "code": q.code or "",
         "question_type": q.question_type,
+        "text": q.text or "",
         "html": html,
+    })
+
+
+def survey_preview(request, survey_id: int):
+    survey = get_object_or_404(Survey, pk=survey_id)
+    questions = (
+        Question.objects.filter(survey=survey)
+        .prefetch_related("choices", "matrix_rows", "matrix_columns")
+        .order_by("id")
+    )
+    total = questions.count()
+    if total == 0:
+        return render(request, "surveys/preview_run.html", {
+            "survey": survey,
+            "preview_mode": True,
+            "question": None,
+            "total_questions": 0,
+            "current_index": 0,
+            "progress_percent": 0,
+        })
+
+    try:
+        idx = max(0, min(int(request.GET.get("idx", 0)), total - 1))
+    except ValueError:
+        idx = 0
+
+    question = questions[idx]
+    progress_percent = round(((idx + 1) / total) * 100)
+
+    return render(request, "surveys/preview_run.html", {
+        "survey": survey,
+        "preview_mode": True,
+        "question": question,
+        "grouped_matrix_columns": _group_matrix_columns(question),  # ✅ needed for SBS
+        "submitted_data": None,                                     # keeps partial happy
+        "total_questions": total,
+        "current_index": idx + 1,
+        "progress_percent": progress_percent,
+        "prev_url": (f"?idx={idx-1}" if idx > 0 else None),
+        "next_url": (f"?idx={idx+1}" if idx < total-1 else None),
     })

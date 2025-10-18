@@ -18,6 +18,7 @@ urlpatterns = [
     path("admin/surveys/question-lookup/", admin.site.admin_view(views.question_lookup), name="admin_question_lookup"),
     path('api/question-preview/<int:question_id>/', views.get_question_preview_html, name='question_preview_html'),
     path("api/question-fragment/<int:pk>/", views.question_fragment, name="question_fragment"),
+    path("<int:survey_id>/preview/", views.survey_preview, name="survey_preview"),
 
     # path('admin/surveys/<int:survey_id>/add-question/', views.add_question_wizard, name='survey_add_question_wizard'),
 
