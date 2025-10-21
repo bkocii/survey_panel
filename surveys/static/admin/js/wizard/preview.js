@@ -403,7 +403,9 @@
         </div>
   
         <div class="body">
-          ${fragment.html}
+            <div class="pv-scroll">
+                ${fragment.html}
+            </div>
         </div>
       </div>
     `;
