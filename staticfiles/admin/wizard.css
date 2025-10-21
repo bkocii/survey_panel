@@ -523,7 +523,6 @@
 }
 
 /* Constrain heavy tables/images inside preview */
-.preview-card table { table-layout: fixed; }
 .preview-card th, .preview-card td { word-break: break-word; }
 .preview-card img.img-thumbnail { max-height: 140px; object-fit: contain; }
 
@@ -848,7 +847,7 @@
 .preview-card .pv-scroll {
   overflow: auto;          /* both axes */
   max-height: 260px;       /* adjust as you like */
-  max-width: 600px;
+  max-width: 100%;
   padding-right: 2px;      /* give scrollbar a bit of breathing room */
 }
 
@@ -967,7 +966,6 @@
 #question-preview-list .preview-card td,
 #question-preview-list .preview-card th {
   vertical-align: middle;
-  max-width: 1px;                /* enables flex children to drive width without exploding */
 }
 
 /* Head label row (2nd header row) laid out horizontally with scroll if needed */
@@ -1008,4 +1006,176 @@
   white-space: normal;
   word-break: break-word;
 }
+
+/* Apply only inside the preview list */
+#question-preview-list .preview-card table {
+  table-layout: auto;           /* let content size columns (prevents overlap) */
+  width: 100%;
+}
+
+/* Normal vertical alignment + sane text wrapping */
+#question-preview-list .preview-card th,
+#question-preview-list .preview-card td {
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+/* ---- SBS header label row (your fragment uses Bootstrap classes) ---- */
+/* This is the <div class="d-flex justify-content-around"> that holds labels */
+#question-preview-list .preview-card thead .d-flex.justify-content-around {
+  display: flex;
+  flex-wrap: nowrap;            /* stay on one line */
+  gap: .75rem;
+  justify-content: center;      /* center within the th */
+  align-items: center;
+  overflow-x: auto;             /* scroll sideways if too many labels */
+  overflow-y: hidden;
+  padding-bottom: 2px;          /* breathing room for scrollbar */
+}
+
+/* Prevent each label from wrapping to a second line */
+#question-preview-list .preview-card thead .d-flex.justify-content-around .small,
+#question-preview-list .preview-card thead .d-flex.justify-content-around span {
+  white-space: nowrap;
+}
+
+/* ---- SBS body cells with radio/checkbox groups (also .d-flex justify-content-around) ---- */
+#question-preview-list .preview-card tbody .d-flex.justify-content-around {
+  display: flex;
+  flex-wrap: nowrap;            /* keep inputs in a single row */
+  gap: .75rem;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;             /* sideways scroll if many choices */
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+/* Slightly larger clickable area inside matrix cells */
+#question-preview-list .preview-card tbody .form-check-inline,
+#question-preview-list .preview-card tbody .form-check {
+  margin: 0;
+}
+
+/* Text/select inputs in SBS group cells: keep reasonable width */
+#question-preview-list .preview-card td .form-control,
+#question-preview-list .preview-card td .form-select {
+  min-width: 140px;
+  max-width: 100%;
+}
+
+/* Ensure the table borders are visible on dark background */
+#question-preview-list .preview-card .table,
+#question-preview-list .preview-card .table th,
+#question-preview-list .preview-card .table td {
+  border-color: #374151 !important;  /* slate-ish */
+}
+
+/* --- PREVIEW: let content drive column widths --- */
+#question-preview-list .preview-card table {
+  table-layout: auto !important;   /* content-based sizing */
+  width: 100%;
+}
+
+/* let cells grow naturally */
+#question-preview-list .preview-card th,
+#question-preview-list .preview-card td {
+  width: auto !important;
+  max-width: none !important;
+  white-space: normal;             /* wrap if needed */
+  word-break: break-word;
+  vertical-align: middle;
+}
+
+/* give the first “Item” column a little more room */
+#question-preview-list .preview-card thead tr:first-child th:first-child,
+#question-preview-list .preview-card tbody tr td:first-child {
+  width: 34% !important;
+}
+
+/* SBS header label row: one line, sideways scroll if many */
+#question-preview-list .preview-card thead .d-flex.justify-content-around {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .75rem;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+#question-preview-list .preview-card thead .d-flex.justify-content-around .small,
+#question-preview-list .preview-card thead .d-flex.justify-content-around span {
+  white-space: nowrap;
+}
+
+/* SBS body groups: keep inputs in one row, allow sideways scroll */
+#question-preview-list .preview-card tbody .d-flex.justify-content-around {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .75rem;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+/* keep all overflow inside the card (don’t widen the column) */
+.preview-card .pv-scroll {
+  overflow: auto;      /* both axes */
+  max-height: 260px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* --- Preview: keep the first (row text) column readable --- */
+
+/* Header first cell */
+#question-preview-list .preview-card thead tr:first-child th:first-child {
+  width: 38% !important;      /* give it more space */
+  min-width: 220px !important; /* never collapse */
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important; /* break long words if needed */
+}
+
+/* Body first cell */
+#question-preview-list .preview-card tbody td:first-child {
+  width: 38% !important;
+  min-width: 220px !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* If any generic cell rule still forces aggressive breaking, neutralize it for all cells */
+#question-preview-list .preview-card th,
+#question-preview-list .preview-card td {
+  word-break: normal !important;       /* stop per-letter breaking */
+  overflow-wrap: anywhere !important;  /* break only when necessary */
+}
+
+/* modal scroll container */
+#survey-preview-modal .pv-scroll { overflow: auto; max-width: 100%; }
+
+/* --- Preview-only title line --- */
+.preview-card .pv-title {
+  margin: .25rem 0 .5rem;     /* some breathing room */
+  padding: 0 .25rem;          /* tiny inset so it doesn't stick to edges */
+  font-weight: 600;
+  font-size: 1rem;            /* ≈ text-base */
+  line-height: 1.375rem;      /* a touch taller for readability */
+  color: #f3f4f6;             /* gray-100 */
+}
+.preview-card .pv-title .pv-num {
+  opacity: .85;
+  margin-right: .35rem;
+}
+.preview-card .pv-helper {
+  margin: .125rem 0 .5rem;
+  color: #9ca3af;             /* gray-400 */
+  font-size: .85rem;
+}
+
 

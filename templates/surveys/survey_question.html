@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load custom_filters %}
 {% block head_title %}
 survey
@@ -43,9 +44,8 @@ survey
 
         <form method="post" enctype="multipart/form-data" class="q-body">
           {% csrf_token %}
-        <br>
-        <br>
-        <div class="q-quest">
+
+        <div class="q-quest q-body q-card__content">
         {% comment %} Old giant IF/ELIF block replaced by a partial {% endcomment %}
         {% include "surveys/_question_display.html" with question=question preview=False grouped_matrix_columns=grouped_matrix_columns %}
         </div>
@@ -87,30 +87,27 @@ survey
             });
           });
         </script>
-        <br>
-        <br>
+
         {# actions row just ABOVE the progress bar #}
-        <div class="q-card__actions">
+        <div class="q-card__actions pb-2">
           <button type="submit" class="btn-shell">
             <span class="btn-ui btn-primary btn-wide">➡️ Next</span>
           </button>
         </div>
-        <br>
             {# place this as the LAST element inside your card #}
-    <div class="q-card__footer">
-      <div class="q-progress"
-           role="progressbar"
-           aria-label="Survey progress"
-           aria-valuenow="{{ progress_percent }}"
-           aria-valuemin="0"
-           aria-valuemax="100">
-        <div class="q-progress__bar" style="width: {{ progress_percent }}%;"></div>
-        <span class="q-progress__text">{{ current_index }} of {{ total_questions }}</span>
-      </div>
-    </div>
-    </form>
+        </form>
 
-    <br>
+        <div class="q-card__footer">
+          <div class="q-progress"
+               role="progressbar"
+               aria-label="Survey progress"
+               aria-valuenow="{{ progress_percent }}"
+               aria-valuemin="0"
+               aria-valuemax="100">
+            <div class="q-progress__bar" style="width: {{ progress_percent }}%;"></div>
+            <span class="q-progress__text">{{ current_index }} of {{ total_questions }}</span>
+          </div>
+        </div>
 
     {% if time_left %}
         <div id="survey-timer" class="alert alert-warning">
@@ -178,7 +175,7 @@ survey
     </script>
 
 </div>
-
+</div>
 
 {% endblock %}
 

@@ -4,68 +4,92 @@
 {% load custom_filters %}
 
 {% block content %}
-<body class="survey-dark"> {# keep same dark bg as live survey #}
-<div class="container my-6">
+<div class="container mt-5">
   <div class="q-card">
-    <div class="q-head">
-      <h2 class="q-title">{{ current_index }}. {{ question.text }}</h2>
+
+    <!-- Same title block as survey_question -->
+    <div class="q-title">
+      <h3 class="q-title mb-0">{{ current_index }}. {{ question.text }}</h3>
     </div>
 
-    {% if question %}
-        {% if question.helper_text %}
-            <p class="q-helper">{{ question.helper_text }}</p>
-        {% endif %}
-
-        {% if question.helper_media and question.helper_media_type %}
-          <div class="q-media mb-3">
-            {% if question.helper_media_type == 'image' %}
-              <img src="{{ question.helper_media.url }}" alt="Helper Image">
-            {% elif question.helper_media_type == 'video' %}
-              <video controls style="max-width:100%; height:auto;">
-                <source src="{{ question.helper_media.url }}" type="video/mp4">
-              </video>
-            {% elif question.helper_media_type == 'audio' %}
-              <audio controls>
-                <source src="{{ question.helper_media.url }}" type="audio/mpeg">
-              </audio>
-            {% endif %}
-          </div>
-        {% endif %}
-
-      <div class="q-body">
-        {# Use the exact renderer; tell it we're in preview if you branch inside #}
-        {% include "surveys/_question_display.html" with question=question preview=True %}
-      </div>
-
-      <div class="q-card__actions">
-        {% if prev_url %}
-          <a href="{{ prev_url }}" class="btn-shell">
-            <span class="btn-ui btn-secondary">← Previous</span>
-          </a>
-        {% endif %}
-        {% if next_url %}
-          <a href="{{ next_url }}" class="btn-shell">
-            <span class="btn-ui btn-primary btn-wide">➡️ Next</span>
-          </a>
-        {% else %}
-          <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="btn-shell">
-            <span class="btn-ui btn-primary btn-wide">✅ Done</span>
-          </a>
-        {% endif %}
-      </div>
-
-      {# Progress (your existing chip bar) #}
-      <div class="q-progress mt-2">
-        <div class="q-progress__bar" style="width: {{ progress_percent }}%"></div>
-        <span class="q-progress__text">
-          {{ current_index }} of {{ total_questions }}
-        </span>
-      </div>
-
-    {% else %}
-      <div class="text-muted">No questions in this survey yet.</div>
+    {% if question.helper_text %}
+      <p class="q-helper"><em>{{ question.helper_text|linebreaksbr|safe }}</em></p>
     {% endif %}
+
+    {% if question.helper_media and question.helper_media_type %}
+      <div class="q-media mb-3">
+        {% if question.helper_media_type == 'image' %}
+          <img src="{{ question.helper_media.url }}" alt="Helper Image">
+        {% elif question.helper_media_type == 'video' %}
+          <video controls style="max-width:100%; height:auto;">
+            <source src="{{ question.helper_media.url }}" type="video/mp4">
+          </video>
+        {% elif question.helper_media_type == 'audio' %}
+          <audio controls>
+            <source src="{{ question.helper_media.url }}" type="audio/mpeg">
+          </audio>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <!-- Match survey_question: body/content area -->
+    <div class="q-quest q-body q-card__content">
+      {% include "surveys/_question_display.html" with question=question preview=True grouped_matrix_columns=grouped_matrix_columns %}
+    </div>
+
+    <div id="other-input" style="display: none;" class="mt-3">
+    <label for="other_text">Please specify:</label>
+    <input type="text" name="other_text" id="other_text" class="form-control">
+    </div>
+
+    <script>
+    function toggleOther(input) {
+        const otherDiv = document.getElementById('other-input');
+        const selectedText = (
+            input.tagName === 'SELECT'
+                ? input.options[input.selectedIndex].text
+                : input.nextSibling.textContent || ''
+        ).trim().toLowerCase();
+
+        if (selectedText === 'other') {
+            otherDiv.style.display = 'block';
+        } else {
+            otherDiv.style.display = 'none';
+            document.getElementById('other_text').value = '';
+        }
+    }
+    </script>
+
+    <!-- Actions just above progress -->
+    <div class="q-card__actions pb-2">
+      {% if prev_url %}
+        <a href="{{ prev_url }}" class="btn-shell">
+          <span class="btn-ui btn-secondary">← Previous</span>
+        </a>
+      {% endif %}
+      {% if next_url %}
+        <a href="{{ next_url }}" class="btn-shell">
+          <span class="btn-ui btn-primary btn-wide">➡️ Next</span>
+        </a>
+      {% else %}
+        <a href="{% url 'admin:surveys_survey_change' survey.id %}" class="btn-shell">
+          <span class="btn-ui btn-primary btn-wide">✅ Done</span>
+        </a>
+      {% endif %}
+    </div>
+
+    <!-- Pinned progress (identical placement) -->
+    <div class="q-card__footer">
+      <div class="q-progress"
+           role="progressbar"
+           aria-valuenow="{{ progress_percent }}"
+           aria-valuemin="0"
+           aria-valuemax="100">
+        <div class="q-progress__bar" style="width: {{ progress_percent }}%;"></div>
+        <span class="q-progress__text">{{ current_index }} of {{ total_questions }}</span>
+      </div>
+    </div>
+
   </div>
 </div>
-</body>
 {% endblock %}

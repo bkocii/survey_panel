@@ -370,14 +370,17 @@
   // ---------- existing (server fragments) ----------
   let existingFragments = []; // [{id, code, question_type, html}]
 
-  function wrapExistingCard(fragment) {
+  function wrapExistingCard(fragment, indexZeroBased) {
+    const index = indexZeroBased + 1;
     const codeBadge = fragment.code ? `<span class="badge">${h(fragment.code)}</span>` : "";
     const typeBadge = fragment.question_type ? `<span class="badge">${h(fragment.question_type)}</span>` : "";
 
     return `
-      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}" data-qtype="${h(String(fragment.question_type || ""))}">
+      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}" data-qtype="${h(fragment.question_type || '')}">
         <div class="card-head d-flex justify-content-between align-items-center mb-2">
-          <div class="meta d-flex gap-2">${codeBadge}${typeBadge}</div>
+          <div class="meta d-flex gap-2">
+            ${codeBadge}${typeBadge}
+          </div>
           <div class="d-flex gap-2">
             <button type="button"
                     class="btn-shell"
@@ -393,10 +396,14 @@
             </button>
           </div>
         </div>
+  
+        <!-- ✅ Title line like survey view, but only in preview cards -->
+        <div class="pv-title px-4">
+          <span class="pv-num">${index}. ${h(fragment.text || '')}</span>
+        </div>
+  
         <div class="body">
-          <div class="pv-scroll">
-            ${fragment.html}
-          </div>
+          ${fragment.html}
         </div>
       </div>
     `;
@@ -430,9 +437,10 @@
     existingFragments = res.sort((a, b) => (order.get(String(a.id)) ?? 1e9) - (order.get(String(b.id)) ?? 1e9));
   }
 
-  function renderDraftCard() {
+  function renderDraftCard(index) {
     const code = v("id_code") || "(no code)";
     const type = v("id_question_type") || "—";
+    const title = v("id_text").trim() || "(untitled)";
     const bodyHTML = renderCurrentQuestionHTML();
 
     return `
@@ -444,6 +452,12 @@
           </div>
           <span class="${twBadge()}">Draft</span>
         </div>
+        
+      <!-- ✅ Same heading format -->
+      <div class="pv-title px-4">
+        <span class="pv-num">${index}. ${h(title)}</span>
+      </div>
+        
         <div class="body px-4 pb-4">
           <div class="pv-scroll">
             ${bodyHTML}
@@ -453,20 +467,22 @@
   }
 
   function renderList() {
-    const list = d.getElementById("question-preview-list");
+    const list = document.getElementById("question-preview-list");
     if (!list) return;
 
-    const existingHTML = existingFragments.map(wrapExistingCard).join("");
-    const draftHTML = renderDraftCard();
+    const existingHTML = existingFragments
+      .map((frag, i) => wrapExistingCard(frag, i))
+      .join("");
+
+    const draftHTML = renderDraftCard(existingFragments.length + 1); // pass next index
 
     list.innerHTML = existingHTML + draftHTML;
 
-    // disable any interactive inputs inside preview cards (existing only)
+    // disable interactions inside saved cards
     list.querySelectorAll('.preview-card:not(.draft) input, .preview-card:not(.draft) select, .preview-card:not(.draft) textarea, .preview-card:not(.draft) button[type="submit"]').forEach(el => {
       el.disabled = true;
     });
 
-    // Auto-scroll so draft is visible
     list.scrollTop = list.scrollHeight;
   }
 

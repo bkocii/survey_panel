@@ -61,6 +61,8 @@
 
 /* --- Survey Card (matches preview vibe) --- */
 .q-card {
+  display: flex;
+  flex-direction: column;
   background: #111827;            /* dark slate */
   min-height: 520px;              /* bigger by default */
   border: 1px solid #1f2937;      /* slate-700 */
@@ -80,7 +82,7 @@
 }
 .q-title {
   font-weight: 600;
-  font-size: 2rem;
+  font-size: 1.7rem;
   color: #f3f4f6;                 /* gray-100 */
   margin: 1.4rem;
 }
@@ -264,7 +266,13 @@ body.survey-dark .container { color: #0c1324; }
 /* Footer sits at the bottom of the card content */
 .q-card__footer,
 .survey-card__footer {
-  margin-top: auto;
+  margin-top: auto;          /* pushes footer to bottom */
+  padding-top: .75rem;       /* a little breathing room above */
+}
+
+.q-card__footer {
+  margin-top: auto;          /* pushes footer to bottom */
+  padding-top: .75rem;       /* a little breathing room above */
 }
 
 /* Row for actions above the progress bar */
@@ -609,6 +617,78 @@ body {
   align-items: center;
   margin: 0 .35rem;
 }
+
+/* Page scaffold used by both preview_run & survey_question */
+.survey-stage {
+  padding-top: 24px;     /* consistent top spacing */
+  padding-bottom: 24px;
+}
+
+/* Slightly more space on large screens */
+@media (min-width: 1024px) {
+  .survey-stage { padding-top: 32px; }
+}
+
+/* Ensure titles don’t add extra unexpected space */
+.survey-stage .page-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+/* Keep the main card aligned right under the title */
+.survey-stage .q-card {
+  margin-top: 0;         /* prevent extra gap if any default margin exists */
+}
+
+/* Optional: center the card and cap width for consistency */
+.survey-stage .q-card-wrap {
+  max-width: 860px;
+  margin: 0 auto;        /* center */
+}
+
+.q-card { display:flex; flex-direction:column; min-height:520px; }
+.q-card__content { flex:1 1 auto; min-height:0; }
+.q-card__footer { margin-top:auto; padding-top:.75rem; }
+
+.q-card__actions {
+  display:flex; justify-content:flex-end; gap:.5rem;
+  margin-top:.75rem; margin-bottom:.5rem;
+}
+
+/* Card is a column */
+.q-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px; /* or your preferred height */
+}
+
+/* Make the form fill the card and act as a column */
+.q-card > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0; /* allow inner scroll areas */
+}
+
+/* Let the main content expand */
+.q-card .q-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Pin actions just above the footer (progress bar) */
+.q-card__actions {
+  margin-top: auto;              /* <- pushes it to the bottom area */
+  display: flex;
+  justify-content: flex-end;     /* right aligned */
+  gap: .5rem;
+}
+
+/* Footer can stay outside the form; it will sit at the card bottom */
+.q-card__footer { /* keep if you need custom spacing */ }
+
+
+
 
 
 
