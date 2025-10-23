@@ -221,7 +221,8 @@
             <div id="question-preview-list"
                  class="bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl p-4 text-sm text-slate-200 overflow-y-auto"
                  data-api-base="/surveys/api/question-data/"
-                 data-preview-api-base="/surveys/api/question-preview/">
+                 data-preview-api-base="/surveys/api/question-preview/"
+                 data-reorder-endpoint="{% url 'surveys:surveys_reorder' survey.id %}">
               <!-- Cards inserted by JS -->
             </div>
           </div>

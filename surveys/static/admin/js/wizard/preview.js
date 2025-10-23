@@ -376,7 +376,7 @@
     const typeBadge = fragment.question_type ? `<span class="badge">${h(fragment.question_type)}</span>` : "";
 
     return `
-      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}" data-qtype="${h(fragment.question_type || '')}">
+      <div class="preview-card q-card-p" data-qid="${h(String(fragment.id))}" data-qtype="${h(fragment.question_type || '')}" draggable="true">
         <div class="card-head d-flex justify-content-between align-items-center mb-2">
           <div class="meta d-flex gap-2">
             ${codeBadge}${typeBadge}
@@ -397,9 +397,10 @@
           </div>
         </div>
   
-        <!-- ✅ Title line like survey view, but only in preview cards -->
+        <!-- number + title split so we can renumber without touching the text -->
         <div class="pv-title px-4">
-          <span class="pv-num">${index}. ${h(fragment.text || '')}</span>
+          <span class="pv-index">${index}.</span>
+          <span class="pv-text">${h(fragment.text || '')}</span>
         </div>
   
         <div class="body">
@@ -434,9 +435,17 @@
     );
     const res = (await Promise.all(reqs)).filter(Boolean);
 
-    // keep original order
+    // keep order by initial ids (already sorted by sort_index),
+    // fall back to server-provided sort_index when needed
     const order = new Map(ids.map((id, i) => [String(id), i]));
-    existingFragments = res.sort((a, b) => (order.get(String(a.id)) ?? 1e9) - (order.get(String(b.id)) ?? 1e9));
+    existingFragments = res
+      .filter(Boolean)
+      .sort((a, b) => {
+        const ao = order.has(String(a.id)) ? order.get(String(a.id)) : (a.sort_index ?? 1e9);
+        const bo = order.has(String(b.id)) ? order.get(String(b.id)) : (b.sort_index ?? 1e9);
+        if (ao !== bo) return ao - bo;
+        return (a.id || 0) - (b.id || 0);
+      });
   }
 
   function renderDraftCard(index) {
@@ -456,9 +465,10 @@
         </div>
         
       <!-- ✅ Same heading format -->
-      <div class="pv-title px-4">
-        <span class="pv-num">${index}. ${h(title)}</span>
-      </div>
+        <div class="pv-title px-4">
+          <span class="pv-index">${index}.</span>
+          <span class="pv-text">${h(title)}</span>
+        </div>
         
         <div class="body px-4 pb-4">
           <div class="pv-scroll">
@@ -493,6 +503,115 @@
     renderList();
   }
 
+  function enableReorder() {
+    const list = document.getElementById("question-preview-list");
+    if (!list) return;
+
+    // Need endpoint on the container
+    const endpoint = list.dataset.reorderEndpoint;
+    if (!endpoint) {
+      console.warn("No reorder endpoint found on #question-preview-list");
+      return;
+    }
+
+    // Helper: find CSRF token (Django)
+    function getCsrf() {
+      const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : "";
+    }
+
+    // Make non-draft cards draggable
+    list.querySelectorAll('.preview-card[data-qid]:not(.draft)').forEach(card => {
+      card.setAttribute('draggable', 'true');
+      card.classList.add('is-draggable');
+    });
+
+    let dragEl = null;
+    list.addEventListener('dragstart', (e) => {
+      const card = e.target.closest('.preview-card[data-qid]:not(.draft)');
+      if (!card) return;
+      dragEl = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.qid || '');
+    });
+
+    list.addEventListener('dragover', (e) => {
+      if (!dragEl) return;
+      e.preventDefault(); // allow drop
+      const after = getAfterElement(list, e.clientY);
+      if (after == null) {
+        list.appendChild(dragEl);
+      } else {
+        list.insertBefore(dragEl, after);
+      }
+    });
+
+    list.addEventListener('drop', async (e) => {
+      if (!dragEl) return;
+      e.preventDefault();
+      dragEl.classList.remove('dragging');
+      dragEl = null;
+
+      // collect new order (ignore draft)
+      const ids = Array.from(list.querySelectorAll('.preview-card[data-qid]:not(.draft)'))
+        .map(el => el.getAttribute('data-qid'))
+        .filter(Boolean);
+
+      renumberPreviewCards();
+
+      // POST to server
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrf()
+          },
+          body: JSON.stringify({ ids })
+        });
+        if (!res.ok) console.warn('Reorder save failed', res.status);
+      } catch (err) {
+        console.warn('Reorder save error', err);
+      }
+    });
+
+    list.addEventListener('dragend', () => {
+      if (dragEl) dragEl.classList.remove('dragging');
+      dragEl = null;
+    });
+
+    // figure out the element after which we should insert while dragging
+    function getAfterElement(container, y) {
+      const els = [...container.querySelectorAll('.preview-card[data-qid]:not(.draft):not(.dragging)')];
+      return els.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - (box.top + box.height / 2);
+        if (offset < 0 && offset > closest.offset) {
+          return { offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element || null;
+    }
+  }
+
+  function renumberPreviewCards() {
+    const list   = document.getElementById('question-preview-list');
+    if (!list) return;
+
+    const cards  = list.querySelectorAll('.preview-card:not(.draft)');
+    cards.forEach((card, i) => {
+      const idxEl = card.querySelector('.pv-title .pv-index');
+      if (idxEl) idxEl.textContent = (i + 1) + '.';
+    });
+
+    // draft shows next index
+    const draftIdxEl = list.querySelector('.preview-card.draft .pv-title .pv-index');
+    if (draftIdxEl) draftIdxEl.textContent = (cards.length + 1) + '.';
+  }
+
   // ---------- init & handlers ----------
   async function init() {
     // namespace
@@ -511,6 +630,7 @@
 
     await fetchExisting();
     renderList();
+    enableReorder();
 
     // edit click → reload wizard with ?edit=<id>
     if (!w.SurveyWizard._editHookReady) {

@@ -64,6 +64,7 @@ class Question(models.Model):
     step_value = models.IntegerField(null=True, blank=True, help_text="Step value (for sliders)")
     allow_multiple_files = models.BooleanField(default=False, help_text="Allow multiple files upload (images only)")
     allows_multiple = models.BooleanField(default=False, help_text="Allow multiple selections (for Image Choice only)?")
+    sort_index = models.PositiveIntegerField(default=0, db_index=True)
     matrix_mode = models.CharField(max_length=20,choices=[
             ('single', 'Single Select'),
             ('multi', 'Multi Select'),
@@ -134,6 +135,7 @@ class Question(models.Model):
             raise ValidationError(errors)
 
     class Meta:
+        ordering = ("sort_index", "id")
         constraints = [
             # matrix_mode only when MATRIX
             models.CheckConstraint(

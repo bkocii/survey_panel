@@ -16,7 +16,7 @@ import os
 import zipfile
 from django.utils.text import slugify
 from io import BytesIO, StringIO
-
+from django.db.models import Max
 
 # Age range filter using date_of_birth
 class AgeRangeFilter(admin.SimpleListFilter):
@@ -146,7 +146,7 @@ class SurveyAdmin(ModelAdmin):
         from django.shortcuts import get_object_or_404, render, redirect
 
         survey = get_object_or_404(Survey, id=survey_id)
-        all_questions = Question.objects.filter(survey=survey).order_by('id').only('id', 'text')
+        all_questions = Question.objects.filter(survey=survey).order_by("sort_index", 'id').only('id', 'text')
         all_questions_full = Question.objects.all()
         all_question_ids = list(all_questions.values_list('id', flat=True))
 
@@ -314,6 +314,11 @@ class SurveyAdmin(ModelAdmin):
         choice_formset.save()
         row_formset.save()
         col_formset.save()
+
+        if not instance:  # newly created
+            max_si = (Question.objects.filter(survey=survey).aggregate(m=Max("sort_index"))["m"]) or 0
+            question.sort_index = max_si + 1
+            question.save(update_fields=["sort_index"])
 
         # Success messages
         if instance:

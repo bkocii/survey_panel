@@ -19,7 +19,6 @@ urlpatterns = [
     path('api/question-preview/<int:question_id>/', views.get_question_preview_html, name='question_preview_html'),
     path("api/question-fragment/<int:pk>/", views.question_fragment, name="question_fragment"),
     path("<int:survey_id>/preview/", views.survey_preview, name="survey_preview"),
-
-    # path('admin/surveys/<int:survey_id>/add-question/', views.add_question_wizard, name='survey_add_question_wizard'),
+    path("admin/surveys/<int:survey_id>/reorder/", views.reorder_questions, name="surveys_reorder")
 
 ]

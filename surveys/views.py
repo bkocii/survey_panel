@@ -4,6 +4,9 @@ import datetime
 from collections import defaultdict
 from django.conf import settings
 from datetime import timedelta
+
+from django.views.decorators.http import require_POST
+
 from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
@@ -76,14 +79,14 @@ def survey_question(request, survey_id, question_id=None):
         time_left = None
 
     # All ordered questions
-    all_questions = list(survey.questions.order_by('id'))
+    all_questions = list(survey.questions.order_by("sort_index", 'id'))
 
     if question_id:
         question = get_object_or_404(Question, id=question_id, survey=survey)
     else:
         # Get first unanswered
         answered_qs = Response.objects.filter(user=request.user, survey=survey).values_list('question_id', flat=True)
-        question = survey.questions.exclude(id__in=answered_qs).order_by('id').first()
+        question = survey.questions.exclude(id__in=answered_qs).order_by("sort_index", 'id').first()
         if not question:
             # All questions answered → finalize
             submission = Submission.objects.create(user=request.user, survey=survey)
@@ -862,6 +865,7 @@ def question_fragment(request, pk: int):
         "id": q.id,
         "code": q.code or "",
         "question_type": q.question_type,
+        "sort_index": q.sort_index,
         "text": q.text or "",
         "html": html,
     })
@@ -872,7 +876,7 @@ def survey_preview(request, survey_id: int):
     questions = (
         Question.objects.filter(survey=survey)
         .prefetch_related("choices", "matrix_rows", "matrix_columns")
-        .order_by("id")
+        .order_by("sort_index", "id")
     )
     total = questions.count()
     if total == 0:
@@ -905,3 +909,19 @@ def survey_preview(request, survey_id: int):
         "prev_url": (f"?idx={idx-1}" if idx > 0 else None),
         "next_url": (f"?idx={idx+1}" if idx < total-1 else None),
     })
+
+
+@staff_member_required
+@require_POST
+def reorder_questions(request, survey_id):
+    import json
+    survey = get_object_or_404(Survey, pk=survey_id)
+    data = json.loads(request.body.decode("utf-8"))
+    ids = data.get("ids", [])
+    # validate belong to survey
+    valid = set(Question.objects.filter(survey=survey, id__in=ids).values_list("id", flat=True))
+    new_order = [int(i) for i in ids if int(i) in valid]
+    with transaction.atomic():
+        for idx, qid in enumerate(new_order):
+            Question.objects.filter(pk=qid).update(sort_index=idx)
+    return JsonResponse({"ok": True})
