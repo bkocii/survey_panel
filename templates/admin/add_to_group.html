@@ -1,22 +1,208 @@
 {% extends "admin/base_site.html" %}
 {% load static %}
+{% load tailwind_tags %}
 
+{% block extrahead %}
+<link rel="stylesheet" href="{% static 'admin/wizard.css' %}">  {# reuse wizard palette #}
+<style>
+  /* --- Palette (light + dark) --- */
+  :root {
+    --c-bg: #0f172a;          /* slate-900 */
+    --c-card: #111827;        /* gray-900 */
+    --c-border: #374151;      /* gray-700 */
+    --c-text: #e5e7eb;        /* gray-200 */
+    --c-subtle: #9ca3af;      /* gray-400 */
+    --c-primary: #1e3a7b;     /* blue-800-ish to match wizard */
+    --c-primary-hover: #1d4ed8; /* blue-700 */
+    --c-ring: rgba(79,70,229,.35); /* indigo focus ring */
+  }
+  /* Light mode fallbacks (admin might be light) */
+  body:not(.dark) {
+    --c-bg: #f8fafc;          /* slate-50 */
+    --c-card: #ffffff;
+    --c-border: #e5e7eb;      /* gray-200 */
+    --c-text: #111827;        /* gray-900 */
+    --c-subtle: #6b7280;      /* gray-500 */
+  }
+
+  /* Container content (keep admin layout) */
+  #content.colM { max-width: 980px; }
+
+  /* --- Card --- */
+  .card {
+    background: var(--c-card);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 8px 20px rgba(0,0,0,.25);
+    margin-bottom: 16px;
+    color: var(--c-text);
+  }
+  .card h1, .card h2 {
+    margin: 0 0 10px;
+    color: var(--c-text);
+  }
+  .card p, .card li, .card label { color: var(--c-text); }
+
+  /* --- Form control (simple, admin-friendly) --- */
+  .card select,
+  .card input[type="text"],
+  .card input[type="search"] {
+    min-width: 260px;
+    padding: .45rem .6rem;
+    border-radius: .5rem;
+    border: 1px solid var(--c-border);
+    background: var(--c-card);
+    color: var(--c-text);
+    outline: none;
+  }
+  .card select:focus,
+  .card input[type="text"]:focus,
+  .card input[type="search"]:focus {
+    box-shadow: 0 0 0 3px var(--c-ring);
+    border-color: #6366f1;  /* indigo-500 */
+  }
+
+  /* --- Messages / errors --- */
+  .errornote {
+    background: rgba(220, 38, 38, .12);
+    border: 1px solid rgba(220, 38, 38, .35);
+    color: var(--c-text);
+    padding: .5rem .75rem;
+    border-radius: .5rem;
+  }
+  .quiet { color: var(--c-subtle); }
+
+  /* --- Buttons --- */
+  .actions { display:flex; gap:.5rem; align-items:center; }
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:.55rem .95rem;
+    border-radius:.5rem;
+    border:1px solid transparent;
+    font-weight:600; font-size:.875rem; line-height:1rem;
+    cursor:pointer; text-decoration:none;
+    transition: background-color .15s ease, border-color .15s ease, transform .05s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary {
+    background: var(--c-primary);
+    color:#fff; border-color: rgba(255,255,255,.18);
+  }
+  .btn-primary:hover { background: var(--c-primary-hover); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--c-text);
+    border-color: var(--c-border);
+  }
+  .btn-outline:hover { background: rgba(255,255,255,.06); }
+
+  /* --- Lists --- */
+  .list { margin:0; padding-left:1.2rem; }
+  .list li { margin:.25rem 0; }
+
+  /* ---- Color parity overrides vs Unfold (no layout changes) ---- */
+  /* NOTE: removed `body.unfold` — body has no such class */
+  #content.colM .card {
+    background: var(--c-card) !important;
+    border-color: var(--c-border) !important;
+    color: var(--c-text) !important;
+  }
+  #content.colM .card h1,
+  #content.colM .card h2,
+  #content.colM .card p,
+  #content.colM .card li,
+  #content.colM .card label {
+    color: var(--c-text) !important;
+  }
+  #content.colM .card select,
+  #content.colM .card input[type="text"],
+  #content.colM .card input[type="search"] {
+    background: var(--c-card) !important;
+    color: var(--c-text) !important;
+    border-color: var(--c-border) !important;
+  }
+  #content.colM .card select:focus,
+  #content.colM .card input[type="text"]:focus,
+  #content.colM .card input[type="search"]:focus {
+    box-shadow: 0 0 0 3px var(--c-ring) !important;
+    border-color: #6366f1 !important;
+  }
+  #content.colM .btn.btn-primary {
+    background: var(--c-primary) !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,.18) !important;
+  }
+  #content.colM .btn.btn-primary:hover {
+    background: var(--c-primary-hover) !important;
+  }
+  #content.colM .btn.btn-outline {
+    background: transparent !important;
+    color: var(--c-text) !important;
+    border-color: var(--c-border) !important;
+  }
+  #content.colM .btn.btn-outline:hover {
+    background: rgba(255,255,255,.06) !important;
+  }
+
+  /* Force wizard dark palette inside this page's content,
+   regardless of adminTheme (light/auto) */
+    #content.colM {
+      --c-card: #111827;        /* gray-900 */
+      --c-border: #374151;      /* gray-700 */
+      --c-text: #e5e7eb;        /* gray-200 */
+      --c-subtle: #9ca3af;      /* gray-400 */
+      --c-primary: #1e3a7b;     /* blue-800 */
+      --c-primary-hover: #1d4ed8;/* blue-700 */
+      --c-ring: rgba(79,70,229,.35);
+    }
+
+    /* Page background override to match wizard dark tone */
+    body {
+      background-color: #0c1324 !important;
+    }
+
+</style>
+{% endblock %}
 
 {% block content %}
+<div id="content" class="colM">
 
-<form method="post">{% csrf_token %}
-  {{ form.as_p }}
-  <input type="submit" value="Add Users" class="default">
-</form>
-    <br>
+  <div class="card">
+    <h1>Add selected users to a group</h1>
+    <form method="post" class="space-y-4" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
 
-<p><strong>Users selected:</strong></p>
-<ul>
-  {% for user in users %}
-    <li>{{ user.username }} ({{ user.email }})</li>
-  {% endfor %}
-</ul>
-<br>
+      <label for="{{ form.group.id_for_label }}"><b>{{ form.group.label }}</b></label><br>
+      {{ form.group }}
+      {% if form.group.errors %}
+        <div class="errornote" style="margin-top:.5rem;">
+          {{ form.group.errors|join:", " }}
+        </div>
+      {% endif %}
 
-<a class="button" href="..">Cancel</a>
+      <div class="actions" style="margin-top:12px;">
+        <button type="submit" class="btn btn-primary">Add Users</button>
+        <a href=".." class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Users selected</h2>
+    {% if users %}
+      <ul class="list">
+        {% for user in users %}
+          <li>{{ user.username }} <span class="quiet">({{ user.email }})</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="quiet">No users selected.</p>
+    {% endif %}
+  </div>
+
+</div>
 {% endblock %}

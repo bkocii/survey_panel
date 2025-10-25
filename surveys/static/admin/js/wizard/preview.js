@@ -496,6 +496,7 @@
     });
 
     list.scrollTop = list.scrollHeight;
+    renumberPreviewCards();
   }
 
   function updatePreview() {
@@ -595,6 +596,7 @@
         }
       }, { offset: Number.NEGATIVE_INFINITY }).element || null;
     }
+    renumberPreviewCards();
   }
 
   function renumberPreviewCards() {

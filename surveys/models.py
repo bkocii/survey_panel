@@ -229,6 +229,7 @@ class Submission(models.Model):
     def __str__(self):
         return f"{self.user} submitted {self.survey}"
 
+
 # Model for user responses, linking users, surveys, questions, and answers
 class Response(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='responses', null=True, blank=True)

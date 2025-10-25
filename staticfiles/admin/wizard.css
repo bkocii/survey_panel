@@ -1178,4 +1178,15 @@
   font-size: .85rem;
 }
 
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+  padding: .25rem .35rem;
+  border-radius: .375rem;
+  color: #9ca3af;
+}
+.preview-card.dragging { opacity: .6; }
+.preview-card.drop-target { outline: 2px dashed #6366f1; }
+
+
 

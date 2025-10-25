@@ -655,6 +655,39 @@ body {
   margin-top:.75rem; margin-bottom:.5rem;
 }
 
+/* Card is a column */
+.q-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px; /* or your preferred height */
+}
+
+/* Make the form fill the card and act as a column */
+.q-card > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0; /* allow inner scroll areas */
+}
+
+/* Let the main content expand */
+.q-card .q-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Pin actions just above the footer (progress bar) */
+.q-card__actions {
+  margin-top: auto;              /* <- pushes it to the bottom area */
+  display: flex;
+  justify-content: flex-end;     /* right aligned */
+  gap: .5rem;
+}
+
+/* Footer can stay outside the form; it will sit at the card bottom */
+.q-card__footer { /* keep if you need custom spacing */ }
+
+
 
 
 
