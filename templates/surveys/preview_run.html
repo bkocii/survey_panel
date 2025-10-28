@@ -37,29 +37,6 @@
       {% include "surveys/_question_display.html" with question=question preview=True grouped_matrix_columns=grouped_matrix_columns %}
     </div>
 
-    <div id="other-input" style="display: none;" class="mt-3">
-    <label for="other_text">Please specify:</label>
-    <input type="text" name="other_text" id="other_text" class="form-control">
-    </div>
-
-    <script>
-    function toggleOther(input) {
-        const otherDiv = document.getElementById('other-input');
-        const selectedText = (
-            input.tagName === 'SELECT'
-                ? input.options[input.selectedIndex].text
-                : input.nextSibling.textContent || ''
-        ).trim().toLowerCase();
-
-        if (selectedText === 'other') {
-            otherDiv.style.display = 'block';
-        } else {
-            otherDiv.style.display = 'none';
-            document.getElementById('other_text').value = '';
-        }
-    }
-    </script>
-
     <!-- Actions just above progress -->
     <div class="q-card__actions pb-2">
       {% if prev_url %}

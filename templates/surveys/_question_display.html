@@ -10,36 +10,48 @@
 
 {# SINGLE / MULTI CHOICE ------------------------------------------------- #}
 {% if question.question_type == 'SINGLE_CHOICE' %}
-  {% for choice in question.choices.all %}
-    <label class="form-label d-block">
-      <input
-        type="radio"
-        name="answer"
-        value="{{ choice.id }}"
-        onchange="toggleOther(this)"
-        {% if question.required %}required{% endif %}
-      >
-      {{ choice.text }}
-    </label>
-  {% empty %}
-    <div class="text-muted small">No choices added yet.</div>
-  {% endfor %}
+  <div class="choice-group">
+    {% for choice in question.choices.all %}
+      <label class="form-label d-block">
+        <input
+          type="radio"
+          name="answer"
+          value="{{ choice.id }}"
+          {% if choice.text|lower == 'other' %}data-other="1"{% endif %}
+          {% if question.required %}required{% endif %}
+        >
+        {{ choice.text }}
+      </label>
+    {% empty %}
+      <div class="text-muted small">No choices added yet.</div>
+    {% endfor %}
+    <div class="other-zone mt-2" style="display:none;">
+      <label for="other_text_radio" class="form-label mb-1">Please specify:</label>
+      <input type="text" name="other_text" id="other_text_radio" class="form-control">
+    </div>
+  </div>
+
 
 {% elif question.question_type == 'MULTI_CHOICE' %}
-  {# HTML cannot truly “require at least one checkbox” — server validation handles it #}
-  {% for choice in question.choices.all %}
-    <label class="form-label d-block">
-      <input
-        type="checkbox"
-        name="answer"
-        value="{{ choice.id }}"
-        onchange="toggleOther(this)"
-      >
-      {{ choice.text }}
-    </label>
-  {% empty %}
-    <div class="text-muted small">No choices added yet.</div>
-  {% endfor %}
+  <div class="choice-group">
+    {% for choice in question.choices.all %}
+      <label class="form-label d-block">
+        <input
+          type="checkbox"
+          name="answer"
+          value="{{ choice.id }}"
+          {% if choice.text|lower == 'other' %}data-other="1"{% endif %}
+        >
+        {{ choice.text }}
+      </label>
+    {% empty %}
+      <div class="text-muted small">No choices added yet.</div>
+    {% endfor %}
+    <div class="other-zone mt-2" style="display:none;">
+      <label for="other_text_multi" class="form-label mb-1">Please specify:</label>
+      <input type="text" name="other_text" id="other_text_multi" class="form-control">
+    </div>
+  </div>
 
 {# GEOLOCATION ----------------------------------------------------------- #}
 {% elif question.question_type == 'GEOLOCATION' %}
@@ -54,19 +66,27 @@
 
 {# DROPDOWN -------------------------------------------------------------- #}
 {% elif question.question_type == 'DROPDOWN' %}
-  <select
-    name="answer"
-    class="form-select"
-    onchange="toggleOther(this)"
-    {% if question.required %}required{% endif %}
-  >
-    <option value="" disabled selected>-- Select an option --</option>
-    {% for choice in question.choices.all %}
-      <option value="{{ choice.id }}">{{ choice.text }}</option>
-    {% empty %}
-      <option disabled>(no options)</option>
-    {% endfor %}
-  </select>
+  <div class="dropdown-group">
+    <select
+      name="answer"
+      class="form-select"
+      {% if question.required %}required{% endif %}
+    >
+      <option value="" disabled selected>-- Select an option --</option>
+      {% for choice in question.choices.all %}
+        <option value="{{ choice.id }}"
+                {% if choice.text|lower == 'other' %}data-other="1"{% endif %}>
+          {{ choice.text }}
+        </option>
+      {% empty %}
+        <option disabled>(no options)</option>
+      {% endfor %}
+    </select>
+    <div class="other-zone mt-2" style="display:none;">
+      <label for="other_text_dropdown" class="form-label mb-1">Please specify:</label>
+      <input type="text" name="other_text" id="other_text_dropdown" class="form-control">
+    </div>
+  </div>
 
 {# DATE ------------------------------------------------------------------ #}
 {% elif question.question_type == 'DATE' %}

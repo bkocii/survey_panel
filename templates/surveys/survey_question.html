@@ -49,29 +49,6 @@ survey
         {% comment %} Old giant IF/ELIF block replaced by a partial {% endcomment %}
         {% include "surveys/_question_display.html" with question=question preview=False grouped_matrix_columns=grouped_matrix_columns %}
         </div>
-                <!-- “Other” input field -->
-        <div id="other-input" style="display: none;" class="mt-3">
-            <label for="other_text">Please specify:</label>
-            <input type="text" name="other_text" id="other_text" class="form-control">
-        </div>
-
-        <script>
-            function toggleOther(input) {
-                const otherDiv = document.getElementById('other-input');
-                const selectedText = (
-                    input.tagName === 'SELECT'
-                        ? input.options[input.selectedIndex].text
-                        : input.nextSibling.textContent || ''
-                ).trim().toLowerCase();
-
-                if (selectedText === 'other') {
-                    otherDiv.style.display = 'block';
-                } else {
-                    otherDiv.style.display = 'none';
-                    document.getElementById('other_text').value = '';
-                }
-            }
-        </script>
 
         <script>
           document.addEventListener("DOMContentLoaded", function () {
