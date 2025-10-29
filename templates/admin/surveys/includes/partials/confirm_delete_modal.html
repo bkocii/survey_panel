@@ -1,0 +1,25 @@
+<!-- Confirm Delete Question Modal -->
+<div id="confirm-delete-modal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+  <!-- Center wrapper -->
+  <div class="relative h-full w-full flex items-center justify-center px-4">
+    <div class="confirm-modal-card w-[22rem] sm:w-[30rem] p-6 text-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-xl">
+      <h2 class="modal-title mb-2 break-words">🗑️ Delete this question?</h2>
+
+      <p class="modal-message break-words">
+        This action cannot be undone.
+      </p>
+
+      <div class="mt-6 flex justify-center gap-6">
+        <button id="cancel-delete" type="button" class="btn-modal btn-cancel btn-ui border border-slate-600 bg-slate-800 hover:bg-slate-700">
+          Cancel
+        </button>
+        <button id="confirm-delete" type="button" class="btn-modal btn-confirm btn-ui btn-primary">
+          Yes, delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

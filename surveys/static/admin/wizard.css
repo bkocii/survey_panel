@@ -1189,4 +1189,96 @@
 .preview-card.drop-target { outline: 2px dashed #6366f1; }
 
 
+/* ---- Card with thick border + outer frame ---- */
+#confirm-switch-modal .confirm-modal-card,
+#confirm-delete-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;   /* gray-900 */
+  color: #fff !important;
+  border: 1px solid #ffffff !important; /* visible border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+}
+
+/* Outer frame ring (subtle) */
+#confirm-switch-modal .confirm-modal-card::before,
+#confirm-delete-modal .confirm-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+/* Title & message */
+#confirm-switch-modal .modal-title,
+#confirm-delete-modal .modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+#confirm-switch-modal .modal-message,
+#confirm-delete-modal .modal-message {
+  font-size: .9375rem;
+  line-height: 1.6;
+}
+#confirm-switch-modal [data-modal-title],
+#confirm-switch-modal [data-modal-message],
+#confirm-delete-modal [data-modal-title],
+#confirm-delete-modal [data-modal-message] {
+  overflow-wrap: anywhere;
+}
+
+/* Buttons: identical size, rounded */
+#confirm-switch-modal .btn-modal,
+#confirm-delete-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#confirm-switch-modal .btn-modal:active,
+#confirm-delete-modal .btn-modal:active {
+  transform: translateY(1px);
+}
+
+/* Cancel (gray) */
+#confirm-switch-modal .btn-cancel,
+#confirm-delete-modal .btn-cancel {
+  background: #374151; /* gray-700 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-cancel:hover,
+#confirm-delete-modal .btn-cancel:hover {
+  background: #4b5563; /* gray-600 */
+}
+
+/* Confirm (red) */
+#confirm-switch-modal .btn-confirm,
+#confirm-delete-modal .btn-confirm {
+  background: #dc2626; /* red-600 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-confirm:hover,
+#confirm-delete-modal .btn-confirm:hover {
+  background: #b91c1c; /* red-700 */
+}
+
+/* Pop-in animation */
+#confirm-switch-modal .confirm-modal-card,
+#confirm-delete-modal .confirm-modal-card {
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#confirm-switch-modal:not(.hidden) .confirm-modal-card,
+#confirm-delete-modal:not(.hidden) .confirm-modal-card {
+  transform: scale(1);
+  opacity: 1;
+}
 

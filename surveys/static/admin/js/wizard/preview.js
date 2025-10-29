@@ -464,8 +464,6 @@
           <span class="${twBadge()}">Draft</span>
         </div>
         
-
-        
         <div class="body px-4 pb-4">
           <div class="pv-scroll">
             ${bodyHTML}
@@ -647,8 +645,26 @@
       w.SurveyWizard._editHookReady = true;
     }
 
-    // delete click → post to hidden form
+    // delete click → open modal, and submit on confirm
     if (!w.SurveyWizard._deleteHookReady) {
+      let pendingDeleteQid = null;
+
+      const modalEl   = d.getElementById('confirm-delete-modal');
+      const btnCancel = d.getElementById('cancel-delete');
+      const btnOk     = d.getElementById('confirm-delete');
+
+      function openDeleteModal(qid) {
+        pendingDeleteQid = qid;
+        if (!modalEl) return;
+        modalEl.classList.remove('hidden');
+        setTimeout(() => btnOk?.focus(), 0);
+      }
+      function closeDeleteModal() {
+        pendingDeleteQid = null;
+        if (!modalEl) return;
+        modalEl.classList.add('hidden');
+      }
+
       d.addEventListener('click', (ev) => {
         const btn = ev.target.closest('[data-action="delete-in-wizard"]');
         if (!btn) return;
@@ -658,17 +674,40 @@
         const qid = btn.getAttribute('data-qid');
         if (!qid) return;
 
-        if (!confirm('Delete this question? This cannot be undone.')) return;
+        openDeleteModal(qid);
+      });
+
+      btnCancel?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeDeleteModal();
+      });
+
+      btnOk?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!pendingDeleteQid) { closeDeleteModal(); return; }
 
         const form  = d.getElementById('wizard-delete-form');
         const input = d.getElementById('wizard-delete-id');
         if (!form || !input) {
           console.warn('Delete form/field not found');
+          closeDeleteModal();
           return;
         }
-        input.value = qid;
+        input.value = pendingDeleteQid;
+        closeDeleteModal();
         form.submit();
       });
+
+      // close on backdrop or ESC
+      modalEl?.addEventListener('click', (e) => {
+        if (e.target === modalEl) closeDeleteModal();
+      });
+      d.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modalEl.classList.contains('hidden')) {
+          closeDeleteModal();
+        }
+      });
+
       w.SurveyWizard._deleteHookReady = true;
     }
 
