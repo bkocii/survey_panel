@@ -464,11 +464,7 @@
           <span class="${twBadge()}">Draft</span>
         </div>
         
-      <!-- ✅ Same heading format -->
-        <div class="pv-title px-4">
-          <span class="pv-index">${index}.</span>
-          <span class="pv-text">${h(title)}</span>
-        </div>
+
         
         <div class="body px-4 pb-4">
           <div class="pv-scroll">
