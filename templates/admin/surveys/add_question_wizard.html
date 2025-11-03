@@ -4,6 +4,7 @@
 
 
 {% block content %}
+
 <section class="min-h-screen w-full px-6 py-8 bg-gray dark:bg-gray-900">
 
 
@@ -13,6 +14,63 @@
       <div class="lg:w-2/3 w-full min-w-0">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ title }}</h1>
         <br>
+
+          {# Toasts — top-right, auto-dismiss #}
+        <div id="toast-stack" class="fixed right-4 top-4 z-[60] space-y-2"></div>
+
+        {% if messages %}
+          <script>
+            (function () {
+              const stack = document.getElementById('toast-stack');
+              const makeToast = (text, level) => {
+                // map Django tags → visual variants
+                const map = {
+                  success: { cls: 'toast toast-success',  icon: '✔️' },
+                  error:   { cls: 'toast toast-error',    icon: '⛔' },
+                  warning: { cls: 'toast toast-warning',  icon: '⚠️' },
+                  info:    { cls: 'toast toast-info',     icon: 'ℹ️' },
+                  debug:   { cls: 'toast toast-debug',    icon: '🐞' },
+                  default: { cls: 'toast',                icon: '•'  },
+                };
+                const m = map[level] || map.default;
+                const el = document.createElement('div');
+                el.className = m.cls + ' toast-enter';
+                el.innerHTML = `
+                  <div class="toast-inner">
+                    <span class="toast-icon" aria-hidden="true">${m.icon}</span>
+                    <div class="toast-text" role="${level === 'error' ? 'alert' : 'status'}">${text}</div>
+                    <button type="button" class="toast-close" aria-label="Dismiss">✖</button>
+                  </div>
+                `;
+                stack.appendChild(el);
+
+                // enter animation
+                requestAnimationFrame(() => { el.classList.remove('toast-enter'); });
+
+                // auto-dismiss after 3.5s
+                const kill = () => {
+                  el.classList.add('toast-leave');
+                  setTimeout(() => el.remove(), 200);
+                };
+                const timer = setTimeout(kill, 5500);
+
+                // manual dismiss
+                el.querySelector('.toast-close')?.addEventListener('click', () => {
+                  clearTimeout(timer);
+                  kill();
+                });
+              };
+
+              // Render & CONSUME Django messages
+                {% for message in messages %}
+                  makeToast("{{ message|escapejs }}", "{{ message.tags|default:'info' }}");
+                {% endfor %}
+
+            })();
+          </script>
+        {% endif %}
+
+      <br>
 
         <form method="post" enctype="multipart/form-data" id="question-form" class="space-y-6">
           {% csrf_token %}
