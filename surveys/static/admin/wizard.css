@@ -1324,3 +1324,44 @@
 #toast-stack .toast-info    { border-color: #2563eb; background: #1e3a8a; } /* blue */
 #toast-stack .toast-debug   { border-color: #6b7280; background: #374151; } /* gray */
 
+/* --- Question lookup dropdown: force scroll & layering --- */
+#question_lookup_container { position: relative; }
+
+#question_lookup_results {
+  position: absolute;           /* anchor to the input wrapper */
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 16rem;            /* ≈ h-64 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  z-index: 60;                  /* above cards/forms */
+  background: #111827;          /* dark bg to match UI */
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+/* items */
+#question_lookup_results li {
+  padding: .5rem .75rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* hover/active states */
+#question_lookup_results li:hover,
+#question_lookup_results li.active {
+  background: #1f2937;  /* gray-800 */
+}
+
+/* optional nicer scrollbars */
+#question_lookup_results::-webkit-scrollbar { width: 10px; }
+#question_lookup_results::-webkit-scrollbar-thumb { background: #374151; border-radius: 6px; }
+#question_lookup_results::-webkit-scrollbar-track { background: #0b1222; }
+
