@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/question-preview/<int:question_id>/', views.get_question_preview_html, name='question_preview_html'),
     path("api/question-fragment/<int:pk>/", views.question_fragment, name="question_fragment"),
     path("<int:survey_id>/preview/", views.survey_preview, name="survey_preview"),
-    path("admin/surveys/<int:survey_id>/reorder/", views.reorder_questions, name="surveys_reorder")
+    path("admin/surveys/<int:survey_id>/reorder/", views.reorder_questions, name="surveys_reorder"),
+    path('api/set-routing/', views.set_routing, name='surveys_set_routing'),
 
 ]

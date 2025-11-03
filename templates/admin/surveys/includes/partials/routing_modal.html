@@ -1,0 +1,43 @@
+<!-- Set Routing Modal -->
+<div id="routing-modal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+  <div class="relative h-full w-full flex items-center justify-center px-4">
+    <div class="confirm-modal-card w-[24rem] sm:w-[34rem] p-6">
+      <h2 class="modal-title mb-2">🧭 Set next question</h2>
+      <p class="modal-message mb-4 text-sm opacity-90">
+        Define where the survey goes next for this question.
+      </p>
+
+      <!-- Context (filled by JS) -->
+      <div class="text-sm mb-4" id="routing-context"></div>
+
+      <!-- Choice selector (only for choice-based types) -->
+      <div id="routing-choice-row" class="mb-4">
+        <label class="block text-sm mb-1">When the user selects choice</label>
+        <select id="routing-choice" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
+      </div>
+
+      <!-- Matrix selector (only for MATRIX) -->
+      <div id="routing-matrix-row" class="mb-4 hidden">
+        <label class="block text-sm mb-1">For matrix column</label>
+        <select id="routing-matrix-col" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
+      </div>
+
+      <!-- Target question -->
+      <div class="mb-2">
+        <label class="block text-sm mb-1">Go to question</label>
+        <select id="routing-target" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
+        <p class="text-xs opacity-75 mt-1">Choose blank “---------” to clear routing.</p>
+      </div>
+
+      <div class="mt-6 flex justify-center gap-6">
+        <button type="button" class="btn-modal btn-cancel" id="routing-cancel">Cancel</button>
+        <button type="button" class="btn-modal btn-confirm" id="routing-save">Save</button>
+      </div>
+
+      <!-- Hidden state -->
+      <input type="hidden" id="routing-qid">
+      <input type="hidden" id="routing-qtype">
+    </div>
+  </div>
+</div>

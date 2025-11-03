@@ -1365,3 +1365,84 @@
 #question_lookup_results::-webkit-scrollbar-thumb { background: #374151; border-radius: 6px; }
 #question_lookup_results::-webkit-scrollbar-track { background: #0b1222; }
 
+/* Routing modal reuses the same card look */
+#routing-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;
+  color: #fff !important;
+  border: 1px solid #ffffff !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#routing-modal:not(.hidden) .confirm-modal-card { transform: scale(1); opacity: 1; }
+
+#routing-modal .modal-title   { font-size: 1.125rem; font-weight: 600; }
+#routing-modal .modal-message { font-size: .9375rem; line-height: 1.6; }
+
+#routing-modal .btn-modal {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 9.5rem; padding: .625rem 1rem; border-radius: .5rem;
+  font-size: .875rem; line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#routing-modal .btn-modal:active { transform: translateY(1px); }
+#routing-modal .btn-cancel { background:#374151; color:#fff; }
+#routing-modal .btn-cancel:hover { background:#4b5563; }
+#routing-modal .btn-confirm { background:#2563eb; color:#fff; }
+#routing-modal .btn-confirm:hover { background:#1d4ed8; }
+
+/* ---- Routing modal: dark selects & option list ---- */
+#routing-modal select,
+#routing-modal .routing-select {
+  background-color: #0f172a !important;  /* slate-900-ish */
+  color: #e5e7eb !important;             /* gray-200 */
+  border: 1px solid #374151 !important;  /* gray-700 */
+}
+
+/* Native dropdown option list (best-effort; varies by OS/UA) */
+#routing-modal select option {
+  background-color: #111827;             /* gray-900 */
+  color: #e5e7eb;
+}
+
+/* Focus ring so it’s visible on dark */
+#routing-modal select:focus-visible {
+  outline: 2px solid rgba(79,70,229,.45);
+  outline-offset: 2px;
+}
+
+/* If you render a custom dropdown panel inside the modal */
+#routing-modal .dropdown-panel,
+#routing-modal .dropdown-menu {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #374151 !important;
+}
+#routing-modal .dropdown-panel li,
+#routing-modal .dropdown-menu li {
+  color: inherit !important;
+}
+#routing-modal .dropdown-panel li:hover,
+#routing-modal .dropdown-menu li:hover,
+#routing-modal .dropdown-panel .active,
+#routing-modal .dropdown-menu .active {
+  background: #1f2937 !important;        /* gray-800 hover */
+}
+
+/* (Optional) Make the admin lookup results list dark too */
+#question_lookup_results {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+#question_lookup_results li { color: inherit !important; }
+#question_lookup_results li.active,
+#question_lookup_results li:hover {
+  background: #1f2937 !important;
+}
+
+

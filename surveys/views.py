@@ -4,9 +4,9 @@ import datetime
 from collections import defaultdict
 from django.conf import settings
 from datetime import timedelta
-
+import json
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
-
 from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
@@ -741,16 +741,16 @@ def get_question_data(request, question_id):
 
     # Serialize choices
     choices = list(
-        Choice.objects.filter(question=question).values("text", "value", "next_question_id")
+        Choice.objects.filter(question=question).values("id", "text", "value", "next_question_id")
     )
 
     # Serialize matrix rows and columns
     matrix_rows = list(
-        MatrixRow.objects.filter(question=question).values("text", "value", "required")
+        MatrixRow.objects.filter(question=question).values("id", "text", "value", "required")
     )
     matrix_cols = list(
         MatrixColumn.objects.filter(question=question).values(
-            "label", "value", "input_type", "required", "next_question_id", "group", "order"
+            "id", "label", "value", "input_type", "required", "next_question_id", "group", "order"
         )
     )
 
@@ -925,3 +925,88 @@ def reorder_questions(request, survey_id):
         for idx, qid in enumerate(new_order):
             Question.objects.filter(pk=qid).update(sort_index=idx)
     return JsonResponse({"ok": True})
+
+
+def _to_int_or_none(v):
+    try:
+        iv = int(v)
+        return iv if iv > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+@csrf_protect
+@staff_member_required
+@require_POST
+def set_routing(request):
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        return HttpResponseBadRequest('Invalid JSON')
+
+    scope = data.get('scope')
+    qid   = data.get('question_id')          # ✅ always included now
+    tgt   = data.get('target_question_id')   # '' means clear
+
+    # Parse ints (allow None on target to clear)
+    try:
+        qid_int = int(qid)
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest('Invalid question id')
+
+    try:
+        target_q = Question.objects.filter(pk=int(tgt)).first() if tgt else None
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest('Invalid target question')
+
+    # Ensure the source question exists (and you could also ensure the user can edit it)
+    q = Question.objects.filter(pk=qid_int).first()
+    if not q:
+        return HttpResponseBadRequest('Source question not found')
+
+    try:
+        if scope == 'choice':
+            # must belong to q
+            try:
+                choice_id = int(data.get('choice_id'))
+            except (TypeError, ValueError):
+                return HttpResponseBadRequest('Invalid choice id')
+
+            ch = Choice.objects.filter(pk=choice_id).first()
+            if not ch:
+                return HttpResponseBadRequest('Invalid choice')
+
+            if ch.question_id != qid_int:
+                return HttpResponseBadRequest('Choice does not belong to this question')
+
+            ch.next_question = target_q
+            ch.save(update_fields=['next_question'])
+
+        elif scope == 'matrix_col':
+            try:
+                col_id = int(data.get('matrix_col_id'))
+            except (TypeError, ValueError):
+                return HttpResponseBadRequest('Invalid matrix column id')
+
+            mc = MatrixColumn.objects.filter(pk=col_id).first()
+            if not mc:
+                return HttpResponseBadRequest('Invalid matrix column')
+
+            if mc.question_id != qid_int:
+                return HttpResponseBadRequest('Matrix column does not belong to this question')
+
+            mc.next_question = target_q
+            mc.save(update_fields=['next_question'])
+
+        elif scope == 'question':
+            q.next_question = target_q
+            q.save(update_fields=['next_question'])
+
+        else:
+            return HttpResponseBadRequest('Invalid scope')
+
+    except Exception as e:
+        # Unexpected errors → structured JSON helps debugging
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+    return JsonResponse({'ok': True})
