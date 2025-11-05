@@ -1445,4 +1445,37 @@
   background: #1f2937 !important;
 }
 
+/* Toast base */
+.toast {
+  background: #111827;            /* gray-900 */
+  color: #e5e7eb;                 /* gray-200 */
+  border: 1px solid #374151;      /* gray-700 */
+  border-radius: .5rem;
+  padding: .5rem .75rem;
+  box-shadow: 0 10px 24px -6px rgba(0,0,0,.45);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.toast .toast-inner {
+  display: flex; align-items: center; gap: .5rem;
+}
+.toast .toast-icon { font-size: 1rem; line-height: 1; }
+.toast .toast-text { font-size: .875rem; }
+.toast .toast-close {
+  margin-left: .5rem; background: transparent; border: 0; color: inherit; cursor: pointer;
+}
+
+/* Variants */
+.toast-success { border-color: #16a34a; } /* green-600 */
+.toast-error   { border-color: #dc2626; } /* red-600 */
+.toast-warning { border-color: #f59e0b; } /* amber-500 */
+.toast-info    { border-color: #3b82f6; } /* blue-500 */
+
+/* Animations */
+.toast-enter  { opacity: 0; transform: translateY(-6px); }
+.toast-leave  { opacity: 0; transform: translateY(-6px); }
+
+
+
 
