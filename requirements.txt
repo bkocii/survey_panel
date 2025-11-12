@@ -7,6 +7,7 @@ psycopg2-binary
 redis
 celery
 python-decouple
+pytest
 eventlet
 flower
 django-nested-admin

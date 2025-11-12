@@ -203,8 +203,16 @@
 
             </div>
 
+            <div class="question-field visibility_rules-field mt-4">
+              <label class="block text-sm font-medium text-white dark:text-gray-300">Display logic (JSON)</label>
+              {{ form.visibility_rules }}
+              <p class="text-xs text-white/80 dark:text-white mt-1">
+                Example: <code>{"all":[{"q":"Q1","op":"in","val":[1,2]}]}</code>
+              </p>
+            </div>
+
             {% for field in form %}
-              {% if field.name != 'code' and field.name != 'text' and field.name != 'question_type' and field.name != 'required' and field.name != 'helper_text' and field.name != 'helper_media' and field.name != 'helper_media_type' and field.name != 'next_question' %}
+              {% if field.name != 'code' and field.name != 'text' and field.name != 'question_type' and field.name != 'required' and field.name != 'helper_text' and field.name != 'helper_media' and field.name != 'helper_media_type' and field.name != 'next_question' and field.name != 'visibility_rules'%}
                 <div class="mt-4 question-field {{ field.name }}-field">
                   <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-white dark:text-gray-300">
                     {{ field.label }}

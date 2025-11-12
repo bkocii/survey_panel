@@ -14,6 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, Http404
 from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn
 from .forms import SurveyResponseForm, WizardQuestionForm
+from .logic import next_displayable, is_visible, safe_next_question, find_next_visible_after
 from django.db import models
 from django.utils.html import escape
 from django.forms import inlineformset_factory
@@ -53,7 +54,7 @@ def survey_question(request, survey_id, question_id=None):
     if survey.groups.exists() and not survey.groups.filter(id__in=request.user.groups.all()).exists():
         return HttpResponseForbidden("Access denied.")
 
-        # ⏱ Store or retrieve survey start time
+    # ⏱ Store or retrieve survey start time
     session_key = f"survey_{survey.id}_start_time"
     if session_key not in request.session:
         request.session[session_key] = now().isoformat()
@@ -95,7 +96,18 @@ def survey_question(request, survey_id, question_id=None):
             request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
-        # ⏳ Add progress tracking
+    # Pseudocode inside survey_question view (after you pick the candidate question to show)
+    candidate = question  # however you resolve it now
+
+    visible_q = next_displayable(candidate, request.user, survey)
+    if not visible_q:
+        # no visible questions remain; go to submit/complete
+        return redirect('surveys:survey_submit', survey_id=survey.id)
+
+    # render visible_q instead of candidate
+    question = visible_q
+
+    # ⏳ Add progress tracking
     current_index = all_questions.index(question) + 1
     total_questions = len(all_questions)
     progress_percent = int((current_index / total_questions) * 100)
@@ -662,9 +674,6 @@ def survey_question(request, survey_id, question_id=None):
                     )
                 next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
-        else:
-            next_q = None
-
         # Get next question in order if not defined
         if not next_q:
 
@@ -680,10 +689,13 @@ def survey_question(request, survey_id, question_id=None):
                 except IndexError:
                     next_q = None
 
-        if next_q:
-            return redirect('surveys:survey_question', survey_id=survey.id, question_id=next_q.id)
+        # Compute a safe next question considering visibility rules and fallbacks
+        next_candidate = safe_next_question(next_q, question, all_questions, request.user, survey)
+
+        if next_candidate:
+            return redirect('surveys:survey_question', survey_id=survey.id, question_id=next_candidate.id)
         else:
-            # Last question answered → create submission & link responses
+            # No visible questions remain → finalize (same logic you already use at the end)
             if not Submission.objects.filter(user=request.user, survey=survey).exists():
                 duration = int((now() - start_time).total_seconds())
                 submission = Submission.objects.create(user=request.user, survey=survey, duration_seconds=duration)
@@ -780,12 +792,14 @@ def get_question_data(request, question_id):
 def _using_postgres():
     return connection.vendor == "postgresql"
 
+
 def _tsquery_prefix(q: str) -> str | None:
     # turns "mc 1" -> "mc:* & 1:*" (prefix match)
     terms = re.findall(r"\w+", q or "")
     if not terms:
         return None
     return " & ".join(t + ":*" for t in terms)
+
 
 def question_lookup(request):
     q = (request.GET.get("q") or "").strip()
@@ -1010,3 +1024,55 @@ def set_routing(request):
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
     return JsonResponse({'ok': True})
+
+
+def _answers_so_far(submission) -> dict:
+    """
+    Build a minimal lookup map for display logic:
+    - Prefer question.code as key if present, else question.id
+    - Value is a single scalar for single choice, list or scalar depending on your schema
+    """
+    amap = {}
+    if not submission:
+        return amap
+    # Adjust to your Response model fields
+    qs = submission.response_set.select_related("question", "choice").all()
+    for r in qs:
+        key = r.question.code or r.question_id
+        value = None
+        # If you store choice.value, use that; else use choice.id or text.
+        if r.choice_id:
+            # MULTI: you may want to aggregate into list; MVP: last wins or normalize as int
+            value = getattr(r.choice, "value", None) or r.choice_id
+        elif r.text_answer not in (None, ""):
+            # try to coerce numeric text to int/float if needed
+            try:
+                value = float(r.text_answer) if "." in r.text_answer else int(r.text_answer)
+            except Exception:
+                value = r.text_answer
+        else:
+            value = None
+        amap[key] = value
+    return amap
+
+def _is_visible(question: Question, submission) -> bool:
+    amap = _answers_so_far(submission)
+    return eval_rules(question.visibility_rules or {}, amap)
+
+def _next_displayable(start_q: Question, submission) -> Question | None:
+    """
+    Walk forward using your existing routing until we find a visible question
+    or we run out. For MVP, we follow question.next_question chain.
+    If you also route via choices/matrix columns, make sure your “current answer”
+    logic passes the right ‘next’ when you call this helper.
+    """
+    q = start_q
+    visited = set()
+    while q:
+        if q.pk in visited:
+            break  # guard against loops
+        visited.add(q.pk)
+        if _is_visible(q, submission):
+            return q
+        q = q.next_question  # fall forward along your existing pointer
+    return None

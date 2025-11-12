@@ -347,7 +347,7 @@ class SurveyAdmin(ModelAdmin):
 @admin.register(Question)
 class QuestionAdmin(ModelAdmin):
     list_display = (
-        'text', 'survey', 'question_type', 'matrix_mode', 'allows_multiple'
+        'text', 'survey', 'question_type', 'matrix_mode', 'allows_multiple', 'visibility_rules'
     )
     list_filter = ('survey', 'question_type', 'matrix_mode')
     form = QuestionAdminForm
@@ -361,7 +361,7 @@ class QuestionAdmin(ModelAdmin):
                 'survey', 'code', 'text', 'question_type', 'matrix_mode', 'next_question', 'required',
                 'min_value', 'max_value', 'step_value',
                 'allow_multiple_files', 'allows_multiple',
-                'helper_text', 'helper_media', 'helper_media_type',  # updated here
+                'helper_text', 'helper_media', 'helper_media_type', 'visibility_rules' # updated here
             )
         }),
     )

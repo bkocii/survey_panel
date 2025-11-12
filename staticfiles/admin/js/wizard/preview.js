@@ -394,6 +394,13 @@
                     data-qid="${h(String(fragment.id))}">
               <span class="btn-ui" style="background:#7f1d1d;color:#fff;border-color:rgba(255,255,255,.18)">🗑️</span>
             </button>
+            <button type="button"
+                    class="btn-shell" 
+                    data-action="set-routing" 
+                    data-qid="${h(String(fragment.id))}">
+              <span class="btn-ui btn-secondary">🧭 Set routing</span>
+            </button>
+
           </div>
         </div>
   
@@ -464,12 +471,6 @@
           <span class="${twBadge()}">Draft</span>
         </div>
         
-      <!-- ✅ Same heading format -->
-        <div class="pv-title px-4">
-          <span class="pv-index">${index}.</span>
-          <span class="pv-text">${h(title)}</span>
-        </div>
-        
         <div class="body px-4 pb-4">
           <div class="pv-scroll">
             ${bodyHTML}
@@ -496,6 +497,7 @@
     });
 
     list.scrollTop = list.scrollHeight;
+    renumberPreviewCards();
   }
 
   function updatePreview() {
@@ -595,6 +597,7 @@
         }
       }, { offset: Number.NEGATIVE_INFINITY }).element || null;
     }
+    renumberPreviewCards();
   }
 
   function renumberPreviewCards() {
@@ -611,6 +614,181 @@
     const draftIdxEl = list.querySelector('.preview-card.draft .pv-title .pv-index');
     if (draftIdxEl) draftIdxEl.textContent = (cards.length + 1) + '.';
   }
+
+  (function () {
+    const list  = document.getElementById('question-preview-list');
+    const modal = document.getElementById('routing-modal');
+    if (!list || !modal) return;
+
+    const apiBase   = list.dataset.apiBase; // e.g. "/surveys/api/question-data/"
+    const choiceRow = modal.querySelector('#routing-choice-row');
+    const matrixRow = modal.querySelector('#routing-matrix-row');
+    const selChoice = modal.querySelector('#routing-choice');
+    const selMatrix = modal.querySelector('#routing-matrix-col');
+    const selTarget = modal.querySelector('#routing-target');
+    const ctx       = modal.querySelector('#routing-context');
+
+    const hidQid   = modal.querySelector('#routing-qid');
+    const hidQtype = modal.querySelector('#routing-qtype');
+
+    // --- CSRF helper (cookie -> hidden input fallback)
+    function getCsrf() {
+      const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      if (m) return decodeURIComponent(m[1]);
+      const inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      if (inp && inp.value) return inp.value;
+      return "";
+    }
+
+    function populateTargetsFromPool() {
+      selTarget.innerHTML = '';
+      const pool = document.getElementById('next-question-options');
+      if (pool) {
+        for (const o of pool.options) selTarget.appendChild(o.cloneNode(true));
+      } else {
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '---------';
+        selTarget.appendChild(opt);
+      }
+    }
+
+    function openModal()  { modal.classList.remove('hidden'); }
+    function closeModal() { modal.classList.add('hidden'); }
+
+    // Delegated click from any preview card’s routing button
+    list.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-action="set-routing"]');
+      if (!btn) return;
+      ev.preventDefault();
+
+      const qid = btn.getAttribute('data-qid');
+      if (!qid) return;
+
+      try {
+        const res = await fetch(`${apiBase}${qid}/`);
+        if (!res.ok) throw new Error('Failed to load question data');
+        const data = await res.json();
+
+        // ✅ store these for the save step
+        hidQid.value   = String(qid);
+        hidQtype.value = data.question_type || '';
+
+        // Context line
+        ctx.textContent = (data.text || '').trim() ? `Question: “${data.text}”` : `Question #${qid}`;
+
+        // Reset rows
+        selChoice.innerHTML = '';
+        selMatrix.innerHTML = '';
+        choiceRow.classList.add('hidden');
+        matrixRow.classList.add('hidden');
+
+        // ✅ Exclude IMAGE_RATING as requested
+        const choiceTypes = new Set(['SINGLE_CHOICE','MULTI_CHOICE','RATING','DROPDOWN','IMAGE_CHOICE']);
+        if (choiceTypes.has(data.question_type)) {
+          choiceRow.classList.remove('hidden');
+
+          // choices need real IDs coming from the API
+          const blank = document.createElement('option');
+          blank.value = ''; blank.textContent = '— Select a choice —';
+          selChoice.appendChild(blank);
+
+          (data.choices || []).forEach(c => {
+            // expect {id, text} in API
+            if (c && c.id != null) {
+              const o = document.createElement('option');
+              o.value = String(c.id);             // ✅ keep the pk
+              o.textContent = c.text ?? `Choice ${c.id}`;
+              selChoice.appendChild(o);
+            }
+          });
+        }
+
+        if (data.question_type === 'MATRIX') {
+          matrixRow.classList.remove('hidden');
+
+          const blank = document.createElement('option');
+          blank.value = ''; blank.textContent = '— Select a column —';
+          selMatrix.appendChild(blank);
+
+          (data.matrix_cols || []).forEach(col => {
+            if (col && col.id != null) {
+              const o = document.createElement('option');
+              o.value = String(col.id);           // ✅ keep the pk
+              const label = col.label || (col.value != null ? `Col ${col.value}` : `Col ${col.id}`);
+              o.textContent = label;
+              selMatrix.appendChild(o);
+            }
+          });
+        }
+
+        populateTargetsFromPool();
+        openModal();
+      } catch (e) {
+        console.error(e);
+        window.makeToast ? makeToast('Could not load question details', 'error') : alert('Could not load question details');
+      }
+    });
+
+    modal.querySelector('#routing-cancel')?.addEventListener('click', closeModal);
+
+    modal.querySelector('#routing-save')?.addEventListener('click', async () => {
+      const qid   = hidQid.value;
+      const qtype = hidQtype.value;
+
+      // Allow clearing
+      const target = selTarget.value || '';
+
+      // ✅ always include question_id so server can verify ownership
+      const payload = { question_id: qid, target_question_id: target, scope: 'question' };
+
+      const choiceTypes = new Set(['SINGLE_CHOICE','MULTI_CHOICE','RATING','DROPDOWN','IMAGE_CHOICE']); // no IMAGE_RATING
+      if (choiceTypes.has(qtype)) {
+        const choiceId = selChoice.value || '';
+        if (!choiceId) {
+          window.makeToast ? makeToast('Select a choice first.', 'warning') : alert('Select a choice first.');
+          return;
+        }
+        payload.scope = 'choice';
+        payload.choice_id = choiceId; // ✅ send the pk
+      } else if (qtype === 'MATRIX') {
+        const colId = selMatrix.value || '';
+        if (!colId) {
+          window.makeToast ? makeToast('Select a matrix column first.', 'warning') : alert('Select a matrix column first.');
+          return;
+        }
+        payload.scope = 'matrix_col';
+        payload.matrix_col_id = colId; // ✅ send the pk
+      }
+
+      try {
+        const res = await fetch('/surveys/api/set-routing/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrf(),                 // ✅
+          },
+          credentials: 'same-origin',                 // ✅
+          body: JSON.stringify(payload),
+        });
+
+        const maybeJson = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg = (maybeJson && (maybeJson.detail || maybeJson.error)) || 'Failed to save routing';
+          throw new Error(msg);
+        }
+
+        closeModal();
+        window.makeToast ? makeToast('Routing saved.', 'success') : null;
+        // If you want to re-render preview badges, call it here.
+        if (typeof updatePreview === 'function') updatePreview();
+      } catch (e) {
+        console.error(e);
+        window.makeToast ? makeToast(`Could not save routing. ${e.message || ''}`, 'error') : alert('Could not save routing.');
+      }
+    });
+  })();
+
 
   // ---------- init & handlers ----------
   async function init() {
@@ -649,8 +827,26 @@
       w.SurveyWizard._editHookReady = true;
     }
 
-    // delete click → post to hidden form
+    // delete click → open modal, and submit on confirm
     if (!w.SurveyWizard._deleteHookReady) {
+      let pendingDeleteQid = null;
+
+      const modalEl   = d.getElementById('confirm-delete-modal');
+      const btnCancel = d.getElementById('cancel-delete');
+      const btnOk     = d.getElementById('confirm-delete');
+
+      function openDeleteModal(qid) {
+        pendingDeleteQid = qid;
+        if (!modalEl) return;
+        modalEl.classList.remove('hidden');
+        setTimeout(() => btnOk?.focus(), 0);
+      }
+      function closeDeleteModal() {
+        pendingDeleteQid = null;
+        if (!modalEl) return;
+        modalEl.classList.add('hidden');
+      }
+
       d.addEventListener('click', (ev) => {
         const btn = ev.target.closest('[data-action="delete-in-wizard"]');
         if (!btn) return;
@@ -660,17 +856,40 @@
         const qid = btn.getAttribute('data-qid');
         if (!qid) return;
 
-        if (!confirm('Delete this question? This cannot be undone.')) return;
+        openDeleteModal(qid);
+      });
+
+      btnCancel?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeDeleteModal();
+      });
+
+      btnOk?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!pendingDeleteQid) { closeDeleteModal(); return; }
 
         const form  = d.getElementById('wizard-delete-form');
         const input = d.getElementById('wizard-delete-id');
         if (!form || !input) {
           console.warn('Delete form/field not found');
+          closeDeleteModal();
           return;
         }
-        input.value = qid;
+        input.value = pendingDeleteQid;
+        closeDeleteModal();
         form.submit();
       });
+
+      // close on backdrop or ESC
+      modalEl?.addEventListener('click', (e) => {
+        if (e.target === modalEl) closeDeleteModal();
+      });
+      d.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modalEl.classList.contains('hidden')) {
+          closeDeleteModal();
+        }
+      });
+
       w.SurveyWizard._deleteHookReady = true;
     }
 

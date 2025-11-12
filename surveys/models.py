@@ -88,6 +88,7 @@ class Question(models.Model):
         help_text='Optional helper description to display under the question.'
     )
     next_question = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+    visibility_rules = models.JSONField(blank=True, null=True, default=dict, help_text="JSON rule for display logic.")
 
     def __str__(self):
         return self.text  # String representation for admin

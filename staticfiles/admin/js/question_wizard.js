@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field", "lookup-field"
+            "helper_text-field", "helper_media-field", "helper_media_type-field", "lookup-field", "visibility_rules"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");
@@ -500,82 +500,82 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 🔍 Generate live question preview
-    // function updatePreview() {
-    //   const preview = document.getElementById("question-preview");
-    //   if (!preview) return;
-    //
-    //   const type   = document.getElementById("id_question_type")?.value || "";
-    //   const text   = document.getElementById("id_text")?.value || "";
-    //   const helper = document.getElementById("id_helper_text")?.value || "";
-    //
-    //   const parts = [];
-    //   let hasContent = false;
-    //
-    //   // Question text
-    //   if (text.trim()) {
-    //     parts.push(`<h3 class="font-bold text-lg">${text}</h3>`);
-    //     hasContent = true;
-    //   }
-    //
-    //   // Helper text
-    //   if (helper.trim()) {
-    //     parts.push(
-    //       `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`
-    //     );
-    //     hasContent = true;
-    //   }
-    //
-    //   // Choices (single/multi/dropdown/image choice)
-    //   if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
-    //     const labels = Array.from(
-    //       document.querySelectorAll('[id^="id_choices-"][id$="-text"]')
-    //     ).map(i => i.value.trim()).filter(Boolean);
-    //
-    //     if (labels.length) {
-    //       parts.push("<ul class='list-disc list-inside'>");
-    //       labels.forEach(l => parts.push(`<li>${l}</li>`));
-    //       parts.push("</ul>");
-    //       hasContent = true;
-    //     }
-    //   }
-    //
-    //   // Matrix (simple signal that something is configured)
-    //   if (type === "MATRIX") {
-    //     const rows = Array.from(
-    //       document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]')
-    //     ).map(i => i.value.trim()).filter(Boolean);
-    //
-    //     const cols = Array.from(
-    //       document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]')
-    //     ).map(i => i.value.trim()).filter(Boolean);
-    //
-    //     if (rows.length && cols.length) {
-    //       // Lightweight table preview (no radios when empty)
-    //       let table = "<table class='table-auto w-full border text-left mt-2 text-sm'><thead><tr><th></th>";
-    //       cols.forEach(c => (table += `<th class="px-2 py-1 border">${c}</th>`));
-    //       table += "</tr></thead><tbody>";
-    //
-    //       rows.forEach(r => {
-    //         table += `<tr><td class="px-2 py-1 border font-semibold">${r}</td>`;
-    //         cols.forEach(() => (table += "<td class='px-2 py-1 border'><span class='opacity-50'>·</span></td>"));
-    //         table += "</tr>";
-    //       });
-    //
-    //       table += "</tbody></table>";
-    //       parts.push(table);
-    //       hasContent = true;
-    //     }
-    //   }
-    //
-    //   // Placeholder (prefer <template>, then data-placeholder, then hardcoded)
-    //   const tpl = document.getElementById("preview-placeholder");
-    //   const placeholder =
-    //     (tpl && tpl.innerHTML.trim()) ||
-    //     preview.dataset.placeholder ||
-    //     "<em class='text-gray-400 dark:text-gray-500 italic'>Start typing…</em>";
-    //
-    //   preview.innerHTML = hasContent ? parts.join("") : placeholder;
-    // }
+    function updatePreview() {
+      const preview = document.getElementById("question-preview");
+      if (!preview) return;
+
+      const type   = document.getElementById("id_question_type")?.value || "";
+      const text   = document.getElementById("id_text")?.value || "";
+      const helper = document.getElementById("id_helper_text")?.value || "";
+
+      const parts = [];
+      let hasContent = false;
+
+      // Question text
+      if (text.trim()) {
+        parts.push(`<h3 class="font-bold text-lg">${text}</h3>`);
+        hasContent = true;
+      }
+
+      // Helper text
+      if (helper.trim()) {
+        parts.push(
+          `<p class="text-sm text-gray-500 dark:text-gray-400">${helper}</p>`
+        );
+        hasContent = true;
+      }
+
+      // Choices (single/multi/dropdown/image choice)
+      if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "IMAGE_CHOICE"].includes(type)) {
+        const labels = Array.from(
+          document.querySelectorAll('[id^="id_choices-"][id$="-text"]')
+        ).map(i => i.value.trim()).filter(Boolean);
+
+        if (labels.length) {
+          parts.push("<ul class='list-disc list-inside'>");
+          labels.forEach(l => parts.push(`<li>${l}</li>`));
+          parts.push("</ul>");
+          hasContent = true;
+        }
+      }
+
+      // Matrix (simple signal that something is configured)
+      if (type === "MATRIX") {
+        const rows = Array.from(
+          document.querySelectorAll('[id^="id_matrix_rows-"][id$="-text"]')
+        ).map(i => i.value.trim()).filter(Boolean);
+
+        const cols = Array.from(
+          document.querySelectorAll('[id^="id_matrix_cols-"][id$="-label"]')
+        ).map(i => i.value.trim()).filter(Boolean);
+
+        if (rows.length && cols.length) {
+          // Lightweight table preview (no radios when empty)
+          let table = "<table class='table-auto w-full border text-left mt-2 text-sm'><thead><tr><th></th>";
+          cols.forEach(c => (table += `<th class="px-2 py-1 border">${c}</th>`));
+          table += "</tr></thead><tbody>";
+
+          rows.forEach(r => {
+            table += `<tr><td class="px-2 py-1 border font-semibold">${r}</td>`;
+            cols.forEach(() => (table += "<td class='px-2 py-1 border'><span class='opacity-50'>·</span></td>"));
+            table += "</tr>";
+          });
+
+          table += "</tbody></table>";
+          parts.push(table);
+          hasContent = true;
+        }
+      }
+
+      // Placeholder (prefer <template>, then data-placeholder, then hardcoded)
+      const tpl = document.getElementById("preview-placeholder");
+      const placeholder =
+        (tpl && tpl.innerHTML.trim()) ||
+        preview.dataset.placeholder ||
+        "<em class='text-gray-400 dark:text-gray-500 italic'>Start typing…</em>";
+
+      preview.innerHTML = hasContent ? parts.join("") : placeholder;
+    }
 
 
     previousQuestionType = document.getElementById("id_question_type")?.value;

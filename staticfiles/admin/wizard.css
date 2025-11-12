@@ -1189,4 +1189,293 @@
 .preview-card.drop-target { outline: 2px dashed #6366f1; }
 
 
+/* ---- Card with thick border + outer frame ---- */
+#confirm-switch-modal .confirm-modal-card,
+#confirm-delete-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;   /* gray-900 */
+  color: #fff !important;
+  border: 1px solid #ffffff !important; /* visible border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+}
+
+/* Outer frame ring (subtle) */
+#confirm-switch-modal .confirm-modal-card::before,
+#confirm-delete-modal .confirm-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+/* Title & message */
+#confirm-switch-modal .modal-title,
+#confirm-delete-modal .modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+#confirm-switch-modal .modal-message,
+#confirm-delete-modal .modal-message {
+  font-size: .9375rem;
+  line-height: 1.6;
+}
+#confirm-switch-modal [data-modal-title],
+#confirm-switch-modal [data-modal-message],
+#confirm-delete-modal [data-modal-title],
+#confirm-delete-modal [data-modal-message] {
+  overflow-wrap: anywhere;
+}
+
+/* Buttons: identical size, rounded */
+#confirm-switch-modal .btn-modal,
+#confirm-delete-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#confirm-switch-modal .btn-modal:active,
+#confirm-delete-modal .btn-modal:active {
+  transform: translateY(1px);
+}
+
+/* Cancel (gray) */
+#confirm-switch-modal .btn-cancel,
+#confirm-delete-modal .btn-cancel {
+  background: #374151; /* gray-700 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-cancel:hover,
+#confirm-delete-modal .btn-cancel:hover {
+  background: #4b5563; /* gray-600 */
+}
+
+/* Confirm (red) */
+#confirm-switch-modal .btn-confirm,
+#confirm-delete-modal .btn-confirm {
+  background: #dc2626; /* red-600 */
+  color: #fff;
+}
+#confirm-switch-modal .btn-confirm:hover,
+#confirm-delete-modal .btn-confirm:hover {
+  background: #b91c1c; /* red-700 */
+}
+
+/* Pop-in animation */
+#confirm-switch-modal .confirm-modal-card,
+#confirm-delete-modal .confirm-modal-card {
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#confirm-switch-modal:not(.hidden) .confirm-modal-card,
+#confirm-delete-modal:not(.hidden) .confirm-modal-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+
+/* --- Toasts --- */
+#toast-stack { pointer-events: none; }          /* clicks pass through except on buttons */
+#toast-stack .toast {
+  pointer-events: auto;
+  background: #111827;                          /* gray-900 */
+  color: #f9fafb;                               /* gray-50 */
+  border: 1px solid #374151;                    /* gray-700 */
+  border-radius: 12px;
+  padding: .65rem .8rem;
+  min-width: 18rem;
+  max-width: 28rem;
+  box-shadow: 0 12px 30px rgba(0,0,0,.45);
+  transition: transform .18s ease, opacity .18s ease;
+  transform: translateY(-6px);
+  opacity: 0;
+}
+#toast-stack .toast-enter { transform: translateY(-6px); opacity: 0; }
+#toast-stack .toast:not(.toast-enter) { transform: translateY(0); opacity: 1; }
+#toast-stack .toast-leave { transform: translateY(-6px); opacity: 0; }
+
+#toast-stack .toast-inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .6rem;
+}
+#toast-stack .toast-icon { font-size: 1rem; opacity: .95; }
+#toast-stack .toast-text { font-size: . nine five rem; line-height: 1.25rem; } /* 0.95rem */
+#toast-stack .toast-close {
+  background: transparent; border: 0; color: #e5e7eb; cursor: pointer;
+  padding: .15rem .25rem; border-radius: .375rem;
+}
+#toast-stack .toast-close:hover { background: rgba(255,255,255,.06); }
+
+/* Variants */
+#toast-stack .toast-success { border-color: #059669; background: #064e3b; } /* green */
+#toast-stack .toast-error   { border-color: #dc2626; background: #7f1d1d; } /* red */
+#toast-stack .toast-warning { border-color: #d97706; background: #78350f; } /* amber */
+#toast-stack .toast-info    { border-color: #2563eb; background: #1e3a8a; } /* blue */
+#toast-stack .toast-debug   { border-color: #6b7280; background: #374151; } /* gray */
+
+/* --- Question lookup dropdown: force scroll & layering --- */
+#question_lookup_container { position: relative; }
+
+#question_lookup_results {
+  position: absolute;           /* anchor to the input wrapper */
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 16rem;            /* ≈ h-64 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  z-index: 60;                  /* above cards/forms */
+  background: #111827;          /* dark bg to match UI */
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+/* items */
+#question_lookup_results li {
+  padding: .5rem .75rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* hover/active states */
+#question_lookup_results li:hover,
+#question_lookup_results li.active {
+  background: #1f2937;  /* gray-800 */
+}
+
+/* optional nicer scrollbars */
+#question_lookup_results::-webkit-scrollbar { width: 10px; }
+#question_lookup_results::-webkit-scrollbar-thumb { background: #374151; border-radius: 6px; }
+#question_lookup_results::-webkit-scrollbar-track { background: #0b1222; }
+
+/* Routing modal reuses the same card look */
+#routing-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;
+  color: #fff !important;
+  border: 1px solid #ffffff !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#routing-modal:not(.hidden) .confirm-modal-card { transform: scale(1); opacity: 1; }
+
+#routing-modal .modal-title   { font-size: 1.125rem; font-weight: 600; }
+#routing-modal .modal-message { font-size: .9375rem; line-height: 1.6; }
+
+#routing-modal .btn-modal {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 9.5rem; padding: .625rem 1rem; border-radius: .5rem;
+  font-size: .875rem; line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#routing-modal .btn-modal:active { transform: translateY(1px); }
+#routing-modal .btn-cancel { background:#374151; color:#fff; }
+#routing-modal .btn-cancel:hover { background:#4b5563; }
+#routing-modal .btn-confirm { background:#2563eb; color:#fff; }
+#routing-modal .btn-confirm:hover { background:#1d4ed8; }
+
+/* ---- Routing modal: dark selects & option list ---- */
+#routing-modal select,
+#routing-modal .routing-select {
+  background-color: #0f172a !important;  /* slate-900-ish */
+  color: #e5e7eb !important;             /* gray-200 */
+  border: 1px solid #374151 !important;  /* gray-700 */
+}
+
+/* Native dropdown option list (best-effort; varies by OS/UA) */
+#routing-modal select option {
+  background-color: #111827;             /* gray-900 */
+  color: #e5e7eb;
+}
+
+/* Focus ring so it’s visible on dark */
+#routing-modal select:focus-visible {
+  outline: 2px solid rgba(79,70,229,.45);
+  outline-offset: 2px;
+}
+
+/* If you render a custom dropdown panel inside the modal */
+#routing-modal .dropdown-panel,
+#routing-modal .dropdown-menu {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #374151 !important;
+}
+#routing-modal .dropdown-panel li,
+#routing-modal .dropdown-menu li {
+  color: inherit !important;
+}
+#routing-modal .dropdown-panel li:hover,
+#routing-modal .dropdown-menu li:hover,
+#routing-modal .dropdown-panel .active,
+#routing-modal .dropdown-menu .active {
+  background: #1f2937 !important;        /* gray-800 hover */
+}
+
+/* (Optional) Make the admin lookup results list dark too */
+#question_lookup_results {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+#question_lookup_results li { color: inherit !important; }
+#question_lookup_results li.active,
+#question_lookup_results li:hover {
+  background: #1f2937 !important;
+}
+
+/* Toast base */
+.toast {
+  background: #111827;            /* gray-900 */
+  color: #e5e7eb;                 /* gray-200 */
+  border: 1px solid #374151;      /* gray-700 */
+  border-radius: .5rem;
+  padding: .5rem .75rem;
+  box-shadow: 0 10px 24px -6px rgba(0,0,0,.45);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.toast .toast-inner {
+  display: flex; align-items: center; gap: .5rem;
+}
+.toast .toast-icon { font-size: 1rem; line-height: 1; }
+.toast .toast-text { font-size: .875rem; }
+.toast .toast-close {
+  margin-left: .5rem; background: transparent; border: 0; color: inherit; cursor: pointer;
+}
+
+/* Variants */
+.toast-success { border-color: #16a34a; } /* green-600 */
+.toast-error   { border-color: #dc2626; } /* red-600 */
+.toast-warning { border-color: #f59e0b; } /* amber-500 */
+.toast-info    { border-color: #3b82f6; } /* blue-500 */
+
+/* Animations */
+.toast-enter  { opacity: 0; transform: translateY(-6px); }
+.toast-leave  { opacity: 0; transform: translateY(-6px); }
+
+
+
 
