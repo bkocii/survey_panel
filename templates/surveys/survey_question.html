@@ -66,8 +66,19 @@ survey
         </script>
 
         {# actions row just ABOVE the progress bar #}
-        <div class="q-card__actions pb-2">
-          <button type="submit" class="btn-shell">
+        <div class="q-card__actions pb-2 flex gap-2">
+          <button type="submit"
+                  name="nav"
+                  value="back"
+                  formnovalidate
+                  class="btn-shell">
+            <span class="btn-ui btn-primary btn-wide">⬅️ Back</span>
+          </button>
+
+          <button type="submit"
+                  name="nav"
+                  value="next"
+                  class="btn-shell">
             <span class="btn-ui btn-primary btn-wide">➡️ Next</span>
           </button>
         </div>

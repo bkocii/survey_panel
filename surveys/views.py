@@ -44,124 +44,430 @@ def survey_list(request):
 
 @login_required
 def survey_question(request, survey_id, question_id=None):
+    """
+    Survey runner with:
+      - Back button support via a session-stored navigation path
+      - Editable answers (replace instead of duplicate)
+      - Visibility-aware forward navigation (safe_next_question)
+    """
     survey = get_object_or_404(Survey, id=survey_id, is_active=True)
 
-    # If already submitted, redirect
+    # 🔐 Already submitted? Block re-entry
     if Submission.objects.filter(user=request.user, survey=survey).exists():
         return redirect('surveys:already_submitted', survey_id=survey.id)
 
-    # Check group access
+    # 🔐 Group access
     if survey.groups.exists() and not survey.groups.filter(id__in=request.user.groups.all()).exists():
         return HttpResponseForbidden("Access denied.")
 
-    # ⏱ Store or retrieve survey start time
+    # 🧭 NEW: navigation path kept in session for "Back" support
+    path_key = f"survey_{survey.id}_path"
+
+    def get_path():
+        return list(request.session.get(path_key, []))
+
+    def set_path(p):
+        request.session[path_key] = p
+        request.session.modified = True
+
+    def push_to_path(qid: int):
+        """Append current question id if it's not already the tail."""
+        p = get_path()
+        if not p or p[-1] != qid:
+            p.append(qid)
+            set_path(p)
+
+    def pop_current_and_prev() -> int | None:
+        """
+        Pops current id (tail) and returns previous id if present.
+        If already at the first item, returns None.
+        """
+        p = get_path()
+        if not p:
+            return None
+        _curr = p.pop()  # remove current
+        prev = p[-1] if p else None
+        set_path(p)
+        return prev
+
+    # ⏱ Start-time tracking (existing)
     session_key = f"survey_{survey.id}_start_time"
     if session_key not in request.session:
         request.session[session_key] = now().isoformat()
     start_time = now().fromisoformat(request.session[session_key])
 
-    # ⏳ Enforce time limit
+    # ⏳ Time limit (existing)
     if survey.time_limit_minutes:
         time_passed = (now() - start_time).total_seconds()
         max_time = survey.time_limit_minutes * 60
         time_left = int(max(0, max_time - time_passed))
 
         if time_left <= 0:
-            # Clear session start time
+            # time up → finalize early
             request.session.pop(session_key, None)
-            # Submit survey early
+            # also clean nav path
+            request.session.pop(path_key, None)
             if not Submission.objects.filter(user=request.user, survey=survey).exists():
                 submission = Submission.objects.create(user=request.user, survey=survey)
-                Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(
-                    submission=submission)
+                Response.objects.filter(
+                    user=request.user, survey=survey, submission__isnull=True
+                ).update(submission=submission)
                 request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
     else:
         time_left = None
 
-    # All ordered questions
+    # All questions in fixed order
     all_questions = list(survey.questions.order_by("sort_index", 'id'))
 
+    # Resolve candidate to display (existing)
     if question_id:
         question = get_object_or_404(Question, id=question_id, survey=survey)
     else:
-        # Get first unanswered
-        answered_qs = Response.objects.filter(user=request.user, survey=survey).values_list('question_id', flat=True)
+        answered_qs = Response.objects.filter(
+            user=request.user, survey=survey
+        ).values_list('question_id', flat=True)
         question = survey.questions.exclude(id__in=answered_qs).order_by("sort_index", 'id').first()
         if not question:
-            # All questions answered → finalize
+            # Nothing to show → finalize
+            request.session.pop(path_key, None)  # 🧹 clear nav path
             submission = Submission.objects.create(user=request.user, survey=survey)
-            # Attach all existing responses to submission
-            Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(submission=submission)
+            Response.objects.filter(
+                user=request.user, survey=survey, submission__isnull=True
+            ).update(submission=submission)
             request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
-    # Pseudocode inside survey_question view (after you pick the candidate question to show)
-    candidate = question  # however you resolve it now
-
-    visible_q = next_displayable(candidate, request.user, survey)
+    # Respect visibility chain
+    visible_q = next_displayable(question, request.user, survey)
     if not visible_q:
-        # no visible questions remain; go to submit/complete
+        # No visible questions remain → finalize
+        request.session.pop(path_key, None)
         return redirect('surveys:survey_submit', survey_id=survey.id)
 
-    # render visible_q instead of candidate
+    # Use the visible question
     question = visible_q
 
-    # ⏳ Add progress tracking
+    # 🧭 track this question in the path for Back support
+    push_to_path(question.id)
+
+    # expose "first step" flag for template (length <= 1 means we're at the first visible question)
+    is_first_step = len(get_path()) <= 1
+
+    # Progress
     current_index = all_questions.index(question) + 1
     total_questions = len(all_questions)
     progress_percent = int((current_index / total_questions) * 100)
 
-    # used for grouping sided by side matrix
+    # Side-by-side matrix grouping (existing)
     grouped_matrix_columns = defaultdict(list)
-
     if question.question_type == 'MATRIX' and question.matrix_mode == 'side_by_side':
-        columns = question.matrix_columns.all().order_by('group', 'value')  # Ensures proper order
+        columns = question.matrix_columns.all().order_by('group', 'value')
         for col in columns:
             key = col.group or "Ungrouped"
             grouped_matrix_columns[key].append(col)
-
     grouped_matrix_columns = dict(grouped_matrix_columns)
 
+    # 🆕 helper: replace a single-answer response atomically (delete then insert)
+    def replace_single_answer(*, user, survey, question):
+        Response.objects.filter(
+            user=user, survey=survey, question=question, submission__isnull=True
+        ).delete()
+
     if request.method == 'POST':
+        # 🧭 NEW: detect which nav button was clicked
+        nav = request.POST.get('nav', 'next')
+
+        # ⬅️ Back: do NOT validate current; just go to previous shown question
+        if nav == 'back':
+            prev_id = pop_current_and_prev()
+            if prev_id:
+                return redirect('surveys:survey_question', survey_id=survey.id, question_id=prev_id)
+            # no previous → keep current
+            return redirect('surveys:survey_question', survey_id=survey.id, question_id=question.id)
+
+        # ➡️ Next: proceed with validation/saving current answers
         answer = request.POST.get('answer')
         next_q = None
 
-        # Avoid duplicate
-        if not Response.objects.filter(user=request.user, survey=survey, question=question).exists():
-            if question.question_type in ['SINGLE_CHOICE', 'RATING', 'DROPDOWN']:
-                if not answer:
-                    if question.required:
-                        messages.error(request, "Please select an option before continuing.")
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left,
-                        })
-                    else:
-                        # Not required and no answer — skip saving response
-                        pass
+        # --- SINGLE-ANSWER TYPES ---
+        if question.question_type in ['SINGLE_CHOICE', 'RATING', 'DROPDOWN']:
+            if not answer:
+                if question.required:
+                    messages.error(request, "Please select an option before continuing.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                    })
                 else:
+                    # 🆕 user cleared selection on a non-required question: wipe existing response
+                    replace_single_answer(user=request.user, survey=survey, question=question)
+            else:
+                try:
+                    choice = Choice.objects.get(id=answer, question=question)
+                except Choice.DoesNotExist:
+                    messages.error(request, "Invalid option selected. Please try again.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                    })
+
+                custom_other = request.POST.get('other_text', '').strip()
+                replace_single_answer(user=request.user, survey=survey, question=question)
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    choice=choice,
+                    text_answer=custom_other if choice.text.lower() == 'other' else '',
+                    value=choice.value if choice.value is not None else None,
+                )
+                next_q = choice.next_question
+
+        elif question.question_type == 'YESNO':
+            if question.required and not answer:
+                messages.error(request, "This question is required. Please select Yes or No.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+            if answer and answer.lower() in ['yes', 'no']:
+                value = 1 if answer.lower() == "yes" else 0
+                replace_single_answer(user=request.user, survey=survey, question=question)
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=answer.lower(),
+                    value=value
+                )
+            else:
+                # 🆕 cleared on non-required → wipe previous
+                replace_single_answer(user=request.user, survey=survey, question=question)
+            next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
+
+        elif question.question_type == 'NUMBER':
+            raw = (answer or '').strip()
+            if question.required and raw == '':
+                messages.error(request, "This question is required. Please enter a number.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+            if raw != '':
+                try:
+                    number_value = float(raw)
+                except (TypeError, ValueError):
+                    messages.error(request, "Invalid number input.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                    })
+                replace_single_answer(user=request.user, survey=survey, question=question)
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=str(number_value),
+                    value=number_value
+                )
+            else:
+                # cleared on non-required
+                replace_single_answer(user=request.user, survey=survey, question=question)
+            next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
+
+        elif question.question_type == 'SLIDER':
+            slider_moved = request.POST.get('slider_moved') == "true"
+            answer = request.POST.get('answer')
+            if question.required and not slider_moved:
+                messages.error(request, "Please move the slider to select a value.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+            if answer:
+                try:
+                    slider_value = int(answer)
+                except (TypeError, ValueError):
+                    messages.error(request, "Invalid slider value.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                    })
+                if question.min_value is not None and slider_value < question.min_value:
+                    messages.error(request, f"Value must be at least {question.min_value}.")
+                    return render(request, 'surveys/survey_question.html', {...})
+                if question.max_value is not None and slider_value > question.max_value:
+                    messages.error(request, f"Value must be at most {question.max_value}.")
+                    return render(request, 'surveys/survey_question.html', {...})
+                replace_single_answer(user=request.user, survey=survey, question=question)
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=str(slider_value),
+                    value=slider_value
+                )
+            else:
+                # cleared on non-required
+                replace_single_answer(user=request.user, survey=survey, question=question)
+            next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
+
+        elif question.question_type == 'DATE':
+            if not answer and question.required:
+                messages.error(request, "Please select a date.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+            if answer:
+                try:
+                    parsed_date = datetime.datetime.strptime(answer, '%Y-%m-%d').date()
+                except ValueError:
+                    return HttpResponseBadRequest("Invalid date format. Please use YYYY-MM-DD.")
+                replace_single_answer(user=request.user, survey=survey, question=question)
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=parsed_date.isoformat(),
+                )
+            else:
+                replace_single_answer(user=request.user, survey=survey, question=question)
+
+        elif question.question_type == 'TEXT':
+            txt = (answer or '').strip()
+            if question.required and not txt:
+                messages.error(request, "This question is required. Please enter your answer.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+            # Replace whether empty or not (empty = clearing on non-required)
+            replace_single_answer(user=request.user, survey=survey, question=question)
+            if txt:
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    text_answer=txt,
+                )
+            next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
+
+        elif question.question_type in ['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD']:
+            files = request.FILES.getlist('answer_file') if question.allow_multiple_files else [
+                request.FILES.get('answer_file')
+            ]
+            allowed_types = {
+                'PHOTO_UPLOAD': ['image/jpeg', 'image/png'],
+                'PHOTO_MULTI_UPLOAD': ['image/jpeg', 'image/png'],
+                'VIDEO_UPLOAD': ['video/mp4', 'video/quicktime'],
+                'AUDIO_UPLOAD': ['audio/mpeg', 'audio/wav', 'audio/ogg'],
+            }
+            # 🆕 if not multiple, replace previous
+            if not question.allow_multiple_files:
+                replace_single_answer(user=request.user, survey=survey, question=question)
+            for file in files:
+                if not file:
+                    continue
+                if file.content_type not in allowed_types[question.question_type]:
+                    return HttpResponseBadRequest("Invalid file type.")
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    media_upload=file,
+                )
+
+        # --- MULTI-ANSWER TYPES ---
+        elif question.question_type == 'MULTI_CHOICE':
+            selected = request.POST.getlist('answer')
+            if not selected:
+                if question.required:
+                    messages.error(request, "Please select at least one option before continuing.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                    })
+                # 🆕 cleared on non-required → wipe previous
+                Response.objects.filter(
+                    user=request.user, survey=survey, question=question, submission__isnull=True
+                ).delete()
+            else:
+                # 🆕 replace entire set
+                Response.objects.filter(
+                    user=request.user, survey=survey, question=question, submission__isnull=True
+                ).delete()
+                seen = set()
+                for ans_id in selected:
+                    if ans_id in seen:
+                        continue
+                    seen.add(ans_id)
                     try:
-                        choice = Choice.objects.get(id=answer)
+                        choice = Choice.objects.get(id=ans_id, question=question)
                     except Choice.DoesNotExist:
-                        messages.error(request, "Invalid option selected. Please try again.")
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left,
-                        })
-
+                        continue
                     custom_other = request.POST.get('other_text', '').strip()
-
                     Response.objects.create(
                         user=request.user,
                         survey=survey,
@@ -170,145 +476,133 @@ def survey_question(request, survey_id, question_id=None):
                         text_answer=custom_other if choice.text.lower() == 'other' else '',
                         value=choice.value if choice.value is not None else None,
                     )
+                    if not next_q and choice.next_question:
+                        next_q = choice.next_question
+
+        elif question.question_type == 'IMAGE_CHOICE':
+            selected_ids = request.POST.getlist('answer')
+            if question.required and not selected_ids:
+                messages.error(request, "Please select at least one option.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+            # 🆕 replace entire set (even if empty to clear)
+            Response.objects.filter(
+                user=request.user, survey=survey, question=question, submission__isnull=True
+            ).delete()
+            for choice_id in selected_ids:
+                try:
+                    choice = Choice.objects.get(id=choice_id, question=question)
+                except Choice.DoesNotExist:
+                    continue
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    choice=choice,
+                    value=choice.value,
+                )
+                if not next_q and choice.next_question:
                     next_q = choice.next_question
 
-            elif question.question_type == 'MULTI_CHOICE':
-                answers = request.POST.getlist('answer')  # <-- same "answer" name, but getlist
-                if not answers:
-                    if question.required:
-                        messages.error(request, "Please select at least one option before continuing.")
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left,
-                        })
-                    # not required & none selected: skip saving
-                else:
-                    seen = set()
-                    for ans_id in answers:
-                        if ans_id in seen:
-                            continue
-                        seen.add(ans_id)
+        # --- MATRIX TYPES ---
+        elif question.question_type == 'MATRIX':
+            if question.matrix_mode == 'side_by_side':
+                # Validate + collect from POST
+                is_valid, result, next_q = validate_and_collect_matrix_responses(request, survey, question)
+                if not is_valid:
+                    messages.error(request, result)
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                        'submitted_data': request.POST,
+                    })
 
-                        try:
-                            choice = Choice.objects.get(id=ans_id)
-                        except Choice.DoesNotExist:
-                            continue
+                # 🔍 Optional debug: see how many cells we’re saving
+                try:
+                    messages.debug(request, f"SBS: collected {len(result)} cells for q#{question.id}")
+                except Exception:
+                    pass
 
-                        custom_other = request.POST.get('other_text', '').strip()
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            choice=choice,
-                            text_answer=custom_other if choice.text.lower() == 'other' else '',
-                            value=choice.value if choice.value is not None else None,
-                        )
+                # ✅ FULL REPLACE for this question (in-progress only)
+                from django.db import transaction
+                with transaction.atomic():
+                    deleted_ct, _ = Response.objects.filter(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        submission__isnull=True,  # only the current in-progress run
+                    ).delete()
 
-                        # If you want branching: pick the first choice that has next_question
-                        if not next_q and choice.next_question:
-                            next_q = choice.next_question
+                    try:
+                        messages.debug(request, f"SBS: deleted {deleted_ct} old cells for q#{question.id}")
+                    except Exception:
+                        pass
 
-            elif question.question_type == 'MATRIX':
-                if question.matrix_mode == 'side_by_side':
-                    is_valid, result, next_q = validate_and_collect_matrix_responses(request, survey, question)
-                    if not is_valid:
-                        messages.error(request, result)
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left,
-                            'grouped_matrix_columns': grouped_matrix_columns,
-                            'submitted_data': request.POST,
-                        })
-
-                    # Save only selected values and clean up anything unselected
-                    with transaction.atomic():
-                        keep_keys = set()  # (row_id, col_id)
-
-                        for r in result:
-                            key = (r['row'].id, r['col'].id)
-                            if key in keep_keys:
-                                continue
-                            keep_keys.add(key)
-
-                            # Idempotent write (covers checkbox/radio/select/text)
-                            Response.objects.update_or_create(
+                    if result:
+                        Response.objects.bulk_create([
+                            Response(
                                 user=request.user,
                                 survey=survey,
                                 question=question,
                                 matrix_row=r['row'],
                                 matrix_column=r['col'],
-                                defaults={
-                                    'text_answer': r['answer'],
-                                    'value': r['value'],
-                                    'group_label': r.get('group_label'),
-                                },
+                                text_answer=r['answer'],
+                                value=r['value'],
+                                group_label=r.get('group_label'),
                             )
+                            for r in result
+                        ])
+                        try:
+                            messages.debug(request, f"SBS: inserted {len(result)} new cells for q#{question.id}")
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            messages.info(request, f"SBS: no values posted for q#{question.id} (cleared).")
+                        except Exception:
+                            pass
 
-                        # Remove stale responses for this question (now unchecked or cleared)
-                        existing = Response.objects.filter(
-                            user=request.user, survey=survey, question=question
-                        )
-                        for resp in existing:
-                            if (resp.matrix_row_id, resp.matrix_column_id) not in keep_keys:
-                                resp.delete()
-
-                elif question.matrix_mode == 'multi':
-                    collected_responses = []
-                    next_q = None
-
-                    for row in question.matrix_rows.all():
-                        row_has_any = False  # At least one checkbox selected in this row
-
-                        for col in question.matrix_columns.all():
-                            field_name = f"matrix_{row.id}_{col.id}"
-                            submitted_values = request.POST.getlist(field_name)
-
-                            if submitted_values:
-                                row_has_any = True  # ✅ checkbox selected in this row
-
-                                for val in submitted_values:
-                                    collected_responses.append({
-                                        'row': row,
-                                        'col': col,
-                                        'answer': col.label,
-                                        'value': val,
-                                    })
-
-                                    if not next_q and col.next_question:
-                                        next_q = col.next_question
-
-                            # ✅ Check per-column required
-                            elif col.required:
-                                messages.error(
-                                    request,
-                                    f"Please select at least one option for column '{col.label}' in row '{row.text}'."
-                                )
-                                return render(request, 'surveys/survey_question.html', {
-                                    'survey': survey,
-                                    'question': question,
-                                    'current_index': current_index,
-                                    'total_questions': total_questions,
-                                    'progress_percent': progress_percent,
-                                    'previous_response': None,
-                                    'time_left': time_left,
-                                    'submitted_data': request.POST,
+            elif question.matrix_mode == 'multi':
+                # 🆕 replace entire set before re-adding
+                Response.objects.filter(
+                    user=request.user, survey=survey, question=question, submission__isnull=True
+                ).delete()
+                collected_responses = []
+                next_q = None
+                for row in question.matrix_rows.all():
+                    row_has_any = False
+                    for col in question.matrix_columns.all():
+                        field_name = f"matrix_{row.id}_{col.id}"
+                        submitted_values = request.POST.getlist(field_name)
+                        if submitted_values:
+                            row_has_any = True
+                            for val in submitted_values:
+                                collected_responses.append({
+                                    'row': row,
+                                    'col': col,
+                                    'answer': col.label,
+                                    'value': val,
                                 })
-
-                        # ✅ Check per-row required
-                        if row.required and not row_has_any:
+                                if not next_q and col.next_question:
+                                    next_q = col.next_question
+                        elif col.required:
                             messages.error(
                                 request,
-                                f"Please select at least one option in row '{row.text}'."
+                                f"Please select at least one option for column '{col.label}' in row '{row.text}'."
                             )
                             return render(request, 'surveys/survey_question.html', {
                                 'survey': survey,
@@ -320,175 +614,57 @@ def survey_question(request, survey_id, question_id=None):
                                 'time_left': time_left,
                                 'submitted_data': request.POST,
                             })
-
-                    # Save all collected responses
-                    for r in collected_responses:
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            matrix_row=r['row'],
-                            matrix_column=r['col'],
-                            text_answer=r['answer'],
-                            value=r['value'],
-                        )
-
-                else:  # single-select
-                    collected_responses = []
-                    next_q = None
-
-                    for row in question.matrix_rows.all():
-                        field_name = f"matrix_{row.id}"
-                        selected_val = request.POST.get(field_name)
-
-                        if not selected_val:
-                            if row.required:
-                                messages.error(
-                                    request,
-                                    f"Please select an option in row '{row.text}'."
-                                )
-                                return render(request, 'surveys/survey_question.html', {
-                                    'survey': survey,
-                                    'question': question,
-                                    'current_index': current_index,
-                                    'total_questions': total_questions,
-                                    'progress_percent': progress_percent,
-                                    'previous_response': None,
-                                    'time_left': time_left,
-                                    'submitted_data': request.POST,
-                                })
-                            continue  # No selection and not required, skip
-
-                        # Find the matching column for the selected value
-                        matching_col = next(
-                            (col for col in question.matrix_columns.all() if str(col.value) == selected_val),
-                            None
-                        )
-
-                        if not matching_col:
-                            messages.error(
-                                request,
-                                f"Invalid selection in row '{row.text}'."
-                            )
-                            return render(request, 'surveys/survey_question.html', {
-                                'survey': survey,
-                                'question': question,
-                                'current_index': current_index,
-                                'total_questions': total_questions,
-                                'progress_percent': progress_percent,
-                                'previous_response': None,
-                                'time_left': time_left,
-                                'submitted_data': request.POST,
-                            })
-
-                        collected_responses.append({
-                            'row': row,
-                            'col': matching_col,
-                            'answer': matching_col.label,
-                            'value': matching_col.value,
+                    if row.required and not row_has_any:
+                        messages.error(request, f"Please select at least one option in row '{row.text}'.")
+                        return render(request, 'surveys/survey_question.html', {
+                            'survey': survey,
+                            'question': question,
+                            'current_index': current_index,
+                            'total_questions': total_questions,
+                            'progress_percent': progress_percent,
+                            'previous_response': None,
+                            'time_left': time_left,
+                            'submitted_data': request.POST,
                         })
+                for r in collected_responses:
+                    Response.objects.create(
+                        user=request.user,
+                        survey=survey,
+                        question=question,
+                        matrix_row=r['row'],
+                        matrix_column=r['col'],
+                        text_answer=r['answer'],
+                        value=r['value'],
+                    )
 
-                        if not next_q and matching_col.next_question:
-                            next_q = matching_col.next_question
-
-                    # ✅ Save only submitted (selected) responses
-                    for r in collected_responses:
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            matrix_row=r['row'],
-                            matrix_column=r['col'],
-                            text_answer=r['answer'],
-                            value=r['value'],
-                        )
-
-            elif question.question_type in ['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD']:
-                files = request.FILES.getlist('answer_file') if question.allow_multiple_files else [
-                    request.FILES.get('answer_file')]
-                allowed_types = {
-                    'PHOTO_UPLOAD': ['image/jpeg', 'image/png'],
-                    'PHOTO_MULTI_UPLOAD': ['image/jpeg', 'image/png'],
-                    'VIDEO_UPLOAD': ['video/mp4', 'video/quicktime'],
-                    'AUDIO_UPLOAD': ['audio/mpeg', 'audio/wav', 'audio/ogg'],
-                }
-                for file in files:
-                    if not file:
+            else:  # matrix single-select per row
+                # 🆕 replace entire set before re-adding
+                Response.objects.filter(
+                    user=request.user, survey=survey, question=question, submission__isnull=True
+                ).delete()
+                collected_responses = []
+                next_q = None
+                for row in question.matrix_rows.all():
+                    field_name = f"matrix_{row.id}"
+                    selected_val = request.POST.get(field_name)
+                    if not selected_val:
+                        if row.required:
+                            messages.error(request, f"Please select an option in row '{row.text}'.")
+                            return render(request, 'surveys/survey_question.html', {
+                                'survey': survey,
+                                'question': question,
+                                'current_index': current_index,
+                                'total_questions': total_questions,
+                                'progress_percent': progress_percent,
+                                'previous_response': None,
+                                'time_left': time_left,
+                                'submitted_data': request.POST,
+                            })
                         continue
-                    if file.content_type not in allowed_types[question.question_type]:
-                        return HttpResponseBadRequest("Invalid file type.")
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        media_upload=file,
-                    )
-
-            elif question.question_type == 'GEOLOCATION':
-                lat = request.POST.get("latitude")
-                lng = request.POST.get("longitude")
-
-                if not lat or not lng:
-                    messages.error(request, "Please select a location on the map.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })  # return to the question page
-
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    latitude=lat,
-                    longitude=lng
-                )
-
-            elif question.question_type == 'YESNO':
-                if question.required and not answer:
-                    messages.error(request, "This question is required. Please select Yes or No.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })
-                if answer and answer.lower() in ['yes', 'no']:
-                    value = 1 if answer.lower() == "yes" else 0
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        text_answer=answer.lower(),
-                        value=value
-                    )
-                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
-
-            elif question.question_type == 'NUMBER':
-                raw = (answer or '').strip()
-                if question.required and raw == '':
-                    messages.error(request, "This question is required. Please enter a number.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })
-                if raw != '':
-                    try:
-                        number_value = float(raw)
-                    except (TypeError, ValueError):
-                        messages.error(request, "Invalid number input.")
+                    matching_col = next((col for col in question.matrix_columns.all()
+                                         if str(col.value) == selected_val), None)
+                    if not matching_col:
+                        messages.error(request, f"Invalid selection in row '{row.text}'.")
                         return render(request, 'surveys/survey_question.html', {
                             'survey': survey,
                             'question': question,
@@ -497,188 +673,31 @@ def survey_question(request, survey_id, question_id=None):
                             'progress_percent': progress_percent,
                             'previous_response': None,
                             'time_left': time_left,
+                            'submitted_data': request.POST,
                         })
+                    collected_responses.append({
+                        'row': row,
+                        'col': matching_col,
+                        'answer': matching_col.label,
+                        'value': matching_col.value,
+                    })
+                    if not next_q and matching_col.next_question:
+                        next_q = matching_col.next_question
+                for r in collected_responses:
                     Response.objects.create(
                         user=request.user,
                         survey=survey,
                         question=question,
-                        text_answer=str(number_value),
-                        value=number_value
+                        matrix_row=r['row'],
+                        matrix_column=r['col'],
+                        text_answer=r['answer'],
+                        value=r['value'],
                     )
-                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
-            elif question.question_type == 'SLIDER':
-
-                slider_moved = request.POST.get('slider_moved') == "true"
-                answer = request.POST.get('answer')
-                # Only validate movement if required
-                if question.required and not slider_moved:
-                    messages.error(request, "Please move the slider to select a value.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })
-                if answer:
-                    try:
-                        slider_value = int(answer)
-                    except (TypeError, ValueError):
-                        messages.error(request, "Invalid slider value.")
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left,
-                        })
-
-                    if question.min_value is not None and slider_value < question.min_value:
-                        messages.error(request, f"Value must be at least {question.min_value}.")
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left
-                        })
-                    if question.max_value is not None and slider_value > question.max_value:
-                        messages.error(request, f"Value must be at most {question.max_value}.")
-                        return render(request, 'surveys/survey_question.html', {
-                            'survey': survey,
-                            'question': question,
-                            'current_index': current_index,
-                            'total_questions': total_questions,
-                            'progress_percent': progress_percent,
-                            'previous_response': None,
-                            'time_left': time_left
-                        })
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        text_answer=str(slider_value),
-                        value=slider_value
-                    )
-                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
-
-            elif question.question_type == 'IMAGE_CHOICE':
-
-                selected_ids = request.POST.getlist('answer')
-
-                if question.required and not selected_ids:
-                    messages.error(request, "Please select at least one option.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,  # or pass a fallback
-                        'time_left': time_left,
-                    })
-
-                for choice_id in selected_ids:
-                    try:
-                        choice = Choice.objects.get(id=choice_id, question=question)
-                    except Choice.DoesNotExist:
-                        continue  # skip invalid choice
-
-                    if not Response.objects.filter(user=request.user, survey=survey, question=question,
-                                                   choice=choice).exists():
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            choice=choice,
-                            value=choice.value,
-                        )
-
-                        next_q = choice.next_question
-
-            elif question.question_type == 'IMAGE_RATING':
-                if question.required and not any(request.POST.get(f'rating_{c.id}') for c in question.choices.all()):
-                    messages.error(request, "Please rate at least one image.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })
-                for choice in question.choices.all():
-                    rating = request.POST.get(f'rating_{choice.id}')
-                    if rating:
-                        Response.objects.create(
-                            user=request.user,
-                            survey=survey,
-                            question=question,
-                            choice=choice,
-                            text_answer=rating,
-                            value=choice.value
-                        )
-
-            elif question.question_type == 'DATE':
-                if not answer and question.required:
-                    messages.error(request, "Please select a date.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })
-
-                try:
-                    # Validate and normalize format
-                    parsed_date = datetime.datetime.strptime(answer, '%Y-%m-%d').date()
-                except ValueError:
-                    return HttpResponseBadRequest("Invalid date format. Please use YYYY-MM-DD.")
-
-                Response.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    question=question,
-                    text_answer=parsed_date.isoformat(),  # Save as 'YYYY-MM-DD'
-                )
-
-            elif question.question_type == 'TEXT':
-                if question.required and not answer.strip():
-                    messages.error(request, "This question is required. Please enter your answer.")
-                    return render(request, 'surveys/survey_question.html', {
-                        'survey': survey,
-                        'question': question,
-                        'current_index': current_index,
-                        'total_questions': total_questions,
-                        'progress_percent': progress_percent,
-                        'previous_response': None,
-                        'time_left': time_left,
-                    })
-                if answer.strip():  # Only save non-empty responses
-                    Response.objects.create(
-                        user=request.user,
-                        survey=survey,
-                        question=question,
-                        text_answer=answer.strip(),
-                    )
-                next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
-
-        # Get next question in order if not defined
+        # If no explicit next_q was determined by branching, fall back to question.next or linear
         if not next_q:
-
-            if 'choice' in locals() and choice and question.question_type in ['SINGLE_CHOICE', 'RATING',
-                                                                              'DROPDOWN', 'IMAGE_CHOICE'] and not question.allows_multiple and choice.next_question:
+            if 'choice' in locals() and choice and question.question_type in ['SINGLE_CHOICE', 'RATING', 'DROPDOWN', 'IMAGE_CHOICE'] \
+               and not getattr(question, 'allows_multiple', False) and choice.next_question:
                 next_q = choice.next_question
             elif question.next_question:
                 next_q = question.next_question
@@ -689,27 +708,27 @@ def survey_question(request, survey_id, question_id=None):
                 except IndexError:
                     next_q = None
 
-        # Compute a safe next question considering visibility rules and fallbacks
+        # ✅ Visibility-safe forward navigation with fallback
         next_candidate = safe_next_question(next_q, question, all_questions, request.user, survey)
-
         if next_candidate:
             return redirect('surveys:survey_question', survey_id=survey.id, question_id=next_candidate.id)
         else:
-            # No visible questions remain → finalize (same logic you already use at the end)
+            # Finalize: no visible questions remain
             if not Submission.objects.filter(user=request.user, survey=survey).exists():
                 duration = int((now() - start_time).total_seconds())
                 submission = Submission.objects.create(user=request.user, survey=survey, duration_seconds=duration)
-                Response.objects.filter(user=request.user, survey=survey, submission__isnull=True).update(submission=submission)
+                Response.objects.filter(
+                    user=request.user, survey=survey, submission__isnull=True
+                ).update(submission=submission)
                 request.user.add_points(survey.points_reward)
-                # Clean up session key
-                request.session.pop(session_key, None)
+            # 🧹 clear timers + path
+            request.session.pop(session_key, None)
+            request.session.pop(path_key, None)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
-    # Get previous response for the current question (if any)
+    # Pre-fill previous response for rendering (unchanged)
     previous_response = Response.objects.filter(
-        user=request.user,
-        survey=survey,
-        question=question
+        user=request.user, survey=survey, question=question
     ).first()
 
     return render(request, 'surveys/survey_question.html', {
@@ -721,6 +740,7 @@ def survey_question(request, survey_id, question_id=None):
         'previous_response': previous_response,
         'time_left': time_left,
         'grouped_matrix_columns': dict(grouped_matrix_columns),
+        'is_first_step': is_first_step,
     })
 
 

@@ -128,7 +128,6 @@ def validate_and_collect_matrix_responses(request, survey, question):
             else:
                 # Defensive: unknown type -> ignore gracefully
                 continue
-
     return True, collected_responses, next_q
 
 
