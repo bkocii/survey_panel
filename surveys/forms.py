@@ -1,6 +1,8 @@
 from django import forms
 import json
 from .models import Survey, Question, MatrixColumn, MatrixRow, Choice
+import ast
+from django.core.exceptions import ValidationError
 
 
 BASE_INPUT = 'w-full rounded border bg-gray-900 text-white border-gray-700 h-9 px-2'
@@ -65,14 +67,15 @@ class QuestionAdminForm(forms.ModelForm):
 
 
 class WizardQuestionForm(forms.ModelForm):
+    # Treat visibility_rules as plain text for the wizard; we’ll parse it ourselves
     visibility_rules = forms.CharField(
         required=False,
         widget=forms.Textarea(
             attrs={
                 "rows": 4,
-                "placeholder": '{"all":[{"q":"Q1","op":"eq","val":1}]}'
+                "placeholder": '{"all":[{"q":"Q1","op":"eq","val":1}]}',
             }
-        )
+        ),
     )
 
     class Meta:
@@ -102,7 +105,9 @@ class WizardQuestionForm(forms.ModelForm):
                 'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
                          'focus:border-indigo-500 focus:ring-indigo-500 placeholder-gray-400'
             }),
-            'helper_media': forms.ClearableFileInput(attrs={'class': 'w-full text-white'}),
+            'helper_media': forms.ClearableFileInput(attrs={
+                'class': 'w-full text-white'
+            }),
             'helper_media_type': forms.Select(attrs={
                 'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
                          'focus:border-indigo-500 focus:ring-indigo-500'
@@ -111,12 +116,13 @@ class WizardQuestionForm(forms.ModelForm):
                 'class': 'w-full rounded shadow-sm border bg-gray-900 text-white border-gray-700 '
                          'focus:border-indigo-500 focus:ring-indigo-500'
             }),
+            # visibility_rules widget is overridden by the explicit field above
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # normalize classes
+        # 🔹 Normalize dark theme classes
         for f in self.fields.values():
             cls = f.widget.attrs.get('class', '')
             base = 'w-full rounded shadow-sm border focus:border-indigo-500 focus:ring-indigo-500'
@@ -124,37 +130,55 @@ class WizardQuestionForm(forms.ModelForm):
             f.widget.attrs['class'] = f'{base} {dark} {cls}'.strip()
             f.widget.attrs.pop('style', None)
 
-        # Pretty-print JSON to the textarea when editing
-        inst = kwargs.get('instance') or getattr(self, 'instance', None)
-        if inst and inst.pk and isinstance(inst.visibility_rules, (dict, list)):
-            self.fields['visibility_rules'].initial = json.dumps(
-                inst.visibility_rules, ensure_ascii=False, indent=2
-            )
+        # 🔹 Pretty-print existing rules as valid JSON (double quotes) for editing
+        inst = getattr(self, 'instance', None)
+        if inst and getattr(inst, 'visibility_rules', None):
+            rules = inst.visibility_rules
+            if isinstance(rules, (dict, list)):
+                # show nice JSON in the textarea
+                self.fields['visibility_rules'].initial = json.dumps(
+                    rules, ensure_ascii=False, indent=2
+                )
+            else:
+                # if somehow stored as string, just show it as-is
+                self.fields['visibility_rules'].initial = str(rules)
 
     def clean_visibility_rules(self):
+        """
+        Accept:
+          - empty value → {}
+          - proper JSON string → parsed dict/list
+          - Python-style dict string with single quotes → parse via ast.literal_eval
+        Always return a Python object suitable for a JSONField.
+        """
         raw = self.cleaned_data.get('visibility_rules')
 
-        # Accept empty → store NULL
-        if raw is None:
-            return None
+        if not raw:
+            return {}  # store as empty dict
+
+        # If something upstream already gave us a dict/list, just return it
         if isinstance(raw, (dict, list)):
-            # Bound through initial when invalid POST; be tolerant
             return raw
 
-        raw_str = (raw or '').strip()
-        if not raw_str:
-            return None
-
+        # First, try proper JSON
         try:
-            parsed = json.loads(raw_str)
-        except json.JSONDecodeError as e:
-            raise forms.ValidationError(f'Invalid JSON: {e}')
+            return json.loads(raw)
+        except Exception:
+            pass
 
-        # Optional: basic schema sanity check
-        if not isinstance(parsed, (dict, list)):
-            raise forms.ValidationError('Top-level JSON must be an object or array.')
+        # Fallback: try to accept Python dict syntax with single quotes
+        try:
+            value = ast.literal_eval(raw)
+            if isinstance(value, (dict, list)):
+                return value
+        except Exception:
+            pass
 
-        return parsed
+        # If both fail, raise a clean error
+        raise ValidationError(
+            "Invalid logic JSON. Please use JSON syntax, e.g. "
+            '{"all":[{"q":"Q1","op":"eq","val":1}]}.'
+        )
 
 
 # Dynamic form for survey responses, generated based on survey questions

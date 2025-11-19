@@ -66,7 +66,8 @@ def answers_for_user_survey(user, survey) -> Dict[Any, Any]:
     Build an answers map from in-progress responses (submission is NULL).
     Keys prefer question.code if present, else question.id.
     Values:
-      - SINGLE/DROPDOWN/RATING/YESNO/NUMBER/SLIDER/TEXT/DATE: scalar (choice.value, text, numeric)
+      - SINGLE/DROPDOWN/RATING/YESNO/NUMBER/SLIDER/TEXT/DATE: scalar
+        (choice.value, numeric value, or text)
       - MULTI_CHOICE / multi-answers: list of scalars
     """
     amap: Dict[Any, Any] = {}
@@ -78,10 +79,17 @@ def answers_for_user_survey(user, survey) -> Dict[Any, Any]:
     for r in qs:
         key = r.question.code or r.question_id
         val = None
+
         if r.choice_id:
             # prefer numeric 'value' if present; fall back to choice id
             val = r.value if r.value is not None else r.choice_id
+
+        # 🆕 for non-choice answers, prefer the numeric .value if present
+        elif r.value is not None:
+            val = r.value
+
         elif r.text_answer not in (None, ""):
+            # try to coerce numeric text; else keep as string
             try:
                 val = float(r.text_answer) if "." in r.text_answer else int(r.text_answer)
             except Exception:

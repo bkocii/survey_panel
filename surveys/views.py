@@ -60,7 +60,7 @@ def survey_question(request, survey_id, question_id=None):
     if survey.groups.exists() and not survey.groups.filter(id__in=request.user.groups.all()).exists():
         return HttpResponseForbidden("Access denied.")
 
-    # 🧭 NEW: navigation path kept in session for "Back" support
+    # 🧭 navigation path kept in session for "Back" support
     path_key = f"survey_{survey.id}_path"
 
     def get_path():
@@ -120,33 +120,60 @@ def survey_question(request, survey_id, question_id=None):
     # All questions in fixed order
     all_questions = list(survey.questions.order_by("sort_index", 'id'))
 
-    # Resolve candidate to display (existing)
+    # 🔍 Resolve which question to show
     if question_id:
+        # 🔙 Explicit question id (Back button or routed Next)
+        # Show it as-is (we allow editing even if it already has a response).
         question = get_object_or_404(Question, id=question_id, survey=survey)
+
     else:
-        answered_qs = Response.objects.filter(
-            user=request.user, survey=survey
-        ).values_list('question_id', flat=True)
-        question = survey.questions.exclude(id__in=answered_qs).order_by("sort_index", 'id').first()
-        if not question:
-            # Nothing to show → finalize
-            request.session.pop(path_key, None)  # 🧹 clear nav path
-            submission = Submission.objects.create(user=request.user, survey=survey)
+        # ➡️ AUTO MODE:
+        # Find the first question that is BOTH:
+        #   - visible (according to visibility_rules + routing via next_displayable)
+        #   - unanswered (no in-progress Response for this user/survey)
+        answered_ids = set(
             Response.objects.filter(
-                user=request.user, survey=survey, submission__isnull=True
-            ).update(submission=submission)
-            request.user.add_points(survey.points_reward)
+                user=request.user,
+                survey=survey,
+                submission__isnull=True,
+            ).values_list("question_id", flat=True)
+        )
+
+        visible_unanswered = None
+
+        for base_q in all_questions:
+            # From each base question, follow its next_question chain
+            # and visibility rules to find the first displayable candidate
+            cand = next_displayable(base_q, request.user, survey)
+            if not cand:
+                continue
+
+            # Skip if that candidate already has an in-progress answer
+            has_answer = Response.objects.filter(
+                user=request.user,
+                survey=survey,
+                question=cand,
+                submission__isnull=True,
+            ).exists()
+            if has_answer:
+                continue
+
+            # ✅ Found a visible & unanswered question
+            visible_unanswered = cand
+            break
+
+        if not visible_unanswered:
+            # No visible unanswered questions remain → finalize
+            request.session.pop(path_key, None)
+            if not Submission.objects.filter(user=request.user, survey=survey).exists():
+                submission = Submission.objects.create(user=request.user, survey=survey)
+                Response.objects.filter(
+                    user=request.user, survey=survey, submission__isnull=True
+                ).update(submission=submission)
+                request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
-    # Respect visibility chain
-    visible_q = next_displayable(question, request.user, survey)
-    if not visible_q:
-        # No visible questions remain → finalize
-        request.session.pop(path_key, None)
-        return redirect('surveys:survey_submit', survey_id=survey.id)
-
-    # Use the visible question
-    question = visible_q
+        question = visible_unanswered
 
     # 🧭 track this question in the path for Back support
     push_to_path(question.id)
