@@ -753,10 +753,21 @@ def survey_question(request, survey_id, question_id=None):
             request.session.pop(path_key, None)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
-    # Pre-fill previous response for rendering (unchanged)
-    previous_response = Response.objects.filter(
-        user=request.user, survey=survey, question=question
-    ).first()
+    # 🔁 Load existing responses for this question (in-progress only)
+    responses_qs = Response.objects.filter(
+        user=request.user,
+        survey=survey,
+        question=question,
+        submission__isnull=True,  # only in-progress answers
+    )
+
+    # Keep your old "first response" for text/number/date/yesno, etc.
+    previous_response = responses_qs.first()
+
+    # 🆕 For choice-based questions, we care about ALL selected choices
+    selected_choice_ids = set(
+        responses_qs.values_list("choice_id", flat=True)
+    )
 
     return render(request, 'surveys/survey_question.html', {
         'survey': survey,
@@ -768,6 +779,9 @@ def survey_question(request, survey_id, question_id=None):
         'time_left': time_left,
         'grouped_matrix_columns': dict(grouped_matrix_columns),
         'is_first_step': is_first_step,
+
+        # 🆕 used by the template to pre-check options
+        'selected_choice_ids': selected_choice_ids,
     })
 
 

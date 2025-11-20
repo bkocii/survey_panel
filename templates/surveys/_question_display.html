@@ -19,6 +19,7 @@
           value="{{ choice.id }}"
           {% if choice.text|lower == 'other' %}data-other="1"{% endif %}
           {% if question.required %}required{% endif %}
+          {% if choice.id in selected_choice_ids %}checked{% endif %}
         >
         {{ choice.text }}
       </label>
@@ -41,6 +42,7 @@
           name="answer"
           value="{{ choice.id }}"
           {% if choice.text|lower == 'other' %}data-other="1"{% endif %}
+          {% if choice.id in selected_choice_ids %}checked{% endif %}
         >
         {{ choice.text }}
       </label>
@@ -75,7 +77,8 @@
       <option value="" disabled selected>-- Select an option --</option>
       {% for choice in question.choices.all %}
         <option value="{{ choice.id }}"
-                {% if choice.text|lower == 'other' %}data-other="1"{% endif %}>
+                {% if choice.text|lower == 'other' %}data-other="1"{% endif %}
+                {% if choice.id in selected_choice_ids %}selected{% endif %}>
           {{ choice.text }}
         </option>
       {% empty %}
@@ -147,6 +150,7 @@
           value="{{ choice.id }}"
           onchange="toggleOther(this)"
           {% if question.required %}required{% endif %}
+          {% if choice.id in selected_choice_ids %}checked{% endif %}
         >
         {{ choice.text }}
       </label>
@@ -250,6 +254,7 @@
                   value="{{ choice.id }}"
                   class="form-check-input me-2"
                   onchange="highlightSelected(this)"
+                  {% if choice.id in selected_choice_ids %}checked{% endif %}
                 >
               {% else %}
                 <input
@@ -259,6 +264,7 @@
                   class="form-check-input me-2"
                   onchange="highlightSelected(this)"
                   {% if question.required %}required{% endif %}
+                  {% if choice.id in selected_choice_ids %}checked{% endif %}
                 >
               {% endif %}
             </div>
