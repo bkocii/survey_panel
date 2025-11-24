@@ -410,6 +410,42 @@ def survey_question(request, survey_id, question_id=None):
             else:
                 replace_single_answer(user=request.user, survey=survey, question=question)
 
+        elif question.question_type == 'GEOLOCATION':
+            # Read coords coming from the hidden inputs
+            lat = (request.POST.get("latitude") or "").strip()
+            lng = (request.POST.get("longitude") or "").strip()
+
+            # Required → must have both lat & lng
+            if question.required and (not lat or not lng):
+                messages.error(request, "Please select a location on the map.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                    'is_first_step': is_first_step,
+                })
+
+            # 🆕 Always replace previous in-progress geo answer (edit support)
+            replace_single_answer(user=request.user, survey=survey, question=question)
+
+            # If user actually picked a point (or it’s optional), save it
+            if lat and lng:
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    latitude=lat,
+                    longitude=lng,
+                )
+
+            # Normal forward routing
+            next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
+
         elif question.question_type == 'TEXT':
             txt = (answer or '').strip()
             if question.required and not txt:
@@ -538,6 +574,50 @@ def survey_question(request, survey_id, question_id=None):
                 )
                 if not next_q and choice.next_question:
                     next_q = choice.next_question
+
+        # 🆕 IMAGE_RATING (per-image 1–5 rating)
+        elif question.question_type == 'IMAGE_RATING':
+            # Collect ratings for each choice: fields are rating_<choice.id>
+            has_any_rating = any(
+                request.POST.get(f'rating_{c.id}')
+                for c in question.choices.all()
+            )
+
+            if question.required and not has_any_rating:
+                messages.error(request, "Please rate at least one image.")
+                return render(request, 'surveys/survey_question.html', {
+                    'survey': survey,
+                    'question': question,
+                    'current_index': current_index,
+                    'total_questions': total_questions,
+                    'progress_percent': progress_percent,
+                    'previous_response': None,
+                    'time_left': time_left,
+                    'grouped_matrix_columns': grouped_matrix_columns,
+                })
+
+            # Always replace the old set (even if user cleared all on non-required)
+            Response.objects.filter(
+                user=request.user, survey=survey, question=question, submission__isnull=True
+            ).delete()
+
+            for choice in question.choices.all():
+                rating = request.POST.get(f'rating_{choice.id}')
+                if not rating:
+                    continue
+
+                # We store the rating in text_answer; value can stay as choice.value
+                Response.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    question=question,
+                    choice=choice,
+                    text_answer=rating,  # "1".."5"
+                    value=choice.value,  # existing numeric value for that image if you use it
+                )
+
+            # normal forward routing (no per-choice next_question here)
+            next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
         # --- MATRIX TYPES ---
         elif question.question_type == 'MATRIX':
@@ -753,21 +833,151 @@ def survey_question(request, survey_id, question_id=None):
             request.session.pop(path_key, None)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
-    # 🔁 Load existing responses for this question (in-progress only)
+    # --- AFTER POST block: GET / final render path ---
+
+    # All in-progress responses for this question
     responses_qs = Response.objects.filter(
         user=request.user,
         survey=survey,
         question=question,
-        submission__isnull=True,  # only in-progress answers
+        submission__isnull=True,
     )
 
-    # Keep your old "first response" for text/number/date/yesno, etc.
+    # Single-response convenience (TEXT, NUMBER, YESNO, DATE, SLIDER, GEO, etc.)
     previous_response = responses_qs.first()
 
-    # 🆕 For choice-based questions, we care about ALL selected choices
+    # Prefill for choice-based questions (you already use this in templates for SC/MC/etc.)
     selected_choice_ids = set(
         responses_qs.values_list("choice_id", flat=True)
     )
+
+    # 🆕 Prefill for GEOLOCATION (if used)
+    geo_lat = None
+    geo_lng = None
+    if question.question_type == "GEOLOCATION" and previous_response:
+        geo_lat = previous_response.latitude
+        geo_lng = previous_response.longitude
+
+    # 🆕 Prefill for IMAGE_RATING: { "<choice_id>": "<rating 1-5>" }
+    image_ratings = {}
+    if question.question_type == "IMAGE_RATING":
+        for r in responses_qs:
+            if r.choice_id and r.text_answer:
+                image_ratings[str(r.choice_id)] = str(r.text_answer)
+
+    # 🆕 Prefill for all MATRIX modes via `submitted_data`
+    submitted_data = {}
+    if question.question_type == "MATRIX":
+        from django.utils.text import slugify
+
+        # preload all matrix responses for this question
+        m_resps = list(
+            responses_qs.select_related("matrix_row", "matrix_column")
+        )
+
+        # index responses by row_id
+        by_row: dict[int, list[Response]] = {}
+        for r in m_resps:
+            by_row.setdefault(r.matrix_row_id, []).append(r)
+
+        # --- side_by_side mode (existing logic, now inside the MATRIX block) ---
+        if question.matrix_mode == "side_by_side":
+            for row in question.matrix_rows.all():
+                row_resps = by_row.get(row.id, [])
+
+                # index row's responses by column id for quick lookup
+                row_by_col_id = {r.matrix_column_id: r for r in row_resps}
+
+                for group_label, cols in grouped_matrix_columns.items():
+                    if not cols:
+                        continue
+
+                    input_type = cols[0].input_type
+                    group_slug = slugify(group_label)
+
+                    # collect ids for this group
+                    col_ids = [c.id for c in cols]
+
+                    # -------- SELECT (one value per row+group) --------
+                    if input_type == "select":
+                        chosen_col = next(
+                            (c for c in cols if c.id in row_by_col_id),
+                            None,
+                        )
+                        if chosen_col is not None:
+                            full_field_name = f"matrix_{row.id}_{group_slug}"
+                            submitted_data[full_field_name] = str(chosen_col.value)
+
+                    # -------- RADIO (one value per row+group) --------
+                    elif input_type == "radio":
+                        chosen_col = next(
+                            (c for c in cols if c.id in row_by_col_id),
+                            None,
+                        )
+                        if chosen_col is not None:
+                            radio_name = f"matrix_{row.id}_{group_slug}"
+                            submitted_data[radio_name] = str(chosen_col.value)
+
+                    # -------- CHECKBOX (multiple values per row+group) --------
+                    elif input_type == "checkbox":
+                        checked_vals: list[str] = []
+                        for c in cols:
+                            if c.id in row_by_col_id:
+                                checked_vals.append(str(c.value))
+                        if checked_vals:
+                            checkbox_name = f"matrix_{row.id}_{group_slug}"
+                            submitted_data[checkbox_name] = checked_vals
+
+                    # -------- TEXT (one field per row+group) --------
+                    elif input_type == "text":
+                        anchor_col = cols[0]
+                        resp = row_by_col_id.get(anchor_col.id)
+                        if resp and resp.text_answer:
+                            field_name = f"matrix_{row.id}_{anchor_col.id}"
+                            submitted_data[field_name] = resp.text_answer
+
+                    # anything else: ignore
+
+        # --- multi mode: multiple columns per row (checkbox grid) ---
+        elif question.matrix_mode == "multi":
+            # template:
+            #   {% with row.id|concat_ids:col.id as field_name %}
+            #       name="{{ field_name }}"
+            #       value="{{ col.value }}"
+            #
+            # concat_ids is assumed to produce "matrix_{row.id}_{col.id}"
+            for row in question.matrix_rows.all():
+                row_resps = by_row.get(row.id, [])
+                # index row responses by column id
+                row_by_col_id = {r.matrix_column_id: r for r in row_resps}
+
+                for col in question.matrix_columns.all():
+                    resp = row_by_col_id.get(col.id)
+                    if not resp:
+                        continue
+                    # field_name must match the template & validator:
+                    # field_name = f"matrix_{row.id}_{col.id}"
+                    field_name = f"matrix_{row.id}_{col.id}"
+                    # we just need "something" equal to col.value so the equality check passes
+                    submitted_data[field_name] = str(col.value)
+
+        # --- default: single-select per row (radio per row) ---
+        else:
+            # template:
+            #   row_name = "matrix_" + str(row.id)
+            #   name="{{ row_name }}"
+            #   value="{{ col.value }}"
+            for row in question.matrix_rows.all():
+                row_resps = by_row.get(row.id, [])
+                if not row_resps:
+                    continue
+                # should be at most one per row; take the first
+                r = row_resps[0]
+                col = r.matrix_column
+                if not col:
+                    continue
+                row_name = f"matrix_{row.id}"
+                submitted_data[row_name] = str(col.value)
 
     return render(request, 'surveys/survey_question.html', {
         'survey': survey,
@@ -775,13 +985,19 @@ def survey_question(request, survey_id, question_id=None):
         'current_index': current_index,
         'total_questions': total_questions,
         'progress_percent': progress_percent,
-        'previous_response': previous_response,
+
+        # existing
         'time_left': time_left,
         'grouped_matrix_columns': dict(grouped_matrix_columns),
         'is_first_step': is_first_step,
 
-        # 🆕 used by the template to pre-check options
+        # prefill helpers
+        'previous_response': previous_response,
         'selected_choice_ids': selected_choice_ids,
+        'submitted_data': submitted_data,  # used by SBS matrix template
+        'geo_lat': geo_lat,
+        'geo_lng': geo_lng,
+        'image_ratings': image_ratings,
     })
 
 

@@ -117,7 +117,22 @@ survey
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        const map = L.map('map').setView([41.3275, 19.8189], 13); // default to Tirana
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+
+        // Default center (Tirana)
+        let initialLat = 41.3275;
+        let initialLng = 19.8189;
+        let initialZoom = 13;
+
+        // 🆕 If we already have saved coords, start from there
+        if (latInput && lngInput && latInput.value && lngInput.value) {
+          initialLat = parseFloat(latInput.value);
+          initialLng = parseFloat(lngInput.value);
+          initialZoom = 15;
+        }
+
+        const map = L.map('map').setView([initialLat, initialLng], initialZoom);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors'
@@ -139,6 +154,11 @@ survey
           setLocation(lat, lng);
         }
 
+        // 🆕 If we had coords (going back), drop the initial marker
+        if (latInput && lngInput && latInput.value && lngInput.value) {
+          addMarker(parseFloat(latInput.value), parseFloat(lngInput.value));
+        }
+
         // Add marker on map click
         map.on('click', function (e) {
           const { lat, lng } = e.latlng;
@@ -146,10 +166,10 @@ survey
         });
 
         // Add geocoder control
-        L.Control.geocoder({
-            defaultMarkGeocode: false,
-            placeholder: "Search for a location…",  // ✅ this adds the text
-            collapsed: false  // ✅ Keep it always expanded
+        const geocoder = L.Control.geocoder({
+          defaultMarkGeocode: false,
+          placeholder: "Search for a location…",
+          collapsed: false
         })
         .on('markgeocode', function (e) {
           const latlng = e.geocode.center;
@@ -157,9 +177,13 @@ survey
           addMarker(latlng.lat, latlng.lng);
         })
         .addTo(map);
+
+        // 🆕 Move geocoder box to top-left safely
+        const geocoderEl = document.querySelector('.leaflet-control-geocoder');
+        if (geocoderEl) {
+          geocoderEl.classList.add('leaflet-top', 'leaflet-left');
+        }
       });
-      // Move to top-left
-    document.querySelector('.leaflet-control-geocoder').classList.add('leaflet-top', 'leaflet-left');
     </script>
 
 </div>

@@ -60,8 +60,8 @@
     {% if not preview %}
       <div id="map" style="height: 400px; width: 100%; margin-top: 1rem;"></div>
       <input type="hidden" name="location" id="locationInput">
-      <input type="hidden" name="latitude" id="latitude">
-      <input type="hidden" name="longitude" id="longitude">
+      <input type="hidden" name="latitude" id="latitude" value="{% if geo_lat %}{{ geo_lat }}{% endif %}">
+      <input type="hidden" name="longitude" id="longitude" value="{% if geo_lng %}{{ geo_lng }}{% endif %}">
     {% else %}
         <div class="border rounded p-3 text-muted small">Map preview</div>
       {% endif %}
@@ -99,6 +99,7 @@
       name="answer"
       class="form-control date-input"
       placeholder="Select a date"
+      value="{% if previous_response %}{{ previous_response.text_answer }}{% endif %}
       {% if question.required %}required{% endif %}
     >
     <button class="btn btn-outline-secondary calendar-btn" type="button">
@@ -109,35 +110,59 @@
 {# YES / NO -------------------------------------------------------------- #}
 {% elif question.question_type == 'YESNO' %}
   <label class="form-label me-3">
-    <input type="radio" name="answer" value="yes" {% if question.required %}required{% endif %}> Yes
+    <input type="radio" name="answer" value="yes"
+           {% if previous_response and previous_response.text_answer == "yes" %}checked{% endif %}
+           {% if question.required %}required{% endif %}> Yes
   </label>
   <label class="form-label">
-    <input type="radio" name="answer" value="no" {% if question.required %}required{% endif %}> No
+    <input type="radio" name="answer" value="no"
+           {% if previous_response and previous_response.text_answer == "no" %}checked{% endif %}
+           {% if question.required %}required{% endif %}> No
   </label>
 
 {# NUMBER ---------------------------------------------------------------- #}
 {% elif question.question_type == 'NUMBER' %}
-  <input type="number" name="answer" class="form-control" {% if question.required %}required{% endif %}>
+  <input type="number" name="answer" class="form-control"
+         value="{% if previous_response %}{{ previous_response.text_answer }}{% endif %}"
+         {% if question.required %}required{% endif %}>
 
 {# SLIDER ---------------------------------------------------------------- #}
 {% elif question.question_type == 'SLIDER' %}
   <label for="slider">
-    Value: <span id="slider-value">{{ question.min_value|default:0 }}</span>
+    Value: <span id="slider-value">{% if previous_response %}{{ previous_response.value|floatformat:"-2" }}{% else %}{{ question.min_value|default:0 }}{% endif %}</span>
   </label>
-  <input
-    type="range"
-    name="answer"
-    id="slider"
-    class="form-range"
-    min="{{ question.min_value|default:0 }}"
-    max="{{ question.max_value|default:100 }}"
-    step="{{ question.step_value|default:1 }}"
-    value="{{ question.min_value|default:0 }}"
-    oninput="markSliderMoved(); document.getElementById('slider-value').textContent = this.value"
-    {% if question.required %}required{% endif %}
-  >
+
+    {% if previous_response %}
+      {% with slider_value=previous_response.value|default_if_none:previous_response.text_answer %}
+        <input
+          type="range"
+          name="answer"
+          id="slider"
+          class="form-range"
+          min="{{ question.min_value }}"
+          max="{{ question.max_value }}"
+          step="{{ question.step_value|default:1 }}"
+          value="{{ slider_value }}"
+          oninput="markSliderMoved(); document.getElementById('slider-value').textContent = this.value"
+        {% if question.required %}required{% endif %}
+        >
+      {% endwith %}
+    {% else %}
+      <input
+        type="range"
+        name="answer"
+        id="slider"
+        class="form-range"
+        min="{{ question.min_value|default:0 }}"
+        max="{{ question.max_value|default:100 }}"
+        step="{{ question.step_value|default:1 }}"
+        value="{{ question.min_value|default:0 }}"
+        oninput="markSliderMoved(); document.getElementById('slider-value').textContent = this.value"
+        {% if question.required %}required{% endif %}
+      >
+    {% endif %}
   <!-- tracks interaction so required sliders aren’t satisfied by default -->
-  <input type="hidden" name="slider_moved" id="slider_moved" value="false">
+  <input type="hidden" name="slider_moved" id="slider_moved" value="{% if previous_response %}true{% else %}false{% endif %}">
 
 {# RATING (text choices, not stars) ------------------------------------- #}
 {% elif question.question_type == 'RATING' %}
@@ -159,7 +184,6 @@
     {% endfor %}
   </div>
 
-{# IMAGE RATING ---------------------------------------------------------- #}
 {% elif question.question_type == 'IMAGE_RATING' %}
   <div class="image-rating-container">
     <div class="row">
@@ -173,19 +197,22 @@
           {% endif %}
 
           <div class="mt-2 mb-2">
-            {% for i in "12345" %}
-              <div class="form-check form-check-inline">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="rating_{{ choice.id }}"
-                  id="rating_{{ choice.id }}_{{ i }}"
-                  value="{{ i }}"
-                  {% if question.required %}required{% endif %}
-                >
-                <label class="form-check-label" for="rating_{{ choice.id }}_{{ i }}">{{ i }}</label>
-              </div>
-            {% endfor %}
+            {% with key=choice.id|stringformat:"s" %}
+              {% for i in "12345" %}
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="rating_{{ choice.id }}"
+                    id="rating_{{ choice.id }}_{{ i }}"
+                    value="{{ i }}"
+                    {% if image_ratings|get_item:key == i %}checked{% endif %}
+                    {% if question.required %}required{% endif %}
+                  >
+                  <label class="form-check-label" for="rating_{{ choice.id }}_{{ i }}">{{ i }}</label>
+                </div>
+              {% endfor %}
+            {% endwith %}
           </div>
           <div class="form-choice-text">{{ choice.text }}</div>
         </div>
@@ -237,7 +264,7 @@
     name="answer"
     rows="4"
     {% if question.required %}required{% endif %}
-  ></textarea>
+  >{% if previous_response %} {{previous_response.text_answer}} {% else %} {{""}} {% endif %}</textarea>
 
 {# IMAGE CHOICE ---------------------------------------------------------- #}
 {% elif question.question_type == 'IMAGE_CHOICE' %}
@@ -321,83 +348,95 @@
               <td>{{ row.text }}</td>
 
               {% for group, cols in grouped_matrix_columns.items %}
-                {% if cols.0.input_type == 'text' %}
-                  {# one text input per group #}
-                  {% with row.id|concat_ids:cols.0.id as field_name %}
-                    <td>
-                      <input
-                        type="text"
-                        name="{{ field_name }}"
-                        value="{% if submitted_data %}{{ submitted_data|get_item:field_name }}{% endif %}"
-                        class="form-control">
-                    </td>
-                  {% endwith %}
 
+                {# -------- TEXT group: one input per row+group ---------- #}
+                {% if cols.0.input_type == 'text' %}
+                  {# Name must be: matrix_{row.id}_{cols.0.id} #}
+                  {% with row_id=row.id|stringformat:"s" col_id=cols.0.id|stringformat:"s" %}
+                    {% with field_name="matrix_"|add:row_id|add:"_"|add:col_id %}
+                      <td>
+                        <input
+                          type="text"
+                          name="{{ field_name }}"
+                          value="{% if submitted_data %}{{ submitted_data|get_item:field_name }}{% endif %}"
+                          class="form-control">
+                      </td>
+                    {% endwith %}
+                  {% endwith %}
+                {# -------- SELECT group ---------- #}
                 {% elif cols.0.input_type == 'select' %}
                   {% with group_slug=group|slugify %}
-                    {% with row.id|stringformat:"s"|add:"_"|add:group_slug as field_name %}
-                      {% with "matrix_"|add:field_name as full_field_name %}
-                        <td>
-                          <select
-                            name="{{ full_field_name }}"
-                            class="form-select">
-                            <option value="">-- Choose --</option>
-                            {% for col in cols %}
-                              <option value="{{ col.value }}"
-                                {% if submitted_data|get_item:full_field_name == col.value|stringformat:"s" %}selected{% endif %}
-                              >
-                                {{ col.label }}
-                              </option>
-                            {% endfor %}
-                          </select>
-                        </td>
+                    {% with row_id=row.id|stringformat:"s" %}
+                      {% with inner_name=row_id|add:"_"|add:group_slug %}
+                        {% with full_field_name="matrix_"|add:inner_name %}
+                          <td>
+                            <select
+                              name="{{ full_field_name }}"
+                              class="form-select">
+                              <option value="">-- Choose --</option>
+                              {% for col in cols %}
+                                <option value="{{ col.value }}"
+                                  {% if submitted_data|get_item:full_field_name == col.value|stringformat:"s" %}selected{% endif %}
+                                >
+                                  {{ col.label }}
+                                </option>
+                              {% endfor %}
+                            </select>
+                          </td>
+                        {% endwith %}
                       {% endwith %}
                     {% endwith %}
                   {% endwith %}
-
+                {# -------- RADIO group ---------- #}
                 {% elif cols.0.input_type == 'radio' %}
                   {% with group_slug=group|slugify %}
-                    {% with row.id|stringformat:"s"|add:"_"|add:group_slug as field_name %}
-                      {% with radio_name="matrix_"|add:field_name %}
-                        <td class="align-middle">
-                          <div class="d-flex justify-content-around">
-                            {% for col in cols %}
-                              <div class="form-check form-check-inline">
-                                <input
-                                  type="radio"
-                                  name="{{ radio_name }}"
-                                  value="{{ col.value }}"
-                                  {% if submitted_data|get_item:radio_name == col.value|stringformat:"s" %}checked{% endif %}
-                                  class="form-check-input"
-                                  id="radio_{{ row.id }}_{{ col.id }}">
-                              </div>
-                            {% endfor %}
-                          </div>
-                        </td>
+                    {% with row_id=row.id|stringformat:"s" %}
+                      {% with inner_name=row_id|add:"_"|add:group_slug %}
+                        {% with radio_name="matrix_"|add:inner_name %}
+                          <td class="align-middle">
+                            <div class="d-flex justify-content-around">
+                              {% for col in cols %}
+                                <div class="form-check form-check-inline">
+                                  <input
+                                    type="radio"
+                                    name="{{ radio_name }}"
+                                    value="{{ col.value }}"
+                                    {% if submitted_data|get_item:radio_name == col.value|stringformat:"s" %}checked{% endif %}
+                                    class="form-check-input"
+                                    id="radio_{{ row.id }}_{{ col.id }}">
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </td>
+                        {% endwith %}
                       {% endwith %}
                     {% endwith %}
                   {% endwith %}
-
-                {% elif cols.0.input_type == 'checkbox' %}
+                {# -------- CHECKBOX group ---------- #}
+                 {% elif cols.0.input_type == 'checkbox' %}
                   {% with group_slug=group|slugify %}
-                    {% with row.id|stringformat:"s"|add:"_"|add:group_slug as field_name %}
-                      {% with checkbox_name="matrix_"|add:field_name %}
-                        <td class="align-middle">
-                          <div class="d-flex justify-content-around">
-                            {% for col in cols %}
-                              <div class="form-check form-check-inline">
-                                <input
-                                  type="checkbox"
-                                  name="{{ checkbox_name }}"
-                                  value="{{ col.value }}"
-                                  {% if col.value|stringformat:"s" in submitted_data|get_list:checkbox_name %}checked{% endif %}
-                                  class="form-check-input"
-                                  id="checkbox_{{ row.id }}_{{ col.id }}"
-                                >
+                    {% with row_id=row.id|stringformat:"s" %}
+                      {% with inner_name=row_id|add:"_"|add:group_slug %}
+                        {% with checkbox_name="matrix_"|add:inner_name %}
+                          {% with checked_values=submitted_data|get_item:checkbox_name %}
+                            <td class="align-middle">
+                              <div class="d-flex justify-content-around">
+                                {% for col in cols %}
+                                  <div class="form-check form-check-inline">
+                                    <input
+                                      type="checkbox"
+                                      name="{{ checkbox_name }}"
+                                      value="{{ col.value }}"
+                                      {% if checked_values and col.value|stringformat:"s" in checked_values %}checked{% endif %}
+                                      class="form-check-input"
+                                      id="checkbox_{{ row.id }}_{{ col.id }}"
+                                    >
+                                  </div>
+                                {% endfor %}
                               </div>
-                            {% endfor %}
-                          </div>
-                        </td>
+                            </td>
+                          {% endwith %}
+                        {% endwith %}
                       {% endwith %}
                     {% endwith %}
                   {% endwith %}
@@ -407,7 +446,6 @@
           {% endfor %}
         </tbody>
       </table>
-
     {% elif question.matrix_mode == 'multi' %}
       <table class="table">
         <thead>
