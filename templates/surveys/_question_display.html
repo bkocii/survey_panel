@@ -197,23 +197,27 @@
           {% endif %}
 
           <div class="mt-2 mb-2">
+            {# key used to read from image_ratings dict #}
             {% with key=choice.id|stringformat:"s" %}
-              {% for i in "12345" %}
-                <div class="form-check form-check-inline">
-                  <input
-                    class="form-check-input"
-                    type="radio"
-                    name="rating_{{ choice.id }}"
-                    id="rating_{{ choice.id }}_{{ i }}"
-                    value="{{ i }}"
-                    {% if image_ratings|get_item:key == i %}checked{% endif %}
-                    {% if question.required %}required{% endif %}
-                  >
-                  <label class="form-check-label" for="rating_{{ choice.id }}_{{ i }}">{{ i }}</label>
-                </div>
+              {% for value in image_rating_scale %}
+                {% with val_str=value|stringformat:"s" %}
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      name="rating_{{ choice.id }}"
+                      id="rating_{{ choice.id }}_{{ value }}"
+                      value="{{ value }}"
+                      {% if image_ratings|get_item:key == val_str %}checked{% endif %}
+                      {% if question.required %}required{% endif %}
+                    >
+                    <label class="form-check-label" for="rating_{{ choice.id }}_{{ value }}">{{ value }}</label>
+                  </div>
+                {% endwith %}
               {% endfor %}
             {% endwith %}
           </div>
+
           <div class="form-choice-text">{{ choice.text }}</div>
         </div>
       {% empty %}
@@ -221,6 +225,7 @@
       {% endfor %}
     </div>
   </div>
+
 
 {# PHOTO / VIDEO / AUDIO UPLOAD ----------------------------------------- #}
 {% elif question.question_type == 'PHOTO_UPLOAD' %}

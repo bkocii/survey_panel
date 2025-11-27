@@ -23,13 +23,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // Show choices-related fields
-        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "RATING", "IMAGE_CHOICE", "IMAGE_RATING"].includes(type)) {
+        if (["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "RATING", "IMAGE_CHOICE"].includes(type)) {
             document.querySelector(".choices-field")?.style.setProperty("display", "block");
         }
 
         // Show slider-specific fields
         if (type === "SLIDER") {
             ["min_value-field", "max_value-field", "step_value-field"].forEach(cls => {
+                document.querySelector("." + cls)?.style.setProperty("display", "block");
+            });
+        }
+
+        // Show slider-specific fields
+        if (type === "IMAGE_RATING") {
+            ["min_value-field", "max_value-field"].forEach(cls => {
                 document.querySelector("." + cls)?.style.setProperty("display", "block");
             });
         }

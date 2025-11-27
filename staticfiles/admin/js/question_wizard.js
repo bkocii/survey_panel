@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Always-visible fields
         const alwaysFields = [
             "code-field", "text-field", "question_type-field", "required-field",
-            "helper_text-field", "helper_media-field", "helper_media_type-field", "lookup-field", "visibility_rules"
+            "helper_text-field", "helper_media-field", "helper_media_type-field", "lookup-field", "visibility_rules-field"
         ];
         alwaysFields.forEach(cls => {
             document.querySelector("." + cls)?.style.setProperty("display", "block");

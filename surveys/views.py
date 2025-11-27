@@ -575,9 +575,15 @@ def survey_question(request, survey_id, question_id=None):
                 if not next_q and choice.next_question:
                     next_q = choice.next_question
 
-        # 🆕 IMAGE_RATING (per-image 1–5 rating)
+        # 🆕 IMAGE_RATING (per-image rating with flexible scale)
         elif question.question_type == 'IMAGE_RATING':
-            # Collect ratings for each choice: fields are rating_<choice.id>
+            # Define rating scale bounds (use min/max_value if set, else 1–5)
+            min_rating = int(question.min_value) if question.min_value is not None else 1
+            max_rating = int(question.max_value) if question.max_value is not None else 5
+            if min_rating > max_rating:
+                min_rating, max_rating = max_rating, min_rating
+
+            # Check if user rated at least one image
             has_any_rating = any(
                 request.POST.get(f'rating_{c.id}')
                 for c in question.choices.all()
@@ -596,27 +602,49 @@ def survey_question(request, survey_id, question_id=None):
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
 
-            # Always replace the old set (even if user cleared all on non-required)
+            # Replace previous ratings (for this in-progress submission)
             Response.objects.filter(
-                user=request.user, survey=survey, question=question, submission__isnull=True
+                user=request.user,
+                survey=survey,
+                question=question,
+                submission__isnull=True,
             ).delete()
 
             for choice in question.choices.all():
-                rating = request.POST.get(f'rating_{choice.id}')
-                if not rating:
+                rating_str = request.POST.get(f'rating_{choice.id}')
+                if not rating_str:
                     continue
 
-                # We store the rating in text_answer; value can stay as choice.value
+                try:
+                    rating_val = int(rating_str)
+                except ValueError:
+                    continue  # ignore invalid inputs silently (or you can error out)
+
+                # Enforce bounds
+                if rating_val < min_rating or rating_val > max_rating:
+                    messages.error(request, "Invalid rating value.")
+                    return render(request, 'surveys/survey_question.html', {
+                        'survey': survey,
+                        'question': question,
+                        'current_index': current_index,
+                        'total_questions': total_questions,
+                        'progress_percent': progress_percent,
+                        'previous_response': None,
+                        'time_left': time_left,
+                        'grouped_matrix_columns': grouped_matrix_columns,
+                    })
+
+                # ✅ Store the rating itself as `value`, and also in `text_answer`
                 Response.objects.create(
                     user=request.user,
                     survey=survey,
                     question=question,
                     choice=choice,
-                    text_answer=rating,  # "1".."5"
-                    value=choice.value,  # existing numeric value for that image if you use it
+                    text_answer=str(rating_val),
+                    value=rating_val,
                 )
 
-            # normal forward routing (no per-choice next_question here)
+            # Normal forward routing
             next_q = question.next_question or get_next_question_in_sequence(all_questions, question)
 
         # --- MATRIX TYPES ---
@@ -979,6 +1007,34 @@ def survey_question(request, survey_id, question_id=None):
                 row_name = f"matrix_{row.id}"
                 submitted_data[row_name] = str(col.value)
 
+    # 🆕 Prefill for IMAGE_RATING
+    image_ratings = {}
+    image_rating_scale = []
+
+    if question.question_type == "IMAGE_RATING":
+        # load all existing ratings (in-progress)
+        rating_resps = Response.objects.filter(
+            user=request.user,
+            survey=survey,
+            question=question,
+            submission__isnull=True,
+        )
+
+        for r in rating_resps:
+            if r.choice_id and (r.text_answer or r.value is not None):
+                # prefer text_answer, fallback to value
+                image_ratings[str(r.choice_id)] = str(
+                    r.text_answer or r.value
+                )
+
+        # derive the scale from question.min/max_value (fallback 1–5)
+        min_rating = int(question.min_value) if question.min_value is not None else 1
+        max_rating = int(question.max_value) if question.max_value is not None else 5
+        if min_rating > max_rating:
+            min_rating, max_rating = max_rating, min_rating
+
+        image_rating_scale = list(range(min_rating, max_rating + 1))
+
     return render(request, 'surveys/survey_question.html', {
         'survey': survey,
         'question': question,
@@ -998,6 +1054,10 @@ def survey_question(request, survey_id, question_id=None):
         'geo_lat': geo_lat,
         'geo_lng': geo_lng,
         'image_ratings': image_ratings,
+
+        # 🆕 image rating helpers
+        'image_ratings': image_ratings,
+        'image_rating_scale': image_rating_scale,
     })
 
 

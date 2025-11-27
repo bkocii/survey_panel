@@ -611,6 +611,10 @@ body {
   gap: .5rem;
   flex-wrap: nowrap;
 }
+.image-rating-container .row {
+  justify-content: center;
+}
+
 .image-rating-container .form-check-inline,
 .image-rating-container .form-check {
   display: inline-flex;

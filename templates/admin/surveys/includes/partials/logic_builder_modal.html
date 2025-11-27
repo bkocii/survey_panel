@@ -1,0 +1,73 @@
+{# templates/admin/surveys/logic_builder_modal.html #}
+<div id="logic-builder-modal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden">
+  {# backdrop, same as routing-modal #}
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+  <div class="relative h-full w-full flex items-center justify-center px-4">
+    <div class="confirm-modal-card w-[24rem] sm:w-[34rem] p-6">
+      <h2 class="modal-title mb-2">🧩 Display logic</h2>
+
+      <p class="modal-message mb-4 text-sm opacity-90">
+        Show this question only when certain conditions are met.
+      </p>
+
+      {# MODE: ALL / ANY #}
+      <div class="mb-4">
+        <label class="block text-sm mb-1 font-medium">Show this question when…</label>
+        <div class="flex gap-4 text-sm">
+          <label class="inline-flex items-center gap-1">
+            <input type="radio" name="logic_mode" value="all" class="h-3 w-3" checked>
+            <span>ALL conditions are true</span>
+          </label>
+          <label class="inline-flex items-center gap-1">
+            <input type="radio" name="logic_mode" value="any" class="h-3 w-3">
+            <span>ANY condition is true</span>
+          </label>
+        </div>
+      </div>
+
+      {# CONDITIONS TABLE #}
+      <div class="border border-gray-700 rounded-lg p-3 mb-4 max-h-72 overflow-y-auto">
+        <table class="w-full text-xs align-middle" id="logic-conditions-table">
+          <thead class="text-gray-400">
+            <tr>
+              <th class="py-1 text-left w-4/12">Question</th>
+              <th class="py-1 text-left w-2/12">Operator</th>
+              <th class="py-1 text-left w-4/12">Value</th>
+              <th class="py-1 text-center w-2/12">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="logic-conditions-body">
+            {# rows injected by JS #}
+          </tbody>
+        </table>
+
+        <button type="button" id="logic-add-condition" class="btn-shell mt-3">
+          <span class="btn-ui btn-secondary text-xs">➕ Add condition</span>
+        </button>
+      </div>
+
+      <div class="text-xs opacity-75 mb-4">
+        <div>
+          <span class="font-semibold">Note:</span>
+          We match against <code>question.code</code> if set, otherwise <code>question.id</code>.
+        </div>
+        <div class="mt-1">
+          For lists (e.g. “value is 1 or 2”), enter <code>1,2</code>.
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-center gap-4">
+        <button type="button" class="btn-modal btn-cancel" id="logic-builder-cancel">
+          Cancel
+        </button>
+        <button type="button" class="btn-modal" id="logic-builder-clear">
+          Clear
+        </button>
+        <button type="button" class="btn-modal btn-confirm" id="logic-builder-save">
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

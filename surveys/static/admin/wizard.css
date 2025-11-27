@@ -1477,5 +1477,75 @@
 .toast-leave  { opacity: 0; transform: translateY(-6px); }
 
 
+/* Logic builder modal reuses the same card look as routing */
+#logic-builder-modal .confirm-modal-card {
+  position: relative;
+  background: #111827 !important;   /* gray-900 */
+  color: #fff !important;
+  border: 1px solid #ffffff !important; /* visible border */
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+  transform: scale(.985);
+  opacity: 0;
+  transition: transform .12s ease-out, opacity .12s ease-out;
+}
+#logic-builder-modal:not(.hidden) .confirm-modal-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+#logic-builder-modal .modal-title   { font-size: 1.125rem; font-weight: 600; }
+#logic-builder-modal .modal-message { font-size: .9375rem; line-height: 1.6; }
+
+/* Buttons in logic modal */
+#logic-builder-modal .btn-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9.5rem;
+  padding: .625rem 1rem;
+  border-radius: .5rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background-color .15s ease, transform .05s ease;
+}
+#logic-builder-modal .btn-modal:active { transform: translateY(1px); }
+
+#logic-builder-modal .btn-cancel {
+  background: #374151; /* gray-700 */
+  color: #fff;
+}
+#logic-builder-modal .btn-cancel:hover { background: #4b5563; }
+
+#logic-builder-modal .btn-confirm {
+  background: #2563eb; /* blue-600 */
+  color: #fff;
+}
+#logic-builder-modal .btn-confirm:hover { background: #1d4ed8; }
+
+/* Dark inputs/selects inside logic modal */
+#logic-builder-modal input,
+#logic-builder-modal select,
+#logic-builder-modal textarea {
+  background-color: #0f172a !important;  /* slate-900-ish */
+  color: #e5e7eb !important;             /* gray-200 */
+  border: 1px solid #374151 !important;  /* gray-700 */
+  font-size: .8125rem;                   /* slightly compact */
+}
+
+#logic-builder-modal select option {
+  background-color: #111827; /* gray-900 */
+  color: #e5e7eb;
+}
+
+#logic-builder-modal select:focus-visible,
+#logic-builder-modal input:focus-visible,
+#logic-builder-modal textarea:focus-visible {
+  outline: 2px solid rgba(79,70,229,.45);
+  outline-offset: 2px;
+}
+
+
 
 

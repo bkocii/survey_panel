@@ -4,6 +4,10 @@
 
 
 {% block content %}
+<script>
+  window.LOGIC_QUESTIONS = {{ logic_questions_json|safe }};
+</script>
+
 
 <section class="min-h-screen w-full px-6 py-8 bg-gray dark:bg-gray-900">
 
@@ -204,13 +208,34 @@
             </div>
 
             <div class="question-field visibility_rules-field mt-4">
-              <label class="block text-sm font-medium text-white dark:text-gray-300">Display logic (JSON)</label>
-              {{ form.visibility_rules }}
+              <label class="block text-sm font-medium text-white dark:text-gray-300">
+                Display logic
+              </label>
+
+              <div class="flex flex-col gap-2 md:flex-row md:items-start">
+                {{ form.visibility_rules }}
+
+                <button
+                  type="button"
+                  id="open-logic-builder"
+                  class="btn-shell mt-2 md:mt-0"
+                  data-builder-target="id_visibility_rules"
+                >
+                  <span class="btn-ui btn-secondary whitespace-nowrap">
+                    🧩 Build display logic
+                  </span>
+                </button>
+              </div>
+
               <p class="text-xs text-white/80 dark:text-white mt-1">
-                Example: <code>{"all":[{"q":"Q1","op":"in","val":[1,2]}]}</code>
+                You can still edit raw JSON if you like.
+                Example: <code>{"all":[{"q":"Q1","op":"eq","val":1}]}</code>
               </p>
-                {% for error in form.visibility_rules.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
             </div>
+
+            {# NEW: include the modal #}
+            {% include "admin/surveys/includes/partials/logic_builder_modal.html" %}
+
 
             {% for field in form %}
               {% if field.name != 'code' and field.name != 'text' and field.name != 'question_type' and field.name != 'required' and field.name != 'helper_text' and field.name != 'helper_media' and field.name != 'helper_media_type' and field.name != 'next_question' and field.name != 'visibility_rules'%}

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 import nested_admin
+import json
 from django.urls import path
 from unfold.sites import UnfoldAdminSite
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
@@ -162,6 +163,27 @@ class SurveyAdmin(ModelAdmin):
                     self.message_user(request, "Could not delete: question not found for this survey.", level='error')
             return redirect(request.path)  # back to clean add-mode
 
+        # Build a lean list for logic builder
+        logic_questions = []
+        for q in all_questions:
+            # only earlier questions typically make sense, but we’ll send all for now
+            item = {
+                "id": q.id,
+                "code": q.code or "",
+                "text": q.text,
+                "question_type": q.question_type,
+                "choices": [],
+            }
+            if q.question_type in ["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "RATING", "IMAGE_CHOICE",
+                                   "IMAGE_RATING", "YESNO"]:
+                for c in q.choices.all().order_by("value", "id"):
+                    item["choices"].append({
+                        "id": c.id,
+                        "label": c.text,
+                        "value": c.value if c.value is not None else c.id,
+                    })
+            logic_questions.append(item)
+
         # Inline formsets (no "extra"; we add via JS)
         ChoiceFormSet = inlineformset_factory(
             Question,
@@ -239,6 +261,7 @@ class SurveyAdmin(ModelAdmin):
                 "has_permission": True,
                 "available_apps": [],
                 "current_app": "surveys",
+                "logic_questions_json": json.dumps(logic_questions),
             }
             return render(request, 'admin/surveys/add_question_wizard.html', ctx)
 
