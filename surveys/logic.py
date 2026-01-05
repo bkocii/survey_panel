@@ -1,6 +1,7 @@
 # surveys/logic.py
 from typing import Any, Dict, Union, Iterable
-from .models import Response
+from .models import Response, Question
+from collections import defaultdict
 
 Number = Union[int, float]
 
@@ -64,46 +65,113 @@ def eval_rules(rules: Dict[str, Any], answers: Dict[Any, Any]) -> bool:
 def answers_for_user_survey(user, survey) -> Dict[Any, Any]:
     """
     Build an answers map from in-progress responses (submission is NULL).
-    Keys prefer question.code if present, else question.id.
-    Values:
-      - SINGLE/DROPDOWN/RATING/YESNO/NUMBER/SLIDER/TEXT/DATE: scalar
-        (choice.value, numeric value, or text)
-      - MULTI_CHOICE / multi-answers: list of scalars
+
+    Base keys:
+      - question.code if present, else question.id
+
+    Extra keys for MATRIX (non-SBS):
+      - "<QREF>::col::<colKey>" = rowKey OR [rowKey1, rowKey2, ...]
+        where rowKey is row.value or "id:<row_pk>"
+
+    Extra keys for MATRIX (SBS):
+      - "<QREF>::sbs::group::<group_slug>::row::<rowKey>" = value
+        where value is numeric/text of that row+group cell; may be a list
+        if multiple values exist (e.g. checkbox).
     """
     amap: Dict[Any, Any] = {}
 
-    qs = Response.objects.filter(
-        user=user, survey=survey, submission__isnull=True
-    ).select_related("question", "choice")
+    # (qref, colKey) -> list[rowKey] (we'll de-dupe)
+    matrix_col_rows: Dict[tuple, list] = defaultdict(list)
+
+    # (qref, group_slug, rowKey) -> val or [vals]
+    sbs_cells: Dict[tuple, Any] = {}
+
+    qs = (
+        Response.objects
+        .filter(user=user, survey=survey, submission__isnull=True)
+        .select_related("question", "choice", "matrix_row", "matrix_column")
+    )
 
     for r in qs:
-        key = r.question.code or r.question_id
-        val = None
+        q = r.question
+        qref = q.code or q.id
 
+        # --- compute cell value (unchanged) ------------------------------
+        cell_val = None
         if r.choice_id:
-            # prefer numeric 'value' if present; fall back to choice id
-            val = r.value if r.value is not None else r.choice_id
-
-        # 🆕 for non-choice answers, prefer the numeric .value if present
+            cell_val = r.value if r.value is not None else r.choice_id
         elif r.value is not None:
-            val = r.value
-
+            cell_val = r.value
         elif r.text_answer not in (None, ""):
-            # try to coerce numeric text; else keep as string
             try:
-                val = float(r.text_answer) if "." in r.text_answer else int(r.text_answer)
+                cell_val = float(r.text_answer) if "." in r.text_answer else int(r.text_answer)
             except Exception:
-                val = r.text_answer
+                cell_val = r.text_answer
 
-        # accumulate for multi-answer questions
+        # --- base per-question key (unchanged) ---------------------------
+        key = qref
         if key in amap:
             existing = amap[key]
             if isinstance(existing, list):
-                existing.append(val)
+                amap[key] = existing + [cell_val]
             else:
-                amap[key] = [existing, val]
+                amap[key] = [existing, cell_val]
         else:
-            amap[key] = val if val is not None else None
+            amap[key] = cell_val if cell_val is not None else None
+
+        # --- MATRIX extras -----------------------------------------------
+        if q.question_type == "MATRIX":
+            mode = getattr(q, "matrix_mode", None) or "single"
+            col  = getattr(r, "matrix_column", None)
+            row  = getattr(r, "matrix_row", None)
+
+            # Non-SBS: record selected row for that column
+            if mode != "side_by_side" and col is not None and row is not None:
+                col_key = str(col.value) if col.value not in (None, "") else f"id:{col.id}"
+                row_key = str(row.value) if getattr(row, "value", None) not in (None, "") else f"id:{row.id}"
+
+                # only record when we actually have an answer
+                if cell_val is not None:
+                    matrix_col_rows[(qref, col_key)].append(row_key)
+
+            # SBS: record the value of (group,row)
+            elif mode == "side_by_side" and col is not None and row is not None:
+                group_slug = (col.group or "").strip()
+                if not group_slug:
+                    continue
+
+                row_key = str(row.value) if getattr(row, "value", None) not in (None, "") else f"id:{row.id}"
+                t = (qref, group_slug, row_key)
+
+                if t in sbs_cells:
+                    existing = sbs_cells[t]
+                    if isinstance(existing, list):
+                        existing.append(cell_val)
+                    else:
+                        sbs_cells[t] = [existing, cell_val]
+                else:
+                    sbs_cells[t] = cell_val
+
+    # --- Fold MATRIX non-SBS column selections into amap -----------------
+    # De-dupe and collapse single vs list.
+    for (qref, col_key), rows in matrix_col_rows.items():
+        if not rows:
+            continue
+
+        # De-dupe but keep stable order
+        seen = set()
+        uniq = []
+        for rk in rows:
+            if rk in seen:
+                continue
+            seen.add(rk)
+            uniq.append(rk)
+
+        amap[f"{qref}::col::{col_key}"] = uniq[0] if len(uniq) == 1 else uniq
+
+    # --- Fold MATRIX SBS cells into amap ---------------------------------
+    for (qref, group_slug, row_key), val in sbs_cells.items():
+        amap[f"{qref}::sbs::group::{group_slug}::row::{row_key}"] = val
 
     return amap
 

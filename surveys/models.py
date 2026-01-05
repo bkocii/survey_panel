@@ -217,6 +217,7 @@ class Choice(models.Model):
     def __str__(self):
         return self.text  # String representation for admin
 
+
 class Submission(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     survey = models.ForeignKey('Survey', on_delete=models.CASCADE)

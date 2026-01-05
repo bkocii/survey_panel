@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, Http404
 from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn
 from .forms import SurveyResponseForm, WizardQuestionForm
-from .logic import next_displayable, is_visible, safe_next_question, find_next_visible_after
+from .logic import next_displayable, is_visible, safe_next_question, find_next_visible_after, eval_rules
 from django.db import models
 from django.utils.html import escape
 from django.forms import inlineformset_factory
@@ -1186,13 +1186,20 @@ def get_question_preview_html(request, question_id):
     )
     return JsonResponse({"html": html})
 
-
 def _group_matrix_columns(question):
+    """
+    Only build grouped columns for MATRIX + side_by_side.
+    For all other question types, return an empty dict.
+    """
+    if question.question_type != "MATRIX" or getattr(question, "matrix_mode", None) != "side_by_side":
+        return {}
+
     grouped = defaultdict(list)
-    for col in question.matrix_columns.all().order_by('group', 'value'):
+    for col in question.matrix_columns.all().order_by("group", "value"):
         key = col.group or "Ungrouped"
         grouped[key].append(col)
-    # Convert to normal dict to preserve template compatibility (items)
+
+    # Convert to normal dict for template `.items`
     return dict(grouped)
 
 
@@ -1208,7 +1215,7 @@ def question_fragment(request, pk: int):
         "question": q,
         "preview": True,  # lets the partial know we're in preview (if you want to branch)
         "grouped_matrix_columns": _group_matrix_columns(q),
-        "submitted_data": None,  # not needed for preview
+        "submitted_data": {},  # not needed for preview
     }
     html = render_to_string("surveys/_question_display.html", ctx, request=request)
     # Optional small header meta for your card
@@ -1253,7 +1260,7 @@ def survey_preview(request, survey_id: int):
         "preview_mode": True,
         "question": question,
         "grouped_matrix_columns": _group_matrix_columns(question),  # ✅ needed for SBS
-        "submitted_data": None,                                     # keeps partial happy
+        "submitted_data": {},                                     # keeps partial happy
         "total_questions": total,
         "current_index": idx + 1,
         "progress_percent": progress_percent,
@@ -1392,9 +1399,11 @@ def _answers_so_far(submission) -> dict:
         amap[key] = value
     return amap
 
+
 def _is_visible(question: Question, submission) -> bool:
     amap = _answers_so_far(submission)
     return eval_rules(question.visibility_rules or {}, amap)
+
 
 def _next_displayable(start_q: Question, submission) -> Question | None:
     """

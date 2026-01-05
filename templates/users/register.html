@@ -14,7 +14,7 @@
             {% for field in form %}
                 <div class="mb-3">
                     <!-- Field label -->
-                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    <label for="{{ field.id_for_label }}" class="form-label text-white dark:text-gray-300">{{ field.label }}</label>
                     <!-- Field input (e.g., text, password, select) -->
                     {{ field }}
                     <!-- Display field-specific errors -->
@@ -25,7 +25,7 @@
                     {% endif %}
                     <!-- Display field help text if available -->
                     {% if field.help_text %}
-                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                        <small class="form-text text-white">{{ field.help_text }}</small>
                     {% endif %}
                 </div>
             {% endfor %}

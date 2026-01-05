@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 import nested_admin
 import json
+from collections import defaultdict
 from django.urls import path
 from unfold.sites import UnfoldAdminSite
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
@@ -17,7 +19,8 @@ import os
 import zipfile
 from django.utils.text import slugify
 from io import BytesIO, StringIO
-from django.db.models import Max
+from django.db.models import Max, Prefetch
+
 
 # Age range filter using date_of_birth
 class AgeRangeFilter(admin.SimpleListFilter):
@@ -163,25 +166,72 @@ class SurveyAdmin(ModelAdmin):
                     self.message_user(request, "Could not delete: question not found for this survey.", level='error')
             return redirect(request.path)  # back to clean add-mode
 
-        # Build a lean list for logic builder
+        # 🆕 Build metadata for logic modal
+        qs = survey.questions.order_by("sort_index", "id").prefetch_related(
+            Prefetch("choices", queryset=Choice.objects.order_by("id")),
+            Prefetch("matrix_rows", queryset=MatrixRow.objects.order_by("id")),
+            Prefetch("matrix_columns", queryset=MatrixColumn.objects.order_by("id")),
+        )
+
         logic_questions = []
-        for q in all_questions:
-            # only earlier questions typically make sense, but we’ll send all for now
+        for q in qs:
             item = {
                 "id": q.id,
-                "code": q.code or "",
+                "code": q.code,
                 "text": q.text,
+                "sort_index": q.sort_index or 0,
                 "question_type": q.question_type,
-                "choices": [],
-            }
-            if q.question_type in ["SINGLE_CHOICE", "MULTI_CHOICE", "DROPDOWN", "RATING", "IMAGE_CHOICE",
-                                   "IMAGE_RATING", "YESNO"]:
-                for c in q.choices.all().order_by("value", "id"):
-                    item["choices"].append({
+                "choices": [
+                    {
                         "id": c.id,
                         "label": c.text,
-                        "value": c.value if c.value is not None else c.id,
-                    })
+                        "value": c.value,
+                    }
+                    for c in q.choices.all()
+                ],
+            }
+
+            if q.question_type == "MATRIX":
+                # rows
+                item["matrix_rows"] = [
+                    {
+                        "id": r.id,
+                        "label": r.text,
+                        "value": r.value,  # may be None
+                    }
+                    for r in q.matrix_rows.all()
+                ]
+
+                # all columns
+                cols = list(q.matrix_columns.all())
+                item["matrix_columns"] = [
+                    {
+                        "id": c.id,
+                        "label": c.label,
+                        "value": c.value,
+                        "group": c.group,
+                        "input_type": c.input_type,
+                    }
+                    for c in cols
+                ]
+
+                # SBS groups (for side_by_side only)
+                if q.matrix_mode == "side_by_side":
+                    from django.utils.text import slugify
+                    groups = {}
+                    for c in cols:
+                        g_name = c.group or "Ungrouped"
+                        g_slug = slugify(g_name)
+                        groups.setdefault((g_slug, g_name), [])
+
+                    item["matrix_mode"] = "side_by_side"
+                    item["sbs_groups"] = [
+                        {"slug": slug, "name": name}
+                        for (slug, name) in groups.keys()
+                    ]
+                else:
+                    item["matrix_mode"] = q.matrix_mode or "single"
+
             logic_questions.append(item)
 
         # Inline formsets (no "extra"; we add via JS)
@@ -261,7 +311,7 @@ class SurveyAdmin(ModelAdmin):
                 "has_permission": True,
                 "available_apps": [],
                 "current_app": "surveys",
-                "logic_questions_json": json.dumps(logic_questions),
+                "logic_questions_json": json.dumps(logic_questions, cls=DjangoJSONEncoder),
             }
             return render(request, 'admin/surveys/add_question_wizard.html', ctx)
 
