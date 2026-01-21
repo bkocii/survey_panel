@@ -159,6 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
       hintRow.style.display = has ? "table-row" : "none";
     }
 
+    function getRowOperator(tr) {
+      const tdOp = tr.querySelector('td[data-role="logic-op-cell"]');
+      const selOp = tdOp ? tdOp.querySelector('select') : null;
+      return (selOp?.value || "eq").trim();
+    }
+
 
     // --- main row rendering -----------------------------------------------
 
@@ -403,6 +409,25 @@ document.addEventListener('DOMContentLoaded', () => {
       ) {
         hideMatrixHeaders();
 
+        const op = getRowOperator(tr);
+
+        // If IN/NOT_IN => free-text CSV input (so user can type "1,2,3")
+        if (op === "in" || op === "not_in") {
+          const inputVal = document.createElement("input");
+          inputVal.type = "text";
+          inputVal.className = VALUE_INPUT_CLASS;
+          inputVal.placeholder = "e.g. 1,2,3";
+          if (condVal) inputVal.value = condVal;
+          tdVal.appendChild(inputVal);
+
+          setRowHint(
+            tr,
+            "Use comma-separated values (e.g. 1,2,3). Compared against choice.value (or id:<pk> fallback)."
+          );
+          return;
+        }
+
+        // Otherwise EQ/NE/etc => dropdown is fine
         const selVal = document.createElement("select");
         selVal.className = VALUE_INPUT_CLASS;
 
@@ -429,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setRowHint(
           tr,
-          "Choice-based: compares against choice.value when set; otherwise uses the fallback key id:<pk>."
+          "Choice-based: equals/not-equals compares against choice.value when set; otherwise uses id:<pk>."
         );
 
         return;

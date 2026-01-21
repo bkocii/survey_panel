@@ -59,8 +59,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
     }
 
+    // Detect edit mode (hidden input exists only when editing)
+    const isEditing = !!document.querySelector('input[name="edit_id"]');
+
+    // Soft-clear: mark Django inline rows as DELETE (safe for edit)
+    function softClearInline(prefix) {
+      const totalEl   = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      const initialEl = document.getElementById(`id_${prefix}-INITIAL_FORMS`);
+      if (!totalEl || !initialEl) return;
+
+      const total   = parseInt(totalEl.value || "0", 10);
+      const initial = parseInt(initialEl.value || "0", 10);
+
+      for (let i = 0; i < total; i++) {
+        const del = document.getElementById(`id_${prefix}-${i}-DELETE`);
+        const idf = document.getElementById(`id_${prefix}-${i}-id`);
+
+        const isExisting = (idf && idf.value) || i < initial;
+
+        if (del) del.checked = true;
+
+        // hide the row visually (optional, but recommended)
+        const anyField =
+          document.getElementById(`id_${prefix}-${i}-text`) ||
+          document.getElementById(`id_${prefix}-${i}-label`) ||
+          document.getElementById(`id_${prefix}-${i}-value`);
+        const rowEl = anyField ? anyField.closest("tr") : null;
+        if (rowEl) rowEl.classList.add("hidden");
+      }
+    }
+
+    // Hard-clear: for cloning / brand-new builds
+    function hardClearInline(prefix) {
+      const container = document.getElementById(`${prefix}-forms`);
+      const total = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      if (container) container.innerHTML = '';
+      if (total) total.value = '0';
+    }
+
+    // Unified clear used everywhere
+    function clearInline(prefix) {
+      if (isEditing) softClearInline(prefix);
+      else hardClearInline(prefix);
+    }
+
     // 📦 Show/hide and reset inline form blocks (Choices, Matrix rows/cols)
-    let previousQuestionType = null;
 
     function toggleInlinesByType() {
         const type = document.getElementById("id_question_type")?.value;
@@ -98,10 +141,21 @@ document.addEventListener("DOMContentLoaded", function () {
             const shouldForceClear =
                 previousQuestionType !== type || !shouldShow.has(inlineId);
 
-            if (shouldForceClear && container && totalForms) {
-                container.innerHTML = "";           // ✅ Actually removes DOM elements
-                totalForms.value = "0";
-            }
+            // Never destroy formset structure here.
+            // Clearing is handled explicitly in resetFieldsForType / mode switch,
+            // and must use softClearInline when editing.
+            Object.entries(inlineBlocks).forEach(([inlineId, config]) => {
+              const wrapper = document.getElementById(inlineId);
+
+              if (wrapper) {
+                if (shouldShow.has(inlineId)) wrapper.classList.remove("hidden");
+                else wrapper.classList.add("hidden");
+              }
+            });
+
+            previousQuestionType = type;
+            if (typeof updatePreview === "function") updatePreview();
+
 
             if (wrapper) {
                 if (shouldShow.has(inlineId)) {
@@ -586,7 +640,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     previousQuestionType = document.getElementById("id_question_type")?.value;
-    let previousMatrixMode = document.getElementById('id_matrix_mode')?.value || null;
 
 
     // Initialize modal manager with the current question type
@@ -790,13 +843,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 totalForms.value = "0";
             }
         });
-    }
-
-    function clearInline(prefix) {
-      const container = document.getElementById(`${prefix}-forms`);
-      const total = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
-      if (container) container.innerHTML = '';
-      if (total) total.value = '0';
     }
 
     // Clear the server-side lookup UI as well

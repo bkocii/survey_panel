@@ -7,11 +7,17 @@ Number = Union[int, float]
 
 
 def _coerce(x: Any) -> Any:
+    # Recurse into iterables so ["1","2"] becomes [1,2]
+    if isinstance(x, (list, tuple, set)):
+        coerced = [_coerce(i) for i in x]
+        return type(x)(coerced) if not isinstance(x, set) else set(coerced)
+
     if isinstance(x, str):
         try:
             return float(x) if "." in x else int(x)
         except Exception:
             return x
+
     return x
 
 
@@ -28,6 +34,11 @@ def eval_condition(cond: Dict[str, Any], answers: Dict[Any, Any]) -> bool:
     a = _coerce(actual)
     v = _coerce(val)
 
+    # Normalize v for membership ops (fast + type-stable)
+    v_set = None
+    if isinstance(v, (list, tuple, set)):
+        v_set = {_coerce(x) for x in v}
+
     # If the actual is a list (multi-answer), normalize comparisons
     def _in_container(container: Iterable, x) -> bool:
         return any((_coerce(y) == x) for y in container)
@@ -35,15 +46,15 @@ def eval_condition(cond: Dict[str, Any], answers: Dict[Any, Any]) -> bool:
     if isinstance(a, (list, tuple, set)):
         if op == "eq":     return _in_container(a, v)
         if op == "ne":     return not _in_container(a, v)
-        if op == "in":     return any((_coerce(y) in v) for y in a) if isinstance(v, (list, tuple, set)) else False
-        if op == "not_in": return all((_coerce(y) not in v) for y in a) if isinstance(v, (list, tuple, set)) else True
+        if op == "in":     return any((_coerce(y) in v_set) for y in a) if v_set is not None else False
+        if op == "not_in": return all((_coerce(y) not in v_set) for y in a) if v_set is not None else True
         # Numeric ops don’t make much sense on lists; default False
         return False
 
     if op == "eq":     return a == v
     if op == "ne":     return a != v
-    if op == "in":     return (a in v) if isinstance(v, (list, tuple, set)) else False
-    if op == "not_in": return (a not in v) if isinstance(v, (list, tuple, set)) else True
+    if op == "in":     return (a in v_set) if v_set is not None else False
+    if op == "not_in": return (a not in v_set) if v_set is not None else True
     if op == "gt":     return isinstance(a, (int, float)) and isinstance(v, (int, float)) and a >  v
     if op == "gte":    return isinstance(a, (int, float)) and isinstance(v, (int, float)) and a >= v
     if op == "lt":     return isinstance(a, (int, float)) and isinstance(v, (int, float)) and a <  v
