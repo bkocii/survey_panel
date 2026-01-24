@@ -72,7 +72,7 @@ class WizardQuestionForm(forms.ModelForm):
         required=False,
         widget=forms.Textarea(
             attrs={
-                "rows": 4,
+                "rows": 1,
                 "placeholder": '{"all":[{"q":"Q1","op":"eq","val":1}]}',
             }
         ),
@@ -132,16 +132,40 @@ class WizardQuestionForm(forms.ModelForm):
 
         # 🔹 Pretty-print existing rules as valid JSON (double quotes) for editing
         inst = getattr(self, 'instance', None)
-        if inst and getattr(inst, 'visibility_rules', None):
-            rules = inst.visibility_rules
-            if isinstance(rules, (dict, list)):
-                # show nice JSON in the textarea
-                self.fields['visibility_rules'].initial = json.dumps(
-                    rules, ensure_ascii=False, indent=2
-                )
-            else:
-                # if somehow stored as string, just show it as-is
-                self.fields['visibility_rules'].initial = str(rules)
+        rules = getattr(inst, 'visibility_rules', None) if inst else None
+        if rules in (None, "", {}):
+            self.fields['visibility_rules'].initial = ""
+            return
+
+        # If DB gives dict/list -> dump to JSON
+        if isinstance(rules, (dict, list)):
+            self.fields['visibility_rules'].initial = json.dumps(rules, ensure_ascii=False, indent=2)
+            return
+
+        # If DB gives string, try JSON first, then Python literal, then show raw
+        if isinstance(rules, str):
+            s = rules.strip()
+            try:
+                obj = json.loads(s)
+                self.fields['visibility_rules'].initial = json.dumps(obj, ensure_ascii=False, indent=2)
+                return
+            except Exception:
+                pass
+
+            try:
+                obj = ast.literal_eval(s)
+                if isinstance(obj, (dict, list)):
+                    self.fields['visibility_rules'].initial = json.dumps(obj, ensure_ascii=False, indent=2)
+                    return
+            except Exception:
+                pass
+
+            # last resort
+            self.fields['visibility_rules'].initial = s
+            return
+
+        # Any other weird type -> stringify
+        self.fields['visibility_rules'].initial = str(rules)
 
     def clean_visibility_rules(self):
         """

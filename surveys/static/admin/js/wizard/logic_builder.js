@@ -636,6 +636,42 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    /**
+     * Accepts these inputs and normalizes to the canonical format:
+     *   { all: [ {q,op,val}, ... ] }  or  { any: [ ... ] }
+     *
+     * Supported legacy/edge cases:
+     *   - single leaf condition: {q, op, val}  -> { all: [leaf] }
+     *   - empty object {} / [] / null / primitives -> { all: [] }
+     */
+    function normalizeLogicJSON(parsed) {
+      // null / primitives -> empty
+      if (!parsed || typeof parsed !== "object") {
+        return { all: [] };
+      }
+
+      // array is not a supported top-level format for us
+      if (Array.isArray(parsed)) {
+        // If someone stored an array of conditions directly, we can salvage it:
+        // treat it as { all: [...] } when entries look like leaf conds.
+        const looksLikeConds =
+          parsed.every(x => x && typeof x === "object" && ("q" in x) && ("op" in x));
+        return looksLikeConds ? { all: parsed } : { all: [] };
+      }
+
+      // canonical
+      if (Array.isArray(parsed.all)) return { all: parsed.all };
+      if (Array.isArray(parsed.any)) return { any: parsed.any };
+
+      // leaf condition
+      if (("q" in parsed) && ("op" in parsed)) {
+        return { all: [parsed] };
+      }
+
+      // fallback
+      return { all: [] };
+    }
+
     function loadFromTextarea() {
       currentData = null;
       if (!targetTextarea) return;
@@ -648,16 +684,44 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // 1) Try JSON first (correct path)
       try {
-        const parsed = JSON.parse(raw);
-        currentData = parsed;
-      } catch (e) {
-        console.warn("Logic JSON parse error:", e);
-        alert("Existing display logic is not valid JSON. We’ll start fresh.");
-        setModeRadio("all");
-        clearRows();
-        addRow({ q: "", op: "eq", val: "" });
-        return;
+        currentData = JSON.parse(raw);
+      } catch (e1) {
+        // 2) Fallback: accept Python-ish dict string by normalizing quotes (best-effort)
+        // Only do this if it looks like a dict/list and does NOT already look like JSON
+        const looksPythonish =
+          (raw.startsWith("{") || raw.startsWith("[")) &&
+          raw.includes("'") &&
+          !raw.includes('":');
+
+        if (looksPythonish) {
+          try {
+            // naive normalization: 'key' -> "key"
+            // This is not a full parser, but it fixes the common case produced by str(dict)
+            const normalized = raw
+              .replaceAll("None", "null")
+              .replaceAll("True", "true")
+              .replaceAll("False", "false")
+              .replace(/'/g, '"');
+
+            currentData = JSON.parse(normalized);
+          } catch (e2) {
+            console.warn("Logic parse error (JSON and fallback failed):", e2);
+            alert("Existing display logic is not valid JSON. We’ll start fresh.");
+            setModeRadio("all");
+            clearRows();
+            addRow({ q: "", op: "eq", val: "" });
+            return;
+          }
+        } else {
+          console.warn("Logic JSON parse error:", e1);
+          alert("Existing display logic is not valid JSON. We’ll start fresh.");
+          setModeRadio("all");
+          clearRows();
+          addRow({ q: "", op: "eq", val: "" });
+          return;
+        }
       }
 
       const mode  = getModeFromData(currentData);
@@ -671,6 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
         conds.forEach(c => addRow(c));
       }
     }
+
 
     function buildDataFromUI() {
       const mode = getSelectedMode();
