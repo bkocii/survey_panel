@@ -615,21 +615,47 @@
     if (draftIdxEl) draftIdxEl.textContent = (cards.length + 1) + '.';
   }
 
+
   (function () {
     const list  = document.getElementById('question-preview-list');
     const modal = document.getElementById('routing-modal');
     if (!list || !modal) return;
 
-    const apiBase   = list.dataset.apiBase; // e.g. "/surveys/api/question-data/"
+    // ✅ normalize apiBase so `${apiBase}${qid}/` always works
+    let apiBase = (list.dataset.apiBase || '').trim();
+    if (apiBase && !apiBase.endsWith('/')) apiBase += '/';
+
     const choiceRow = modal.querySelector('#routing-choice-row');
     const matrixRow = modal.querySelector('#routing-matrix-row');
     const selChoice = modal.querySelector('#routing-choice');
+
     const selMatrix = modal.querySelector('#routing-matrix-col');
     const selTarget = modal.querySelector('#routing-target');
     const ctx       = modal.querySelector('#routing-context');
 
     const hidQid   = modal.querySelector('#routing-qid');
     const hidQtype = modal.querySelector('#routing-qtype');
+
+    // NEW UI bits (optional; safe if not present)
+    const sbsGroupRow = modal.querySelector('#routing-sbs-group-row');
+    const selSbsGroup = modal.querySelector('#routing-sbs-group');
+    const rowPickRow  = modal.querySelector('#routing-matrix-rowpick-row');
+    const selRowPick  = modal.querySelector('#routing-matrix-rowpick');
+    const colLabelEl  = modal.querySelector('#routing-matrix-col-label');
+
+    // Existing routes UI
+    const existingWrap    = modal.querySelector('#routing-existing-wrap');
+    const existingTbody   = modal.querySelector('#routing-existing-tbody');
+    const existingEmpty   = modal.querySelector('#routing-existing-empty');
+    const existingRefresh = modal.querySelector('#routing-existing-refresh');
+
+    // keep fetched data for filtering
+    let _matrixCols = [];
+    let _matrixRows = [];
+    let _matrixMode = '';
+
+    // keep latest fetched question payload so refresh can re-render without extra state guessing
+    let _lastData = null;
 
     // --- CSRF helper (cookie -> hidden input fallback)
     function getCsrf() {
@@ -641,6 +667,7 @@
     }
 
     function populateTargetsFromPool() {
+      if (!selTarget) return;
       selTarget.innerHTML = '';
       const pool = document.getElementById('next-question-options');
       if (pool) {
@@ -654,6 +681,195 @@
 
     function openModal()  { modal.classList.remove('hidden'); }
     function closeModal() { modal.classList.add('hidden'); }
+
+    function resetSelect(sel, placeholder) {
+      if (!sel) return;
+      sel.innerHTML = '';
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = placeholder;
+      sel.appendChild(blank);
+    }
+
+    function show(el) { el && el.classList.remove('hidden'); }
+    function hide(el) { el && el.classList.add('hidden'); }
+
+    function slugify(str) {
+      return (str || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+    }
+
+    function renderMatrixColsForGroup(groupSlug) {
+      if (!selMatrix) return;
+      resetSelect(selMatrix, '— Select a column —');
+
+      let cols = _matrixCols || [];
+      if (_matrixMode === 'side_by_side') {
+        cols = cols.filter(c => slugify(c.group || '') === groupSlug);
+      }
+
+      cols.forEach(col => {
+        if (!col || col.id == null) return;
+        const o = document.createElement('option');
+        o.value = String(col.id); // IMPORTANT: send pk
+        const label = col.label || (col.value != null ? `Col ${col.value}` : `Col ${col.id}`);
+        o.textContent = label;
+        selMatrix.appendChild(o);
+      });
+    }
+
+    function renderMatrixRows() {
+      if (!selRowPick) return;
+      resetSelect(selRowPick, '— (optional) select a row —');
+      (_matrixRows || []).forEach(r => {
+        if (!r || r.id == null) return;
+        const o = document.createElement('option');
+        o.value = String(r.id); // IMPORTANT: send pk
+        o.textContent = r.text || `Row ${r.id}`;
+        selRowPick.appendChild(o);
+      });
+    }
+
+    function optionLabelFromPool(qid) {
+      if (!qid) return '---------';
+      const pool = document.getElementById('next-question-options');
+      if (!pool) return `Question #${qid}`;
+      const opt = Array.from(pool.options).find(o => String(o.value) === String(qid));
+      return opt ? opt.textContent.trim() : `Question #${qid}`;
+    }
+
+    function colLabelById(colId) {
+      const c = (_matrixCols || []).find(x => String(x.id) === String(colId));
+      if (!c) return `Col #${colId}`;
+      return (c.label || (c.value != null ? `Col ${c.value}` : `Col #${c.id}`)).trim();
+    }
+
+    function rowLabelById(rowId) {
+      const r = (_matrixRows || []).find(x => String(x.id) === String(rowId));
+      if (!r) return `Row #${rowId}`;
+      return (r.text || `Row #${r.id}`).trim();
+    }
+
+    function groupNameBySlug(slug) {
+      const c = (_matrixCols || []).find(x => slugify(x.group || '') === slug);
+      return c && c.group ? c.group : slug;
+    }
+
+    function clearExistingRoutesTable() {
+      if (existingTbody) existingTbody.innerHTML = '';
+      if (existingEmpty) existingEmpty.classList.add('hidden');
+    }
+
+    function renderExistingRoutes(data) {
+      clearExistingRoutesTable();
+      if (!existingWrap || !existingTbody || !existingEmpty) return;
+
+      const nonSbs = Array.isArray(data.matrix_cell_routes) ? data.matrix_cell_routes : [];
+      const sbs    = Array.isArray(data.sbs_cell_routes) ? data.sbs_cell_routes : [];
+
+      const rows = [];
+
+      nonSbs.forEach(rt => {
+        const rowId = rt.row_id;
+        const colId = rt.col_id;
+        const tgtId = rt.next_question_id || '';
+
+        rows.push({
+          label: `${rowLabelById(rowId)} • ${colLabelById(colId)}`,
+          target: optionLabelFromPool(tgtId),
+          prefill: { group_slug:'', row_id:String(rowId), col_id:String(colId), target_id:String(tgtId || '') }
+        });
+      });
+
+      sbs.forEach(rt => {
+        const gs    = (rt.group_slug || '').trim();
+        const rowId = rt.row_id;
+        const colId = rt.col_id;
+        const tgtId = rt.next_question_id || '';
+
+        rows.push({
+          label: `${groupNameBySlug(gs)} • ${rowLabelById(rowId)} • ${colLabelById(colId)}`,
+          target: optionLabelFromPool(tgtId),
+          prefill: { group_slug:gs, row_id:String(rowId), col_id:String(colId), target_id:String(tgtId || '') }
+        });
+      });
+
+      if (!rows.length) {
+        existingEmpty.classList.remove('hidden');
+        existingWrap.classList.remove('hidden');
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+
+      rows.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-gray-800';
+
+        const tdScope = document.createElement('td');
+        tdScope.className = 'px-2 py-2';
+        tdScope.textContent = item.label;
+
+        const tdTarget = document.createElement('td');
+        tdTarget.className = 'px-2 py-2 opacity-80';
+        tdTarget.textContent = item.target;
+
+        const tdBtn = document.createElement('td');
+        tdBtn.className = 'px-2 py-2 text-right';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'text-xs underline opacity-90 hover:opacity-100';
+        btn.textContent = 'Edit';
+        btn.addEventListener('click', () => {
+          if (_matrixMode === 'side_by_side') {
+            if (selSbsGroup && item.prefill.group_slug) {
+              selSbsGroup.value = item.prefill.group_slug;
+              selSbsGroup.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+          if (selMatrix) selMatrix.value = item.prefill.col_id || '';
+          if (selRowPick) selRowPick.value = item.prefill.row_id || '';
+          if (selTarget) selTarget.value = item.prefill.target_id || '';
+          modal.querySelector('.confirm-modal-card')?.scrollTo?.({ top: 0, behavior: 'smooth' });
+        });
+
+        tdBtn.appendChild(btn);
+        tr.appendChild(tdScope);
+        tr.appendChild(tdTarget);
+        tr.appendChild(tdBtn);
+
+        frag.appendChild(tr);
+      });
+
+      existingTbody.appendChild(frag);
+      existingWrap.classList.remove('hidden');
+    }
+
+    // ✅ bind refresh ONCE (not inside open handler)
+    existingRefresh?.addEventListener('click', async () => {
+      const qid = hidQid?.value;
+      if (!qid) return;
+      try {
+        const res = await fetch(`${apiBase}${qid}/`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        _lastData   = data;
+        _matrixMode = data.matrix_mode || _matrixMode;
+        _matrixCols = data.matrix_cols || _matrixCols;
+        _matrixRows = data.matrix_rows || _matrixRows;
+
+        if (data.question_type === 'MATRIX') renderExistingRoutes(data);
+      } catch (e) {
+        console.error(e);
+      }
+    });
 
     // Delegated click from any preview card’s routing button
     list.addEventListener('click', async (ev) => {
@@ -669,56 +885,84 @@
         if (!res.ok) throw new Error('Failed to load question data');
         const data = await res.json();
 
-        // ✅ store these for the save step
+        _lastData = data;
+
         hidQid.value   = String(qid);
         hidQtype.value = data.question_type || '';
 
-        // Context line
         ctx.textContent = (data.text || '').trim() ? `Question: “${data.text}”` : `Question #${qid}`;
 
-        // Reset rows
-        selChoice.innerHTML = '';
-        selMatrix.innerHTML = '';
-        choiceRow.classList.add('hidden');
-        matrixRow.classList.add('hidden');
+        // reset selects
+        resetSelect(selChoice, '— Select a choice —');
+        resetSelect(selMatrix, '— Select a column —');
+        resetSelect(selRowPick, '— (optional) select a row —');
+        resetSelect(selSbsGroup, '— Select a group —');
 
-        // ✅ Exclude IMAGE_RATING as requested
+        // hide all rows initially
+        choiceRow?.classList.add('hidden');
+        matrixRow?.classList.add('hidden');
+        hide(sbsGroupRow);
+        hide(rowPickRow);
+        if (colLabelEl) colLabelEl.textContent = 'For matrix column';
+
+        // ✅ CHOICE QUESTIONS (restore)
         const choiceTypes = new Set(['SINGLE_CHOICE','MULTI_CHOICE','RATING','DROPDOWN','IMAGE_CHOICE']);
         if (choiceTypes.has(data.question_type)) {
-          choiceRow.classList.remove('hidden');
-
-          // choices need real IDs coming from the API
-          const blank = document.createElement('option');
-          blank.value = ''; blank.textContent = '— Select a choice —';
-          selChoice.appendChild(blank);
+          choiceRow?.classList.remove('hidden');
 
           (data.choices || []).forEach(c => {
-            // expect {id, text} in API
             if (c && c.id != null) {
               const o = document.createElement('option');
-              o.value = String(c.id);             // ✅ keep the pk
+              o.value = String(c.id);
               o.textContent = c.text ?? `Choice ${c.id}`;
               selChoice.appendChild(o);
             }
           });
         }
 
+        // MATRIX
         if (data.question_type === 'MATRIX') {
-          matrixRow.classList.remove('hidden');
+          matrixRow?.classList.remove('hidden');
 
-          const blank = document.createElement('option');
-          blank.value = ''; blank.textContent = '— Select a column —';
-          selMatrix.appendChild(blank);
+          _matrixMode = data.matrix_mode || '';
+          _matrixCols = data.matrix_cols || [];
+          _matrixRows = data.matrix_rows || [];
 
-          (data.matrix_cols || []).forEach(col => {
-            if (col && col.id != null) {
+          renderMatrixRows();
+          show(rowPickRow);
+
+          if (_matrixMode === 'side_by_side') {
+            show(sbsGroupRow);
+            if (colLabelEl) colLabelEl.textContent = 'For column (within group)';
+
+            const groups = Array.from(new Set((_matrixCols || [])
+              .map(c => (c.group || '').trim())
+              .filter(Boolean)
+              .map(g => JSON.stringify({ name: g, slug: slugify(g) }))
+            )).map(s => JSON.parse(s));
+
+            resetSelect(selSbsGroup, '— Select a group —');
+            groups.forEach(g => {
               const o = document.createElement('option');
-              o.value = String(col.id);           // ✅ keep the pk
-              const label = col.label || (col.value != null ? `Col ${col.value}` : `Col ${col.id}`);
-              o.textContent = label;
-              selMatrix.appendChild(o);
-            }
-          });
+              o.value = g.slug;
+              o.textContent = g.name;
+              selSbsGroup.appendChild(o);
+            });
+
+            selSbsGroup.onchange = () => {
+              const gs = (selSbsGroup.value || '').trim();
+              renderMatrixColsForGroup(gs);
+            };
+
+            renderMatrixColsForGroup('');
+          } else {
+            renderMatrixColsForGroup('');
+          }
+
+          renderExistingRoutes(data);
+        } else {
+          if (existingWrap) existingWrap.classList.add('hidden');
+          clearExistingRoutesTable();
         }
 
         populateTargetsFromPool();
@@ -735,29 +979,55 @@
       const qid   = hidQid.value;
       const qtype = hidQtype.value;
 
-      // Allow clearing
-      const target = selTarget.value || '';
-
-      // ✅ always include question_id so server can verify ownership
+      const target = (selTarget?.value || '');
       const payload = { question_id: qid, target_question_id: target, scope: 'question' };
 
-      const choiceTypes = new Set(['SINGLE_CHOICE','MULTI_CHOICE','RATING','DROPDOWN','IMAGE_CHOICE']); // no IMAGE_RATING
+      const choiceTypes = new Set(['SINGLE_CHOICE','MULTI_CHOICE','RATING','DROPDOWN','IMAGE_CHOICE']);
       if (choiceTypes.has(qtype)) {
-        const choiceId = selChoice.value || '';
+        const choiceId = (selChoice?.value || '').trim();
         if (!choiceId) {
           window.makeToast ? makeToast('Select a choice first.', 'warning') : alert('Select a choice first.');
           return;
         }
         payload.scope = 'choice';
-        payload.choice_id = choiceId; // ✅ send the pk
-      } else if (qtype === 'MATRIX') {
-        const colId = selMatrix.value || '';
+        payload.choice_id = choiceId;
+      }
+      else if (qtype === 'MATRIX') {
+        const colId = (selMatrix?.value || '').trim();
         if (!colId) {
           window.makeToast ? makeToast('Select a matrix column first.', 'warning') : alert('Select a matrix column first.');
           return;
         }
-        payload.scope = 'matrix_col';
-        payload.matrix_col_id = colId; // ✅ send the pk
+
+        const rowId = (selRowPick?.value || '').trim(); // optional
+        const isSBS = (_matrixMode === 'side_by_side');
+
+        if (isSBS) {
+          const groupSlug = (selSbsGroup?.value || '').trim();
+          if (!groupSlug) {
+            window.makeToast ? makeToast('Select a group first.', 'warning') : alert('Select a group first.');
+            return;
+          }
+
+          if (rowId) {
+            payload.scope = 'sbs_cell';
+            payload.group_slug = groupSlug;
+            payload.matrix_row_id = rowId;
+            payload.matrix_col_id = colId;
+          } else {
+            payload.scope = 'matrix_col';
+            payload.matrix_col_id = colId;
+          }
+        } else {
+          if (rowId) {
+            payload.scope = 'matrix_cell';
+            payload.matrix_row_id = rowId;
+            payload.matrix_col_id = colId;
+          } else {
+            payload.scope = 'matrix_col';
+            payload.matrix_col_id = colId;
+          }
+        }
       }
 
       try {
@@ -766,9 +1036,9 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': getCsrf(),                 // ✅
+            'X-CSRFToken': getCsrf(),
           },
-          credentials: 'same-origin',                 // ✅
+          credentials: 'same-origin',
           body: JSON.stringify(payload),
         });
 
@@ -780,7 +1050,6 @@
 
         closeModal();
         window.makeToast ? makeToast('Routing saved.', 'success') : null;
-        // If you want to re-render preview badges, call it here.
         if (typeof updatePreview === 'function') updatePreview();
       } catch (e) {
         console.error(e);

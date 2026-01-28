@@ -2,6 +2,8 @@
 from collections import defaultdict
 from django.utils.html import escape
 from django.utils.text import slugify
+from surveys.models import SbsCellRouting
+
 
 def validate_and_collect_matrix_responses(request, survey, question):
     """Validate all required side-by-side matrix inputs before saving."""
@@ -43,8 +45,18 @@ def validate_and_collect_matrix_responses(request, survey, question):
                         'value': val,
                         'group_label': group_label,
                     })
-                    if not next_q and matching_col and matching_col.next_question:
-                        next_q = matching_col.next_question
+                    if not next_q:
+                        route = SbsCellRouting.objects.filter(
+                            question=question,
+                            group_slug=group_slug,
+                            row=row,
+                            col=matching_col,  # or matching_col / anchor_col in that branch
+                        ).select_related('next_question').first()
+
+                        if route and route.next_question:
+                            next_q = route.next_question
+                        elif matching_col.next_question:
+                            next_q = matching_col.next_question
 
             # --- RADIO (one field per group) ---
             elif input_type == 'radio':
@@ -72,8 +84,18 @@ def validate_and_collect_matrix_responses(request, survey, question):
                         'value': selected_col.value,
                         'group_label': group_label,
                     })
-                    if not next_q and selected_col.next_question:
-                        next_q = selected_col.next_question
+                    if not next_q:
+                        route = SbsCellRouting.objects.filter(
+                            question=question,
+                            group_slug=group_slug,
+                            row=row,
+                            col=selected_col,  # or matching_col / anchor_col in that branch
+                        ).select_related('next_question').first()
+
+                        if route and route.next_question:
+                            next_q = route.next_question
+                        elif selected_col.next_question:
+                            next_q = selected_col.next_question
 
             # --- CHECKBOX (one field per group; multiple values) ---
             elif input_type == 'checkbox':
@@ -97,14 +119,25 @@ def validate_and_collect_matrix_responses(request, survey, question):
                             'value': matching_col.value,
                             'group_label': group_label,
                         })
-                        if not next_q and matching_col.next_question:
-                            next_q = matching_col.next_question
+                        if not next_q:
+                            route = SbsCellRouting.objects.filter(
+                                question=question,
+                                group_slug=group_slug,
+                                row=row,
+                                col=matching_col,  # or matching_col / anchor_col in that branch
+                            ).select_related('next_question').first()
+
+                            if route and route.next_question:
+                                next_q = route.next_question
+                            elif matching_col.next_question:
+                                next_q = matching_col.next_question
 
             # --- TEXT (one field per group) ---
             elif input_type == 'text':
                 # Template names the input with row+firstCol id, e.g. "matrix_{rowId}_{cols[0].id}"
                 field_name = f"matrix_{row.id}_{cols[0].id}"
                 val = (request.POST.get(field_name, '') or '').strip()
+                group_slug = slugify(group_label)
 
                 is_required = any(col.required for col in cols) or row.required
                 if is_required and not val:
@@ -122,8 +155,18 @@ def validate_and_collect_matrix_responses(request, survey, question):
                         'value': None,
                         'group_label': group_label,
                     })
-                    if not next_q and anchor_col.next_question:
-                        next_q = anchor_col.next_question
+                    if not next_q:
+                        route = SbsCellRouting.objects.filter(
+                            question=question,
+                            group_slug=group_slug,
+                            row=row,
+                            col=anchor_col,  # or matching_col / anchor_col in that branch
+                        ).select_related('next_question').first()
+
+                        if route and route.next_question:
+                            next_q = route.next_question
+                        elif anchor_col.next_question:
+                            next_q = anchor_col.next_question
 
             else:
                 # Defensive: unknown type -> ignore gracefully

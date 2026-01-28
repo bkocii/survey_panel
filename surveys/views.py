@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, Http404
-from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn
+from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn, MatrixCellRouting, SbsCellRouting
 from .forms import SurveyResponseForm, WizardQuestionForm
 from .logic import next_displayable, is_visible, safe_next_question, find_next_visible_after, eval_rules
 from django.db import models
@@ -27,6 +27,10 @@ from django.template.loader import render_to_string
 from django.utils.html import mark_safe
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.text import slugify
+
+
+
+
 
 # # View to list all active surveys, requires login
 @login_required
@@ -732,8 +736,14 @@ def survey_question(request, survey_id, question_id=None):
                                     'answer': col.label,
                                     'value': val,
                                 })
-                                if not next_q and col.next_question:
-                                    next_q = col.next_question
+                                if not next_q:
+                                    route = MatrixCellRouting.objects.filter(
+                                        question=question, row=row, col=col
+                                    ).select_related('next_question').first()
+                                    if route and route.next_question:
+                                        next_q = route.next_question
+                                    elif col.next_question:
+                                        next_q = col.next_question
                         elif col.required:
                             messages.error(
                                 request,
@@ -816,8 +826,16 @@ def survey_question(request, survey_id, question_id=None):
                         'answer': matching_col.label,
                         'value': matching_col.value,
                     })
-                    if not next_q and matching_col.next_question:
-                        next_q = matching_col.next_question
+                    if not next_q:
+                        # 1) cell routing override
+                        route = MatrixCellRouting.objects.filter(
+                            question=question, row=row, col=matching_col
+                        ).select_related('next_question').first()
+                        if route and route.next_question:
+                            next_q = route.next_question
+                        # 2) fallback to column routing (existing)
+                        elif matching_col.next_question:
+                            next_q = matching_col.next_question
                 for r in collected_responses:
                     Response.objects.create(
                         user=request.user,
@@ -1103,6 +1121,21 @@ def get_question_data(request, question_id):
         )
     )
 
+    # ✅ NEW: cell-level routing (non-SBS)
+    matrix_cell_routes = list(
+        MatrixCellRouting.objects.filter(question=question).values(
+            "row_id", "col_id", "next_question_id"
+        )
+    )
+
+    # ✅ NEW: cell-level routing (SBS)
+    sbs_cell_routes = list(
+        SbsCellRouting.objects.filter(question=question).values(
+            "group_slug", "row_id", "col_id", "next_question_id"
+        )
+    )
+
+
     return JsonResponse({
         "id": question.id,
         "code": question.code,
@@ -1123,6 +1156,9 @@ def get_question_data(request, question_id):
         "choices": choices,
         "matrix_rows": matrix_rows,
         "matrix_cols": matrix_cols,
+
+        "matrix_cell_routes": matrix_cell_routes,
+        "sbs_cell_routes": sbs_cell_routes,
     })
 
 
@@ -1303,10 +1339,9 @@ def set_routing(request):
         return HttpResponseBadRequest('Invalid JSON')
 
     scope = data.get('scope')
-    qid   = data.get('question_id')          # ✅ always included now
+    qid   = data.get('question_id')
     tgt   = data.get('target_question_id')   # '' means clear
 
-    # Parse ints (allow None on target to clear)
     try:
         qid_int = int(qid)
     except (TypeError, ValueError):
@@ -1317,14 +1352,12 @@ def set_routing(request):
     except (TypeError, ValueError):
         return HttpResponseBadRequest('Invalid target question')
 
-    # Ensure the source question exists (and you could also ensure the user can edit it)
     q = Question.objects.filter(pk=qid_int).first()
     if not q:
         return HttpResponseBadRequest('Source question not found')
 
     try:
         if scope == 'choice':
-            # must belong to q
             try:
                 choice_id = int(data.get('choice_id'))
             except (TypeError, ValueError):
@@ -1333,7 +1366,6 @@ def set_routing(request):
             ch = Choice.objects.filter(pk=choice_id).first()
             if not ch:
                 return HttpResponseBadRequest('Invalid choice')
-
             if ch.question_id != qid_int:
                 return HttpResponseBadRequest('Choice does not belong to this question')
 
@@ -1349,12 +1381,55 @@ def set_routing(request):
             mc = MatrixColumn.objects.filter(pk=col_id).first()
             if not mc:
                 return HttpResponseBadRequest('Invalid matrix column')
-
             if mc.question_id != qid_int:
                 return HttpResponseBadRequest('Matrix column does not belong to this question')
 
             mc.next_question = target_q
             mc.save(update_fields=['next_question'])
+
+        # ✅ NEW: Non-SBS row+col routing
+        elif scope == 'matrix_cell':
+            try:
+                row_id = int(data.get('matrix_row_id'))
+                col_id = int(data.get('matrix_col_id'))
+            except (TypeError, ValueError):
+                return HttpResponseBadRequest('Invalid matrix row/col id')
+
+            mr = MatrixRow.objects.filter(pk=row_id).first()
+            mc = MatrixColumn.objects.filter(pk=col_id).first()
+            if not mr or not mc:
+                return HttpResponseBadRequest('Invalid matrix row/col')
+            if mr.question_id != qid_int or mc.question_id != qid_int:
+                return HttpResponseBadRequest('Row/column does not belong to this question')
+
+            obj, _ = MatrixCellRouting.objects.get_or_create(question=q, row=mr, col=mc)
+            obj.next_question = target_q  # may be None to clear
+            obj.save(update_fields=['next_question'])
+
+        # ✅ NEW: SBS group+row+col routing
+        elif scope == 'sbs_cell':
+            group_slug = (data.get('group_slug') or '').strip()
+            if not group_slug:
+                return HttpResponseBadRequest('Missing group_slug')
+
+            try:
+                row_id = int(data.get('matrix_row_id'))
+                col_id = int(data.get('matrix_col_id'))
+            except (TypeError, ValueError):
+                return HttpResponseBadRequest('Invalid matrix row/col id')
+
+            mr = MatrixRow.objects.filter(pk=row_id).first()
+            mc = MatrixColumn.objects.filter(pk=col_id).first()
+            if not mr or not mc:
+                return HttpResponseBadRequest('Invalid matrix row/col')
+            if mr.question_id != qid_int or mc.question_id != qid_int:
+                return HttpResponseBadRequest('Row/column does not belong to this question')
+
+            obj, _ = SbsCellRouting.objects.get_or_create(
+                question=q, group_slug=group_slug, row=mr, col=mc
+            )
+            obj.next_question = target_q
+            obj.save(update_fields=['next_question'])
 
         elif scope == 'question':
             q.next_question = target_q
@@ -1364,7 +1439,6 @@ def set_routing(request):
             return HttpResponseBadRequest('Invalid scope')
 
     except Exception as e:
-        # Unexpected errors → structured JSON helps debugging
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
     return JsonResponse({'ok': True})

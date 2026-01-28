@@ -18,10 +18,67 @@
       </div>
 
       <!-- Matrix selector (only for MATRIX) -->
-      <div id="routing-matrix-row" class="mb-4 hidden">
-        <label class="block text-sm mb-1">For matrix column</label>
-        <select id="routing-matrix-col" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
-      </div>
+        <div id="routing-matrix-row" class="mb-4 hidden space-y-3">
+
+          <!-- SBS group (shown only when matrix_mode === side_by_side) -->
+          <div id="routing-sbs-group-row" class="hidden">
+            <label class="block text-sm mb-1">For group</label>
+            <select id="routing-sbs-group" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
+          </div>
+
+          <!-- Column (always used for MATRIX routing) -->
+          <div>
+            <label class="block text-sm mb-1" id="routing-matrix-col-label">For matrix column</label>
+            <select id="routing-matrix-col" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
+            <p class="text-xs opacity-75 mt-1">
+              Leave Row empty to set routing for the entire column (existing behavior).
+            </p>
+          </div>
+
+          <!-- Row (optional for non-SBS and SBS; if set, we save a cell-level route) -->
+          <div id="routing-matrix-rowpick-row" class="hidden">
+            <label class="block text-sm mb-1">And row (optional)</label>
+            <select id="routing-matrix-rowpick" class="w-full rounded border border-gray-700 bg-gray-900 text-white h-10 px-2"></select>
+            <p class="text-xs opacity-75 mt-1">
+              If Row is selected, routing becomes row+column specific.
+            </p>
+          </div>
+
+            <!-- Existing routes (Matrix only) -->
+            <div id="routing-existing-wrap" class="hidden mt-4 border-t border-gray-700 pt-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-sm font-semibold opacity-90">Existing matrix routes</div>
+                <button type="button"
+                        id="routing-existing-refresh"
+                        class="text-xs underline opacity-80 hover:opacity-100">
+                  refresh
+                </button>
+              </div>
+
+              <div id="routing-existing-empty" class="text-xs opacity-70 hidden">
+                No cell-level routes yet.
+              </div>
+
+              <div class="max-h-48 overflow-auto rounded border border-gray-700">
+                <table class="w-full text-xs">
+                  <thead class="sticky top-0 bg-gray-900">
+                    <tr class="text-left opacity-80">
+                      <th class="px-2 py-2">Scope</th>
+                      <th class="px-2 py-2">Target</th>
+                      <th class="px-2 py-2 text-right">Edit</th>
+                    </tr>
+                  </thead>
+                  <tbody id="routing-existing-tbody"></tbody>
+                </table>
+              </div>
+
+              <p class="text-xs opacity-70 mt-2">
+                Clicking “Edit” loads that route into the fields above. Save to update, or select blank “---------” to clear it.
+              </p>
+            </div>
+
+
+        </div>
 
       <!-- Target question -->
       <div class="mb-2">

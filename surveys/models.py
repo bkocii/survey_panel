@@ -253,3 +253,38 @@ class Response(models.Model):
     #     unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey
 
 
+class MatrixCellRouting(models.Model):
+    """
+    Non-SBS MATRIX routing override:
+      (question, row, col) -> next_question
+    """
+    question = models.ForeignKey("Question", on_delete=models.CASCADE, related_name="matrix_cell_routes")
+    row = models.ForeignKey("MatrixRow", on_delete=models.CASCADE)
+    col = models.ForeignKey("MatrixColumn", on_delete=models.CASCADE)
+    next_question = models.ForeignKey("Question", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        unique_together = (("question", "row", "col"),)
+
+    def __str__(self):
+        return f"MatrixCellRouting(q={self.question_id}, row={self.row_id}, col={self.col_id})"
+
+
+class SbsCellRouting(models.Model):
+    """
+    SBS MATRIX routing override:
+      (question, group_slug, row, col) -> next_question
+    Note: col already implies a group, but group_slug is included to match your UX and to
+    guard against future changes where col.group may be edited.
+    """
+    question = models.ForeignKey("Question", on_delete=models.CASCADE, related_name="sbs_cell_routes")
+    group_slug = models.CharField(max_length=100, db_index=True)
+    row = models.ForeignKey("MatrixRow", on_delete=models.CASCADE)
+    col = models.ForeignKey("MatrixColumn", on_delete=models.CASCADE)
+    next_question = models.ForeignKey("Question", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        unique_together = (("question", "group_slug", "row", "col"),)
+
+    def __str__(self):
+        return f"SbsCellRouting(q={self.question_id}, group={self.group_slug}, row={self.row_id}, col={self.col_id})"
