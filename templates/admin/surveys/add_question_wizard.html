@@ -13,7 +13,6 @@
 
 
   <div class="flex flex-col lg:flex-row gap-8 max-w-screen-xl mx-auto min-h-screen">
-
       <!-- LEFT: FORM (spans 2 cols) -->
       <div class="lg:w-2/3 w-full min-w-0">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ title }}</h1>
@@ -80,7 +79,7 @@
         <form method="post" enctype="multipart/form-data" id="question-form" class="space-y-6">
           {% csrf_token %}
           {% if editing %}
-              <input type="hidden" name="edit_id" value="{{ editing.id }}">
+              <input type="hidden" id="edit_id" name="edit_id" value="{{ editing.id }}">
             {% endif %}
 
             {# Hidden pool of options for "next_question" selects #}

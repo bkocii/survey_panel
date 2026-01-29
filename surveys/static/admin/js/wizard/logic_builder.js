@@ -86,11 +86,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getCurrentQuestionMeta() {
+      // 1) If we are editing, prefer the edit_id (most reliable)
+      const editEl = document.getElementById("edit_id");
+      const editId = editEl ? Number(editEl.value) : NaN;
+      if (Number.isFinite(editId)) {
+        const byId = logicQuestions.find(q => Number(q.id) === editId);
+        if (byId) return byId;
+      }
+
+      // 2) Fallback: try code (works on add if codes are set)
       const codeInput = document.getElementById("id_code");
-      if (!codeInput) return null;
-      const codeVal = (codeInput.value || "").trim();
-      if (!codeVal) return null;
-      return logicQuestions.find(q => q.code === codeVal) || null;
+      const codeVal = (codeInput?.value || "").trim();
+      if (codeVal) {
+        const byCode = logicQuestions.find(q => (q.code || "").trim() === codeVal);
+        if (byCode) return byCode;
+      }
+
+      return null;
     }
 
     function hideMatrixHeaders() {
@@ -507,7 +519,12 @@ document.addEventListener('DOMContentLoaded', () => {
       optEmpty.textContent = "-- choose question --";
       selQ.appendChild(optEmpty);
 
-      (currentEligibleQuestions || logicQuestions).forEach(q => {
+      const pool =
+          Array.isArray(currentEligibleQuestions) && currentEligibleQuestions.length
+            ? currentEligibleQuestions
+            : logicQuestions;
+
+        pool.forEach(q => {
         const o   = document.createElement("option");
         const ref = q.code || String(q.id);
         o.value = ref;
@@ -539,6 +556,22 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } else {
           baseQRef = String(cond.q);
+        }
+      }
+
+      // If the existing condition references a question not in the pool,
+      // inject it so the dropdown can display the current value.
+      if (baseQRef) {
+        const poolRefs = new Set();
+        (Array.isArray(pool) ? pool : []).forEach(q => poolRefs.add(q.code || String(q.id)));
+
+        if (!poolRefs.has(String(baseQRef))) {
+          const meta = logicQByRef[String(baseQRef)];
+          const o = document.createElement("option");
+          o.value = String(baseQRef);
+          o.textContent = meta ? `${baseQRef} — ${meta.text}` : `${baseQRef} — (missing)`;
+          // put it right after the placeholder so it's visible
+          selQ.insertBefore(o, selQ.children[1] || null);
         }
       }
 
@@ -872,14 +905,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Only earlier questions (by sort_index)
       const currentMeta = getCurrentQuestionMeta();
-      if (currentMeta && typeof currentMeta.sort_index === "number") {
-        currentEligibleQuestions = logicQuestions
-          .filter(q => q.sort_index < currentMeta.sort_index)
-          .sort((a, b) =>
-            (a.sort_index - b.sort_index) || (a.id - b.id)
-          );
+
+      const currentSort =
+        currentMeta && currentMeta.sort_index != null
+          ? Number(currentMeta.sort_index)
+          : NaN;
+
+      // Normalize + keep only questions that have a valid numeric sort_index
+      const normalized = (logicQuestions || []).map(q => ({
+        ...q,
+        sort_index: q && q.sort_index != null ? Number(q.sort_index) : NaN,
+        id: q && q.id != null ? Number(q.id) : q.id,
+      }));
+
+      if (Number.isFinite(currentSort)) {
+        currentEligibleQuestions = normalized
+          .filter(q => Number.isFinite(q.sort_index) && q.sort_index < currentSort)
+          .sort((a, b) => (a.sort_index - b.sort_index) || (a.id - b.id));
       } else {
-        currentEligibleQuestions = logicQuestions.slice();
+        // If we can't determine current question order, fall back to all
+        currentEligibleQuestions = normalized.slice().sort((a, b) =>
+          ((a.sort_index || 0) - (b.sort_index || 0)) || (a.id - b.id)
+        );
       }
 
       // reset headers on each open
