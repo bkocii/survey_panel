@@ -1402,9 +1402,12 @@ def set_routing(request):
             if mr.question_id != qid_int or mc.question_id != qid_int:
                 return HttpResponseBadRequest('Row/column does not belong to this question')
 
-            obj, _ = MatrixCellRouting.objects.get_or_create(question=q, row=mr, col=mc)
-            obj.next_question = target_q  # may be None to clear
-            obj.save(update_fields=['next_question'])
+            if target_q is None:
+                MatrixCellRouting.objects.filter(question=q, row=mr, col=mc).delete()
+            else:
+                obj, _ = MatrixCellRouting.objects.get_or_create(question=q, row=mr, col=mc)
+                obj.next_question = target_q  # may be None to clear
+                obj.save(update_fields=['next_question'])
 
         # ✅ NEW: SBS group+row+col routing
         elif scope == 'sbs_cell':
@@ -1425,11 +1428,13 @@ def set_routing(request):
             if mr.question_id != qid_int or mc.question_id != qid_int:
                 return HttpResponseBadRequest('Row/column does not belong to this question')
 
-            obj, _ = SbsCellRouting.objects.get_or_create(
-                question=q, group_slug=group_slug, row=mr, col=mc
-            )
-            obj.next_question = target_q
-            obj.save(update_fields=['next_question'])
+            if target_q is None:
+                SbsCellRouting.objects.filter(question=q, group_slug=group_slug, row=mr, col=mc).delete()
+            else:
+                obj, _ = SbsCellRouting.objects.get_or_create(question=q, group_slug=group_slug, row=mr, col=mc)
+
+                obj.next_question = target_q
+                obj.save(update_fields=['next_question'])
 
         elif scope == 'question':
             q.next_question = target_q
