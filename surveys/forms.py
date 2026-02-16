@@ -22,6 +22,18 @@ class ChoiceWizardForm(forms.ModelForm):
             'image': forms.ClearableFileInput(attrs={'class': BASE_FILE}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.survey = kwargs.pop("survey", None)
+        super().__init__(*args, **kwargs)
+
+        # Filter next_question to current survey only
+        if self.survey and "next_question" in self.fields:
+            self.fields["next_question"].queryset = (
+                Question.objects
+                .filter(survey=self.survey)
+                .order_by("sort_index", "id")
+            )
+
 
 class MatrixRowWizardForm(forms.ModelForm):
     class Meta:

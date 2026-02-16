@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.core.serializers.json import DjangoJSONEncoder
+from django.forms import BaseInlineFormSet
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 import nested_admin
 import json
@@ -234,11 +235,22 @@ class SurveyAdmin(ModelAdmin):
 
             logic_questions.append(item)
 
+        class SurveyFilteredChoiceFormSet(BaseInlineFormSet):
+            def __init__(self, *args, **kwargs):
+                self.survey = kwargs.pop("survey", None)
+                super().__init__(*args, **kwargs)
+
+            def get_form_kwargs(self, index):
+                kwargs = super().get_form_kwargs(index)
+                kwargs["survey"] = self.survey
+                return kwargs
+
         # Inline formsets (no "extra"; we add via JS)
         ChoiceFormSet = inlineformset_factory(
             Question,
             Choice,
             form=ChoiceWizardForm,
+            formset=SurveyFilteredChoiceFormSet,
             fields=('text', 'value', 'next_question', 'image'),
             fk_name='question',
             extra=0,
@@ -282,7 +294,7 @@ class SurveyAdmin(ModelAdmin):
 
         # Bind forms to instance if editing
         form = WizardQuestionForm(request.POST or None, request.FILES or None, instance=instance)
-        choice_formset = ChoiceFormSet(request.POST or None, request.FILES or None, instance=instance, prefix='choices')
+        choice_formset = ChoiceFormSet(request.POST or None, request.FILES or None, instance=instance, survey=survey,prefix='choices')
         row_formset = MatrixRowFormSet(request.POST or None, request.FILES or None, instance=instance,
                                        prefix='matrix_rows')
         col_formset = MatrixColFormSet(request.POST or None, request.FILES or None, instance=instance,

@@ -1098,7 +1098,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const fetchPage = async (query, pageNum) => {
         if (inflight) inflight.abort?.();
         inflight = new AbortController();
-        const url = `${endpoint}?q=${encodeURIComponent(query)}&page=${pageNum}&page_size=20`;
+        const url = `${endpoint}?q=${encodeURIComponent(query)}&page=${pageNum}&page_size=2000`;
         const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: inflight.signal });
         if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
         return res.json();
