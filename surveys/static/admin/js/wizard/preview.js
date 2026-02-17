@@ -787,15 +787,21 @@
       });
 
       sbs.forEach(rt => {
-        const gs    = (rt.group_slug || '').trim();
-        const rowId = rt.row_id;
-        const colId = rt.col_id;
-        const tgtId = rt.next_question_id || '';
+        const tgtId = rt.next_question_id;
+        if (!tgtId) return; // ✅ skip cleared routes
 
+        const gs = (rt.group_slug || '').trim();
         rows.push({
-          label: `${groupNameBySlug(gs)} • ${rowLabelById(rowId)} • ${colLabelById(colId)}`,
+          kind: 'sbs_cell',
+          label: `${groupNameBySlug(gs)} • ${rowLabelById(rt.row_id)} • ${colLabelById(rt.col_id)}`,
           target: optionLabelFromPool(tgtId),
-          prefill: { group_slug:gs, row_id:String(rowId), col_id:String(colId), target_id:String(tgtId || '') }
+          payloadPrefill: {
+            scope: 'sbs_cell',
+            group_slug: gs,
+            row_id: String(rt.row_id),
+            col_id: String(rt.col_id),
+            target_id: String(tgtId),
+          }
         });
       });
 

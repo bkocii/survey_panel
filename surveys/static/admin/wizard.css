@@ -1092,7 +1092,7 @@
 /* give the first “Item” column a little more room */
 #question-preview-list .preview-card thead tr:first-child th:first-child,
 #question-preview-list .preview-card tbody tr td:first-child {
-  width: 34% !important;
+  width: 39% !important;
 }
 
 /* SBS header label row: one line, sideways scroll if many */

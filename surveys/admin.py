@@ -14,7 +14,7 @@ from datetime import date
 import csv
 from django.utils.html import format_html
 from django.http import HttpResponse
-from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn
+from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn, SbsCellRouting, MatrixCellRouting
 from notifications.tasks import send_survey_notification
 import os
 import zipfile
@@ -294,7 +294,7 @@ class SurveyAdmin(ModelAdmin):
 
         # Bind forms to instance if editing
         form = WizardQuestionForm(request.POST or None, request.FILES or None, instance=instance)
-        choice_formset = ChoiceFormSet(request.POST or None, request.FILES or None, instance=instance, survey=survey,prefix='choices')
+        choice_formset = ChoiceFormSet(request.POST or None, request.FILES or None, instance=instance, survey=survey, prefix='choices')
         row_formset = MatrixRowFormSet(request.POST or None, request.FILES or None, instance=instance,
                                        prefix='matrix_rows')
         col_formset = MatrixColFormSet(request.POST or None, request.FILES or None, instance=instance,
@@ -577,3 +577,13 @@ class SubmissionAdmin(ModelAdmin):
     list_display = ('user', 'survey', 'submitted_at', 'duration_seconds')
     list_filter = ('user', 'survey', 'submitted_at', 'duration_seconds')
     search_fields = ('user__username', 'survey__title')
+
+
+@admin.register(SbsCellRouting)
+class SbsCellRoutingAdmin(ModelAdmin):
+    list_display = ('question', 'group_slug', 'row', 'col', 'next_question')
+
+
+@admin.register(MatrixCellRouting)
+class MatrixCellRoutingAdmin(ModelAdmin):
+    list_display = ('question', 'row', 'col', 'next_question')
