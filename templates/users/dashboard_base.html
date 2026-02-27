@@ -1,0 +1,49 @@
+{% load static %}
+{% load tailwind_tags %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block head_title %}Dashboard{% endblock head_title %}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  {# Use your django-tailwind build #}
+
+  {% tailwind_css %}
+
+  <style>
+    /* Small extras to get a clean admin feel even if tailwind build is minimal */
+    .card { border-radius: 18px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 py-6">
+
+    <!-- Top bar -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <div class="text-sm text-slate-400">Survey Panel</div>
+        <h1 class="text-2xl font-semibold">{% block page_title %}Dashboard{% endblock page_title %}</h1>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="{% url 'rewards:prize_list' %}"
+           class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition">
+          Redeem points
+        </a>
+        <a href="{% url 'users:edit_profile' %}"
+           class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition">
+          Edit profile
+        </a>
+      </div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <div class="mt-10 text-xs text-slate-500">
+      © {{ now|date:"Y" }} Panel
+    </div>
+  </div>
+</body>
+</html>

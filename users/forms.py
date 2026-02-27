@@ -20,3 +20,25 @@ class CustomUserChangeForm(UserChangeForm):
     class Meta:
         model = CustomUser
         fields = ('username', 'email', 'phone_number', 'date_of_birth', 'gender', 'is_active', 'is_staff', 'groups')
+
+
+class ProfileForm(forms.ModelForm):
+    """
+    User-facing profile form.
+    Includes avatar upload + basic demographic fields.
+    """
+    class Meta:
+        model = CustomUser
+        fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "phone_number",
+            "date_of_birth",
+            "gender",
+            "avatar",
+        ]
+
+        widgets = {
+            "date_of_birth": forms.DateInput(attrs={"type": "date"}),
+        }

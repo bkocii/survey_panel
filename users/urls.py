@@ -13,4 +13,6 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='surveys:survey_list'), name='logout'),
     # Register view, maps to /users/register/
     path('register/', views.register, name='register'),
+    path("profile/edit/", views.edit_profile, name="edit_profile"),
+    path("dashboard/", views.dashboard, name="dashboard"),
 ]

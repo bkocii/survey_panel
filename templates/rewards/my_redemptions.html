@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block head_title %}My Redemptions{% endblock head_title %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 980px;">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h2 class="mb-0">My Redemptions</h2>
+      <div class="text-secondary">Track prize requests and fulfillment status</div>
+    </div>
+    <div class="text-end">
+      <div class="small text-secondary">Your points</div>
+      <div class="fs-4 fw-semibold">{{ request.user.points }}</div>
+      <div class="mt-2">
+        <a class="btn btn-outline-light btn-sm" href="{% url 'rewards:prize_list' %}">
+          Browse prizes
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card bg-dark text-light border-secondary">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Prize</th>
+              <th>Points</th>
+              <th>Status</th>
+              <th>Requested</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in redemptions %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ r.prize.name }}</div>
+                  {% if r.user_note %}
+                    <div class="text-secondary small">{{ r.user_note }}</div>
+                  {% endif %}
+                </td>
+                <td>{{ r.points_spent }}</td>
+                <td>
+                  {% if r.status == "pending" %}
+                    <span class="badge text-bg-warning">Pending</span>
+                  {% elif r.status == "approved" %}
+                    <span class="badge text-bg-info">Approved</span>
+                  {% elif r.status == "fulfilled" %}
+                    <span class="badge text-bg-success">Fulfilled</span>
+                  {% elif r.status == "rejected" %}
+                    <span class="badge text-bg-danger">Rejected</span>
+                  {% elif r.status == "cancelled" %}
+                    <span class="badge text-bg-secondary">Cancelled</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">{{ r.status }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-secondary">{{ r.created_at|date:"Y-m-d H:i" }}</td>
+                <td class="text-end">
+                  <a class="btn btn-outline-light btn-sm" href="{% url 'rewards:prize_detail' r.prize.id %}">
+                    View prize
+                  </a>
+
+                  {% if r.status == "pending" %}
+                    <form method="post" action="{% url 'rewards:cancel_redemption' r.id %}" class="d-inline">
+                      {% csrf_token %}
+                      <button class="btn btn-outline-warning btn-sm" type="submit"
+                              onclick="return confirm('Cancel this redemption and refund points?');">
+                        Cancel
+                      </button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-secondary py-4">
+                  No redemptions yet.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

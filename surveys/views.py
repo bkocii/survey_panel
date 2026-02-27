@@ -29,9 +29,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.text import slugify
 
 
-
-
-
 # # View to list all active surveys, requires login
 @login_required
 def survey_list(request):

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block head_title %}Edit Profile{% endblock head_title %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 760px;">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="mb-0">Edit Profile</h2>
+    <!-- Later this can link to dashboard -->
+    <a href="{% url 'surveys:survey_list' %}" class="btn btn-outline-secondary btn-sm">
+      Back to surveys
+    </a>
+  </div>
+
+  <div class="card bg-dark text-light border-secondary">
+    <div class="card-body">
+
+      <div class="d-flex gap-3 align-items-center mb-4">
+        <div style="width:72px;height:72px;border-radius:999px;overflow:hidden;background:#222;"
+             class="border border-secondary">
+          {% if request.user.avatar %}
+            <img src="{{ request.user.avatar.url }}" alt="Avatar"
+                 style="width:100%;height:100%;object-fit:cover;">
+          {% else %}
+            <div class="h-100 w-100 d-flex align-items-center justify-content-center text-secondary">
+              <i class="bi bi-person-circle" style="font-size: 2rem;"></i>
+            </div>
+          {% endif %}
+        </div>
+
+        <div>
+          <div class="fw-semibold">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="text-secondary small">{{ request.user.email }}</div>
+        </div>
+      </div>
+
+      <!-- IMPORTANT: enctype for file uploads -->
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">First name</label>
+            {{ form.first_name }}
+            {% if form.first_name.errors %}<div class="text-danger small">{{ form.first_name.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Last name</label>
+            {{ form.last_name }}
+            {% if form.last_name.errors %}<div class="text-danger small">{{ form.last_name.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Phone number</label>
+            {{ form.phone_number }}
+            {% if form.phone_number.errors %}<div class="text-danger small">{{ form.phone_number.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Date of birth</label>
+            {{ form.date_of_birth }}
+            {% if form.date_of_birth.errors %}<div class="text-danger small">{{ form.date_of_birth.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Gender</label>
+            {{ form.gender }}
+            {% if form.gender.errors %}<div class="text-danger small">{{ form.gender.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Profile photo</label>
+            {{ form.avatar }}
+            <div class="form-text text-secondary">JPG/PNG recommended.</div>
+            {% if form.avatar.errors %}<div class="text-danger small">{{ form.avatar.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <hr class="border-secondary my-4">
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit">
+            Save changes
+          </button>
+          <a class="btn btn-outline-light" href="{% url 'users:edit_profile' %}">
+            Cancel
+          </a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Make Django form fields look Bootstrap-like without writing custom widgets everywhere.
+  (function() {
+    const selectors = [
+      'input[type="text"]',
+      'input[type="email"]',
+      'input[type="date"]',
+      'input[type="file"]',
+      'select',
+    ];
+    document.querySelectorAll(selectors.join(',')).forEach(el => {
+      if (el.type === 'file') el.classList.add('form-control');
+      else el.classList.add('form-control', 'bg-dark', 'text-light', 'border-secondary');
+    });
+  })();
+</script>
+{% endblock %}

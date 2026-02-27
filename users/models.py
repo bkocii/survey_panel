@@ -30,6 +30,13 @@ class CustomUser(AbstractUser):
         verbose_name='user permissions',
     )
 
+    # NEW: user avatar/photo
+    avatar = models.ImageField(
+        upload_to='avatars/',  # stored under MEDIA_ROOT/avatars/
+        null=True,
+        blank=True,
+        help_text="Optional profile photo.")
+
     # Method to add points to a user's balance and save changes
     def add_points(self, amount):
         self.points += amount
