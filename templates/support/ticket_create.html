@@ -1,0 +1,46 @@
+{% extends "users/dashboard_base.html" %}
+{% block head_title %}New Ticket{% endblock %}
+{% block page_title %}New Ticket{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-4">
+    <a class="text-indigo-400 hover:text-indigo-300 text-sm" href="{% url 'support:ticket_list' %}">← Back</a>
+  </div>
+
+  <form method="post" class="card bg-slate-900/60 border border-slate-800 p-5 space-y-4">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm text-slate-300 mb-1">Subject</label>
+      {{ form.subject }}
+      {% if form.subject.errors %}<div class="text-red-400 text-xs mt-1">{{ form.subject.errors }}</div>{% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-300 mb-1">Priority</label>
+      {{ form.priority }}
+      {% if form.priority.errors %}<div class="text-red-400 text-xs mt-1">{{ form.priority.errors }}</div>{% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-300 mb-1">Message</label>
+      {{ form.first_message }}
+      {% if form.first_message.errors %}<div class="text-red-400 text-xs mt-1">{{ form.first_message.errors }}</div>{% endif %}
+    </div>
+
+    <button class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition" type="submit">
+      Create ticket
+    </button>
+  </form>
+</div>
+
+<script>
+  // Tailwind-like input styles even if widgets are default
+  (function(){
+    document.querySelectorAll("input, select, textarea").forEach(el=>{
+      el.classList.add("w-full","rounded-xl","bg-slate-950/60","border","border-slate-700","px-3","py-2","text-slate-100");
+    });
+  })();
+</script>
+{% endblock %}

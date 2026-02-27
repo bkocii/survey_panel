@@ -1,0 +1,54 @@
+{% extends "users/dashboard_base.html" %}
+{% block head_title %}Ticket #{{ ticket.id }}{% endblock %}
+{% block page_title %}Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-4">
+    <a class="text-indigo-400 hover:text-indigo-300 text-sm" href="{% url 'support:ticket_list' %}">← Back</a>
+    <div class="text-sm text-slate-400">
+      Status: <span class="text-slate-200">{{ ticket.get_status_display }}</span>
+      • Priority: <span class="text-slate-200">{{ ticket.get_priority_display }}</span>
+    </div>
+  </div>
+
+  <div class="card bg-slate-900/60 border border-slate-800 p-5 mb-4">
+    <div class="text-lg font-semibold mb-1">{{ ticket.subject }}</div>
+    <div class="text-xs text-slate-500">Created {{ ticket.created_at|date:"Y-m-d H:i" }}</div>
+  </div>
+
+  <div class="space-y-3 mb-4">
+    {% for m in messages_qs %}
+      <div class="card border border-slate-800 p-4 {% if m.sender_id == request.user.id %}bg-slate-950/60{% else %}bg-slate-900/60{% endif %}">
+        <div class="flex items-center justify-between mb-1">
+          <div class="text-sm font-medium">
+            {% if m.sender_id == request.user.id %}You{% else %}Support{% endif %}
+          </div>
+          <div class="text-xs text-slate-500">{{ m.created_at|date:"Y-m-d H:i" }}</div>
+        </div>
+        <div class="text-slate-200 text-sm whitespace-pre-wrap">{{ m.message }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form method="post" class="card bg-slate-900/60 border border-slate-800 p-5 space-y-3">
+    {% csrf_token %}
+    <div>
+      <label class="block text-sm text-slate-300 mb-1">Reply</label>
+      {{ form.message }}
+      {% if form.message.errors %}<div class="text-red-400 text-xs mt-1">{{ form.message.errors }}</div>{% endif %}
+    </div>
+    <button class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition" type="submit">
+      Send reply
+    </button>
+  </form>
+</div>
+
+<script>
+  (function(){
+    document.querySelectorAll("textarea").forEach(el=>{
+      el.classList.add("w-full","rounded-xl","bg-slate-950/60","border","border-slate-700","px-3","py-2","text-slate-100");
+    });
+  })();
+</script>
+{% endblock %}

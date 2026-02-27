@@ -120,10 +120,14 @@ def redeem_prize(request, pk: int):
         user_locked.points = F("points") - prize.points_cost
         user_locked.save(update_fields=["points"])
 
-        # Decrement stock if limited
-        if prize.stock is not None and prize.stock <= 0:
-            messages.error(request, "This prize is out of stock.")
-            return redirect("rewards:prize_detail", pk=pk)
+        # Stock handling (after locking prize)
+        if prize.stock is not None:
+            if prize.stock <= 0:
+                messages.error(request, "This prize is out of stock.")
+                return redirect("rewards:prize_detail", pk=pk)
+
+            prize.stock = F("stock") - 1
+            prize.save(update_fields=["stock"])
 
         # Create redemption record
         PrizeRedemption.objects.create(

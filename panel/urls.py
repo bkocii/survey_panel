@@ -32,6 +32,7 @@ urlpatterns = [
     # Include users app URLs (optional, for future user-related views)
     path('users/', include('users.urls')),
     path("rewards/", include("rewards.urls")),
+    path("support/", include("support.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 # Optional: only include in DEBUG mode

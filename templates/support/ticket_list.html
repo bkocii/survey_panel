@@ -1,0 +1,51 @@
+{% extends "users/dashboard_base.html" %}
+{% block head_title %}Support Tickets{% endblock %}
+{% block page_title %}Support Tickets{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div class="text-slate-400 text-sm">Your support requests</div>
+  <a href="{% url 'support:ticket_create' %}" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition">
+    New ticket
+  </a>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="mb-3 p-3 rounded-xl border border-slate-800 bg-slate-900/60">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card bg-slate-900/60 border border-slate-800 p-0 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-950/60 text-slate-300">
+        <tr>
+          <th class="text-left p-3">#</th>
+          <th class="text-left p-3">Subject</th>
+          <th class="text-left p-3">Status</th>
+          <th class="text-left p-3">Priority</th>
+          <th class="text-left p-3">Updated</th>
+          <th class="text-right p-3">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+          <tr class="border-t border-slate-800">
+            <td class="p-3 text-slate-400">{{ t.id }}</td>
+            <td class="p-3 font-medium">{{ t.subject }}</td>
+            <td class="p-3 text-slate-300">{{ t.get_status_display }}</td>
+            <td class="p-3 text-slate-300">{{ t.get_priority_display }}</td>
+            <td class="p-3 text-slate-400">{{ t.updated_at|date:"Y-m-d H:i" }}</td>
+            <td class="p-3 text-right">
+              <a class="text-indigo-400 hover:text-indigo-300" href="{% url 'support:ticket_detail' t.id %}">Open</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td class="p-4 text-slate-400" colspan="6">No tickets yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

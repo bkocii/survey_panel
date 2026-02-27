@@ -188,6 +188,15 @@
 
     <h3 class="font-semibold mb-2">Support</h3>
     <div class="space-y-2">
+
+      <a class="block px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm"
+         href="{% url 'support:ticket_list' %}">
+        My tickets
+      </a>
+      <a class="block px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition text-sm"
+         href="{% url 'support:ticket_create' %}">
+        Open a ticket
+      </a>
       <a class="block px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm"
          href="mailto:support@yourdomain.com">
         Email support
