@@ -14,6 +14,7 @@ class Survey(models.Model):
     is_active = models.BooleanField(default=True)  # Flag to show/hide survey
     points_reward = models.PositiveIntegerField(default=10)  # Points awarded for completion
     time_limit_minutes = models.PositiveIntegerField(null=True, blank=True)  # e.g. 10 mins
+    optimal_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
     groups = models.ManyToManyField(
         Group,
         related_name='surveys',
@@ -221,9 +222,11 @@ class Choice(models.Model):
 class Submission(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     survey = models.ForeignKey('Survey', on_delete=models.CASCADE)
-    started_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField()
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)  # Time taken to complete
     submitted_at = models.DateTimeField(auto_now_add=True)
+    # NEW: duration - optimal (can be negative/positive)
+    delta_seconds = models.IntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ('user', 'survey')  # Prevent duplicates

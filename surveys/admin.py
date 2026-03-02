@@ -574,8 +574,8 @@ class ResponseAdmin(ModelAdmin):
 
 @admin.register(Submission)
 class SubmissionAdmin(ModelAdmin):
-    list_display = ('user', 'survey', 'submitted_at', 'duration_seconds')
-    list_filter = ('user', 'survey', 'submitted_at', 'duration_seconds')
+    list_display = ('user', 'survey', 'submitted_at', 'started_at', 'duration_seconds', 'delta_seconds')
+    list_filter = ('user', 'survey', 'submitted_at', 'started_at', 'duration_seconds', 'delta_seconds')
     search_fields = ('user__username', 'survey__title')
 
 

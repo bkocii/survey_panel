@@ -1,4 +1,4 @@
-from django.utils.timezone import now
+from django.utils.timezone import now, is_naive, make_aware
 from django.db import transaction
 import datetime
 from collections import defaultdict
@@ -7,6 +7,7 @@ from datetime import timedelta
 import json
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
+from django.utils.dateparse import parse_datetime
 from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
@@ -95,7 +96,13 @@ def survey_question(request, survey_id, question_id=None):
     session_key = f"survey_{survey.id}_start_time"
     if session_key not in request.session:
         request.session[session_key] = now().isoformat()
-    start_time = now().fromisoformat(request.session[session_key])
+    start_iso = request.session.get(session_key)
+    start_time = parse_datetime(start_iso) if start_iso else None
+    if not start_time:
+        start_time = now()
+        request.session[session_key] = start_time.isoformat()
+    elif is_naive(start_time):
+        start_time = make_aware(start_time)
 
     # ⏳ Time limit (existing)
     if survey.time_limit_minutes:
@@ -865,11 +872,37 @@ def survey_question(request, survey_id, question_id=None):
         else:
             # Finalize: no visible questions remain
             if not Submission.objects.filter(user=request.user, survey=survey).exists():
-                duration = int((now() - start_time).total_seconds())
-                submission = Submission.objects.create(user=request.user, survey=survey, duration_seconds=duration)
+                # pull start from session
+                start_iso = request.session.get(session_key)
+                start_dt = parse_datetime(start_iso) if start_iso else None
+
+                # fallback if missing (shouldn't happen, but safe)
+                if not start_dt:
+                    start_dt = now()
+
+                submitted_dt = now()
+                duration = int((submitted_dt - start_dt).total_seconds())
+
+                optimal_seconds = None
+                if survey.optimal_duration_minutes:
+                    optimal_seconds = survey.optimal_duration_minutes * 60
+
+                delta = None
+                if optimal_seconds is not None:
+                    delta = duration - optimal_seconds  # + means slower than optimal; - means faster
+
+                submission = Submission.objects.create(
+                    user=request.user,
+                    survey=survey,
+                    started_at=start_dt,
+                    duration_seconds=duration,
+                    delta_seconds=delta,
+                )
+
                 Response.objects.filter(
                     user=request.user, survey=survey, submission__isnull=True
                 ).update(submission=submission)
+
                 request.user.add_points(survey.points_reward)
             # 🧹 clear timers + path
             request.session.pop(session_key, None)
