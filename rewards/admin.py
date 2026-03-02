@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from ledger.models import PointsLedger
 from .models import Prize, PrizeRedemption
 from unfold.admin import ModelAdmin
 from django.contrib.auth import get_user_model
@@ -49,6 +50,13 @@ def reject_refund_restore(modeladmin, request, queryset):
                 update_data["admin_note"] = f"Rejected by admin {request.user.username}"
 
             PrizeRedemption.objects.filter(pk=r.pk).update(**update_data)
+            PointsLedger.objects.create(
+                user_id=r.user_id,
+                amount=+r.points_spent,
+                type="redeem_refund",
+                redemption_id=r.id,
+                note="Admin rejected redemption (refund)",
+            )
 
             processed += 1
 

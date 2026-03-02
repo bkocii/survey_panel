@@ -4,6 +4,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
+from ledger.models import PointsLedger
 
 from .models import Prize, PrizeRedemption
 
@@ -79,6 +80,14 @@ def cancel_redemption(request, pk: int):
         redemption.status = "cancelled"
         redemption.save(update_fields=["status"])
 
+        PointsLedger.objects.create(
+            user=request.user,
+            amount=+redemption.points_spent,
+            type="redeem_refund",
+            redemption_id=redemption.id,
+            note="User cancelled redemption (refund)",
+        )
+
     messages.success(request, "Redemption cancelled and points refunded.")
     return redirect("rewards:my_redemptions")
 
@@ -130,11 +139,19 @@ def redeem_prize(request, pk: int):
             prize.save(update_fields=["stock"])
 
         # Create redemption record
-        PrizeRedemption.objects.create(
+        redemption = PrizeRedemption.objects.create(
             user=user_locked,
             prize=prize,
             points_spent=prize.points_cost,
             status="pending",
+        )
+
+        PointsLedger.objects.create(
+            user=user_locked,
+            amount=-prize.points_cost,
+            type="redeem_spend",
+            redemption_id=redemption.id,  # see note below
+            note=f"Redeemed prize: {prize.name}",
         )
 
     messages.success(request, "Redemption created! Status: Pending.")

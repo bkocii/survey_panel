@@ -28,6 +28,7 @@ from django.template.loader import render_to_string
 from django.utils.html import mark_safe
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.text import slugify
+from ledger.models import PointsLedger
 
 
 # # View to list all active surveys, requires login
@@ -904,6 +905,14 @@ def survey_question(request, survey_id, question_id=None):
                 ).update(submission=submission)
 
                 request.user.add_points(survey.points_reward)
+                PointsLedger.objects.create(
+                    user=request.user,
+                    amount=survey.points_reward,
+                    type="survey_reward",
+                    survey_id=survey.id,
+                    submission_id=submission.id,
+                    note=f"Completed survey: {survey.title}",
+                )
             # 🧹 clear timers + path
             request.session.pop(session_key, None)
             request.session.pop(path_key, None)

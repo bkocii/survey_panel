@@ -33,6 +33,7 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path("rewards/", include("rewards.urls")),
     path("support/", include("support.urls")),
+    path("ledger/", include("ledger.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 # Optional: only include in DEBUG mode
