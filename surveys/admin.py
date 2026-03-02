@@ -15,7 +15,7 @@ import csv
 from django.utils.html import format_html
 from django.http import HttpResponse
 from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn, SbsCellRouting, MatrixCellRouting
-from notifications.tasks import send_survey_notification
+from notifications.tasks import send_survey_notification, send_survey_reminder
 import os
 import zipfile
 from django.utils.text import slugify
@@ -125,7 +125,7 @@ class SurveyAdmin(ModelAdmin):
     list_filter = ('is_active', 'created_at', 'groups')
     search_fields = ('title', 'description')
     ordering = ('-created_at',)
-    actions = ['send_notifications']
+    actions = ['send_notifications', 'send_reminders']
     inlines = [QuestionInline]
 
     def send_notifications(self, request, queryset):
@@ -133,6 +133,12 @@ class SurveyAdmin(ModelAdmin):
             send_survey_notification.delay(survey.id)
         self.message_user(request, f"Notifications queued for {queryset.count()} survey(s).")
     send_notifications.short_description = "Send notifications to assigned groups"
+
+    def send_reminders(self, request, queryset):
+        for survey in queryset:
+            send_survey_reminder.delay(survey.id)
+        self.message_user(request, f"Reminders queued for {queryset.count()} survey(s).")
+    send_reminders.short_description = "Send reminder to users who haven't submitted"
 
     def get_urls(self):
         print("🔧 Custom admin URLs loaded for SurveyAdmin")

@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import models
 from surveys.models import Survey, Submission
 from rewards.models import Prize, PrizeRedemption
+from notifications.models import Notification
 
 
 # Custom form for user registration, including CustomUser fields
@@ -94,10 +95,15 @@ def dashboard(request):
         .order_by("-created_at")[:6]
     )
 
+    unread_count = Notification.objects.filter(user=user, is_read=False).count()
+    latest_notifications = Notification.objects.filter(user=user).order_by("-created_at")[:6]
+
     return render(request, "users/dashboard.html", {
         "stats": stats,
-        "available_surveys": available_surveys[:10],
-        "completed_surveys": completed_qs[:10],
+        "available_surveys": available_surveys[:5],
+        "completed_surveys": completed_qs[:5],
         "featured_prizes": featured_prizes,
         "recent_redemptions": recent_redemptions,
+        "unread_count": unread_count,
+        "latest_notifications": latest_notifications,
     })

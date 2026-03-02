@@ -190,6 +190,20 @@
       {% endfor %}
     </div>
 
+      <h2 class="font-semibold mb-3">Notifications</h2>
+        <div class="space-y-2 mb-4">
+          {% for n in latest_notifications %}
+            <a href="{{ n.url|default:'#' }}"
+               class="block p-3 rounded-2xl border border-slate-800 {% if not n.is_read %}bg-slate-950/60{% else %}bg-slate-900/60{% endif %} hover:bg-slate-900 transition">
+              <div class="text-sm font-medium">{{ n.title }}</div>
+              <div class="text-xs text-slate-500">{{ n.created_at|date:"Y-m-d H:i" }}</div>
+            </a>
+          {% empty %}
+            <div class="text-slate-400 text-sm">No notifications yet.</div>
+          {% endfor %}
+        </div>
+        <a class="text-sm text-indigo-400 hover:text-indigo-300" href="{% url 'notifications:list' %}">View all</a>
+
     <h3 class="font-semibold mb-2">Support</h3>
     <div class="space-y-2">
 
