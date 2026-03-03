@@ -5,7 +5,8 @@ from unfold.admin import ModelAdmin
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import F
-
+from notifications.models import Notification
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -46,6 +47,15 @@ def reject_refund_restore(modeladmin, request, queryset):
 
             # Mark rejected
             update_data = {"status": "rejected"}
+
+            Notification.objects.create(
+                user_id=r.user_id,
+                type="redeem_rejected",
+                title=f"Redemption rejected: {r.prize.name}",
+                message=f"Request #{r.id} was rejected. Your points were refunded.",
+                url=reverse("rewards:my_redemptions"),
+            )
+
             if not r.admin_note:
                 update_data["admin_note"] = f"Rejected by admin {request.user.username}"
 

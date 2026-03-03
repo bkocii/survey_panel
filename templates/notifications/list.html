@@ -32,18 +32,21 @@
           <div class="text-xs text-slate-500 mt-2">{{ n.created_at|date:"Y-m-d H:i" }}</div>
 
           {% if n.url %}
-            <a class="text-indigo-400 hover:text-indigo-300 text-sm mt-2 inline-block" href="{{ n.url }}">
+            <a class="text-indigo-400 hover:text-indigo-300 text-sm mt-2 inline-block"
+               href="{% url 'notifications:open' n.id %}">
               Open
             </a>
           {% endif %}
         </div>
 
+      {% if not n.is_read %}
         <form method="post" action="{% url 'notifications:mark_read' n.id %}">
           {% csrf_token %}
           <button class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm" type="submit">
             Mark read
           </button>
         </form>
+      {% endif %}
       </div>
     </div>
   {% empty %}

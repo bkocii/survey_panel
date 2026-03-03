@@ -29,9 +29,9 @@
 
       <div class="flex items-center gap-3">
           <a class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm transition"
-   href="{% url 'notifications:list' %}">
-  Notifications {% if unread_count %}<span class="ml-2 text-xs px-2 py-1 rounded-full bg-indigo-600/30 border border-indigo-500/30">{{ unread_count }}</span>{% endif %}
-</a>
+           href="{% url 'notifications:list' %}">
+          Notifications {% if unread_count %}<span class="ml-2 text-xs px-2 py-1 rounded-full bg-indigo-600/30 border border-indigo-500/30">{{ unread_count }}</span>{% endif %}
+        </a>
         <a href="{% url 'rewards:prize_list' %}"
            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition">
           Redeem points

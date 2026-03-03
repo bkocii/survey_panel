@@ -193,7 +193,7 @@
       <h2 class="font-semibold mb-3">Notifications</h2>
         <div class="space-y-2 mb-4">
           {% for n in latest_notifications %}
-            <a href="{{ n.url|default:'#' }}"
+            <a href="{% url 'notifications:open' n.id %}"
                class="block p-3 rounded-2xl border border-slate-800 {% if not n.is_read %}bg-slate-950/60{% else %}bg-slate-900/60{% endif %} hover:bg-slate-900 transition">
               <div class="text-sm font-medium">{{ n.title }}</div>
               <div class="text-xs text-slate-500">{{ n.created_at|date:"Y-m-d H:i" }}</div>
