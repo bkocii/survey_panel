@@ -38,58 +38,68 @@
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        {% if form.non_field_errors %}
+        {% if user_form.non_field_errors %}
           <div class="alert alert-danger">
-            {{ form.non_field_errors }}
+            {{ user_form.non_field_errors }}
           </div>
         {% endif %}
 
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">First name</label>
-            {{ form.first_name }}
-            {% if form.first_name.errors %}<div class="text-danger small">{{ form.first_name.errors }}</div>{% endif %}
+            {{ user_form.first_name }}
+            {% if user_form.first_name.errors %}<div class="text-danger small">{{ user_form.first_name.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-6">
             <label class="form-label">Last name</label>
-            {{ form.last_name }}
-            {% if form.last_name.errors %}<div class="text-danger small">{{ form.last_name.errors }}</div>{% endif %}
+            {{ user_form.last_name }}
+            {% if user_form.last_name.errors %}<div class="text-danger small">{{ user_form.last_name.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-6">
             <label class="form-label">Email</label>
-            {{ form.email }}
-            {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+            {{ user_form.email }}
+            {% if user_form.email.errors %}<div class="text-danger small">{{ user_form.email.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-6">
             <label class="form-label">Phone number</label>
-            {{ form.phone_number }}
-            {% if form.phone_number.errors %}<div class="text-danger small">{{ form.phone_number.errors }}</div>{% endif %}
+            {{ user_form.phone_number }}
+            {% if user_form.phone_number.errors %}<div class="text-danger small">{{ user_form.phone_number.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-6">
             <label class="form-label">Date of birth</label>
-            {{ form.date_of_birth }}
-            {% if form.date_of_birth.errors %}<div class="text-danger small">{{ form.date_of_birth.errors }}</div>{% endif %}
+            {{ user_form.date_of_birth }}
+            {% if user_form.date_of_birth.errors %}<div class="text-danger small">{{ user_form.date_of_birth.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-6">
             <label class="form-label">Gender</label>
-            {{ form.gender }}
-            {% if form.gender.errors %}<div class="text-danger small">{{ form.gender.errors }}</div>{% endif %}
+            {{ user_form.gender }}
+            {% if user_form.gender.errors %}<div class="text-danger small">{{ user_form.gender.errors }}</div>{% endif %}
           </div>
 
           <div class="col-12">
             <label class="form-label">Profile photo</label>
-            {{ form.avatar }}
+            {{ user_form.avatar }}
             <div class="form-text text-secondary">JPG/PNG recommended.</div>
-            {% if form.avatar.errors %}<div class="text-danger small">{{ form.avatar.errors }}</div>{% endif %}
+            {% if user_form.avatar.errors %}<div class="text-danger small">{{ user_form.avatar.errors }}</div>{% endif %}
           </div>
         </div>
 
         <hr class="border-secondary my-4">
+
+      <h3 class="mt-4">Email notification preferences</h3>
+        <div class="mt-2">
+          {{ notif_form.as_p }}
+        </div>
+      {% if notif_form.non_field_errors %}
+          <div class="alert alert-danger">
+            {{ notif_form.non_field_errors }}
+          </div>
+        {% endif %}
 
         <div class="d-flex gap-2">
           <button class="btn btn-primary" type="submit">
@@ -106,7 +116,6 @@
 </div>
 
 <script>
-  // Make Django form fields look Bootstrap-like without writing custom widgets everywhere.
   (function() {
     const selectors = [
       'input[type="text"]',
@@ -118,6 +127,12 @@
     document.querySelectorAll(selectors.join(',')).forEach(el => {
       if (el.type === 'file') el.classList.add('form-control');
       else el.classList.add('form-control', 'bg-dark', 'text-light', 'border-secondary');
+    });
+
+    // Style notification checkboxes nicely
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.classList.add('form-check-input');
+      // Wrap label spacing is handled by Django's as_p, but you can improve later with custom rendering.
     });
   })();
 </script>

@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from notifications.models import Notification
 from .models import TicketMessage
+from notifications.tasks import email_ticket_reply
 
 
 @receiver(post_save, sender=TicketMessage)
@@ -25,3 +26,4 @@ def notify_ticket_reply(sender, instance: TicketMessage, created: bool, **kwargs
         message=instance.message[:300],
         url=reverse("support:ticket_detail", args=[ticket.id]),
     )
+    email_ticket_reply.delay(ticket.id)

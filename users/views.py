@@ -3,12 +3,14 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django import forms
 from .models import CustomUser
-from .forms import ProfileForm
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from surveys.models import Survey, Submission
 from rewards.models import Prize, PrizeRedemption
 from notifications.models import Notification
+from .forms import NotificationSettingsForm, CustomUserChangeForm, ProfileForm
+from .models import UserNotificationSettings
+
 
 
 # Custom form for user registration, including CustomUser fields
@@ -37,19 +39,27 @@ def register(request):
 
 @login_required
 def edit_profile(request):
-    """
-    Allow users to edit their profile details + upload an avatar.
-    """
-    if request.method == "POST":
-        # request.FILES is required for avatar uploads
-        form = ProfileForm(request.POST, request.FILES, instance=request.user)
-        if form.is_valid():
-            form.save()
-            return redirect("users:dashboard")  # later: redirect to dashboard
-    else:
-        form = ProfileForm(instance=request.user)
+    user = request.user
 
-    return render(request, "users/edit_profile.html", {"form": form})
+    # Ensure settings exist
+    settings_obj, _ = UserNotificationSettings.objects.get_or_create(user=user)
+
+    if request.method == "POST":
+        user_form = ProfileForm(request.POST, request.FILES, instance=user)
+        notif_form = NotificationSettingsForm(request.POST, instance=settings_obj)
+
+        if user_form.is_valid() and notif_form.is_valid():
+            user_form.save()
+            notif_form.save()
+            return redirect("users:dashboard")
+    else:
+        user_form = ProfileForm(instance=user)
+        notif_form = NotificationSettingsForm(instance=settings_obj)
+
+    return render(request, "users/edit_profile.html", {
+        "user_form": user_form,
+        "notif_form": notif_form,
+    })
 
 
 @login_required

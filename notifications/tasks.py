@@ -1,5 +1,5 @@
 from celery import shared_task
-from django.core.mail import send_mass_mail
+from django.core.mail import send_mass_mail, send_mail
 from django.contrib.auth.models import Group
 from users.models import CustomUser
 from surveys.models import Survey
@@ -7,6 +7,8 @@ from django.conf import settings
 from django.urls import reverse
 from surveys.models import Submission
 from .models import Notification
+from support.models import SupportTicket
+from rewards.models import PrizeRedemption
 
 
 @shared_task
@@ -44,8 +46,11 @@ def send_survey_notification(survey_id):
             Notification.objects.bulk_create(notif_batch)
             notif_batch = []
 
-        # Email notification (optional: only if email exists)
-        if user.email:
+        # Email notification (optional: only if email exists, and user preferes)
+        prefs = getattr(user, "notification_settings", None)
+        email_allowed = (prefs is None) or prefs.email_new_surveys  # default True if missing
+
+        if user.email and email_allowed:
             messages.append((
                 f"New Survey Available: {survey.title}",
                 f"Participate in our new survey: {survey.description}\n"
@@ -109,7 +114,9 @@ def send_survey_reminder(survey_id):
             Notification.objects.bulk_create(notif_batch)
             notif_batch = []
 
-        if user.email:
+        prefs = getattr(user, "notification_settings", None)
+        email_allowed = (prefs is None) or prefs.email_survey_reminders  # default True if missing
+        if user.email and email_allowed:
             messages.append((
                 f"Reminder: Complete {survey.title}",
                 f"Hi {user.username},\n\n"
@@ -129,3 +136,47 @@ def send_survey_reminder(survey_id):
 
     if messages:
         send_mass_mail(messages, fail_silently=False)
+
+
+@shared_task
+def email_ticket_reply(ticket_id: int):
+    ticket = SupportTicket.objects.select_related("user").get(pk=ticket_id)
+    user = ticket.user
+
+    prefs = getattr(user, "notification_settings", None)
+    if prefs and not prefs.email_ticket_replies:
+        return "Email disabled"
+
+    if not user.email:
+        return "No email"
+
+    send_mail(
+        subject=f"Support replied to your ticket #{ticket.id}",
+        message=f"Hi {user.username},\n\nSupport has replied to your ticket:\n\n{ticket.subject}\n\nOpen your dashboard to view the reply.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    return "Sent"
+
+
+@shared_task
+def email_redemption_update(redemption_id: int):
+    redemption = PrizeRedemption.objects.select_related("user", "prize").get(pk=redemption_id)
+    user = redemption.user
+
+    prefs = getattr(user, "notification_settings", None)
+    if prefs and not prefs.email_redemption_updates:
+        return "Email disabled"
+
+    if not user.email:
+        return "No email"
+
+    send_mail(
+        subject=f"Redemption update: {redemption.prize.name}",
+        message=f"Hi {user.username},\n\nYour redemption request #{redemption.id} is now: {redemption.status}.\n\nOpen your dashboard to see details.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    return "Sent"

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import F
 from notifications.models import Notification
 from django.urls import reverse
+from notifications.tasks import email_redemption_update
 
 User = get_user_model()
 
@@ -55,6 +56,7 @@ def reject_refund_restore(modeladmin, request, queryset):
                 message=f"Request #{r.id} was rejected. Your points were refunded.",
                 url=reverse("rewards:my_redemptions"),
             )
+            email_redemption_update.delay(r.id)
 
             if not r.admin_note:
                 update_data["admin_note"] = f"Rejected by admin {request.user.username}"

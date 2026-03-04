@@ -41,3 +41,25 @@ class CustomUser(AbstractUser):
     def add_points(self, amount):
         self.points += amount
         self.save()
+
+
+class UserNotificationSettings(models.Model):
+    """
+    Per-user notification preferences.
+    In-app notifications are always created; these flags control EMAIL sending.
+    """
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="notification_settings",
+    )
+
+    email_new_surveys = models.BooleanField(default=True)
+    email_survey_reminders = models.BooleanField(default=True)
+    email_ticket_replies = models.BooleanField(default=True)
+    email_redemption_updates = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification settings for {self.user}"

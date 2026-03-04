@@ -1,4 +1,4 @@
-
+from .models import UserNotificationSettings
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import CustomUser
@@ -42,3 +42,14 @@ class ProfileForm(forms.ModelForm):
         widgets = {
             "date_of_birth": forms.DateInput(attrs={"type": "date"}),
         }
+
+
+class NotificationSettingsForm(forms.ModelForm):
+    class Meta:
+        model = UserNotificationSettings
+        fields = (
+            "email_new_surveys",
+            "email_survey_reminders",
+            "email_ticket_replies",
+            "email_redemption_updates",
+        )

@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'django.contrib.staticfiles',
     'nested_admin',
-    'users',
+    "users.apps.UsersConfig",
     'notifications',
     'rest_framework',
     'celery',
