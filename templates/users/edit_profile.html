@@ -1,139 +1,168 @@
-{% extends "base.html" %}
+{% extends "users/dashboard_base.html" %}
 
 {% block head_title %}Edit Profile{% endblock head_title %}
+{% block page_title %}Edit Profile{% endblock page_title %}
 
 {% block content %}
-<div class="container mt-5" style="max-width: 760px;">
-  <div class="d-flex align-items-center justify-content-between mb-4">
-    <h2 class="mb-0">Edit Profile</h2>
-    <!-- Later this can link to dashboard -->
-    <a href="{% url 'surveys:survey_list' %}" class="btn btn-outline-secondary btn-sm">
-      Back to surveys
-    </a>
-  </div>
 
-  <div class="card bg-dark text-light border-secondary">
-    <div class="card-body">
+<div class="max-w-3xl mx-auto">
 
-      <div class="d-flex gap-3 align-items-center mb-4">
-        <div style="width:72px;height:72px;border-radius:999px;overflow:hidden;background:#222;"
-             class="border border-secondary">
-          {% if request.user.avatar %}
-            <img src="{{ request.user.avatar.url }}" alt="Avatar"
-                 style="width:100%;height:100%;object-fit:cover;">
-          {% else %}
-            <div class="h-100 w-100 d-flex align-items-center justify-content-center text-secondary">
-              <i class="bi bi-person-circle" style="font-size: 2rem;"></i>
-            </div>
+  <div class="card border border-slate-800 bg-slate-900/60 p-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+      <div class="w-18 h-18 w-[72px] h-[72px] rounded-full overflow-hidden bg-slate-800 border border-slate-700">
+        {% if request.user.avatar %}
+          <img src="{{ request.user.avatar.url }}" alt="Avatar" class="w-full h-full object-cover">
+        {% else %}
+          <div class="w-full h-full flex items-center justify-center text-slate-400">
+            <span class="text-2xl">👤</span>
+          </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <div class="font-semibold">
+          {{ request.user.get_full_name|default:request.user.username }}
+        </div>
+        <div class="text-sm text-slate-400">{{ request.user.email }}</div>
+      </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+      {% csrf_token %}
+
+      {% if user_form.non_field_errors %}
+        <div class="rounded-xl border border-red-500/30 bg-red-500/10 text-red-200 px-4 py-3 text-sm">
+          {{ user_form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <!-- Profile fields -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- First name -->
+        <div>
+          <label class="block text-sm font-medium text-slate-200 mb-1">First name</label>
+          {{ user_form.first_name }}
+          {% if user_form.first_name.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.first_name.errors }}</div>
           {% endif %}
         </div>
 
+        <!-- Last name -->
         <div>
-          <div class="fw-semibold">{{ request.user.get_full_name|default:request.user.username }}</div>
-          <div class="text-secondary small">{{ request.user.email }}</div>
+          <label class="block text-sm font-medium text-slate-200 mb-1">Last name</label>
+          {{ user_form.last_name }}
+          {% if user_form.last_name.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.last_name.errors }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-medium text-slate-200 mb-1">Email</label>
+          {{ user_form.email }}
+          {% if user_form.email.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.email.errors }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Phone -->
+        <div>
+          <label class="block text-sm font-medium text-slate-200 mb-1">Phone number</label>
+          {{ user_form.phone_number }}
+          {% if user_form.phone_number.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.phone_number.errors }}</div>
+          {% endif %}
+        </div>
+
+        <!-- DOB -->
+        <div>
+          <label class="block text-sm font-medium text-slate-200 mb-1">Date of birth</label>
+          {{ user_form.date_of_birth }}
+          {% if user_form.date_of_birth.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.date_of_birth.errors }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Gender -->
+        <div>
+          <label class="block text-sm font-medium text-slate-200 mb-1">Gender</label>
+          {{ user_form.gender }}
+          {% if user_form.gender.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.gender.errors }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Avatar -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-slate-200 mb-1">Profile photo</label>
+          {{ user_form.avatar }}
+          <div class="text-xs text-slate-400 mt-1">JPG/PNG recommended.</div>
+          {% if user_form.avatar.errors %}
+            <div class="text-red-300 text-xs mt-1">{{ user_form.avatar.errors }}</div>
+          {% endif %}
         </div>
       </div>
 
-      <!-- IMPORTANT: enctype for file uploads -->
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
+      <div class="border-t border-slate-800 pt-6">
+        <h3 class="text-lg font-semibold mb-3">Email notification preferences</h3>
 
-        {% if user_form.non_field_errors %}
-          <div class="alert alert-danger">
-            {{ user_form.non_field_errors }}
-          </div>
-        {% endif %}
-
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">First name</label>
-            {{ user_form.first_name }}
-            {% if user_form.first_name.errors %}<div class="text-danger small">{{ user_form.first_name.errors }}</div>{% endif %}
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Last name</label>
-            {{ user_form.last_name }}
-            {% if user_form.last_name.errors %}<div class="text-danger small">{{ user_form.last_name.errors }}</div>{% endif %}
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Email</label>
-            {{ user_form.email }}
-            {% if user_form.email.errors %}<div class="text-danger small">{{ user_form.email.errors }}</div>{% endif %}
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Phone number</label>
-            {{ user_form.phone_number }}
-            {% if user_form.phone_number.errors %}<div class="text-danger small">{{ user_form.phone_number.errors }}</div>{% endif %}
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Date of birth</label>
-            {{ user_form.date_of_birth }}
-            {% if user_form.date_of_birth.errors %}<div class="text-danger small">{{ user_form.date_of_birth.errors }}</div>{% endif %}
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Gender</label>
-            {{ user_form.gender }}
-            {% if user_form.gender.errors %}<div class="text-danger small">{{ user_form.gender.errors }}</div>{% endif %}
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Profile photo</label>
-            {{ user_form.avatar }}
-            <div class="form-text text-secondary">JPG/PNG recommended.</div>
-            {% if user_form.avatar.errors %}<div class="text-danger small">{{ user_form.avatar.errors }}</div>{% endif %}
-          </div>
-        </div>
-
-        <hr class="border-secondary my-4">
-
-      <h3 class="mt-4">Email notification preferences</h3>
-        <div class="mt-2">
-          {{ notif_form.as_p }}
-        </div>
-      {% if notif_form.non_field_errors %}
-          <div class="alert alert-danger">
+        {% if notif_form.non_field_errors %}
+          <div class="rounded-xl border border-red-500/30 bg-red-500/10 text-red-200 px-4 py-3 text-sm mb-4">
             {{ notif_form.non_field_errors }}
           </div>
         {% endif %}
 
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary" type="submit">
-            Save changes
-          </button>
-          <a class="btn btn-outline-light" href="{% url 'users:dashboard' %}">
-            Cancel
-          </a>
+        <!-- Render checkboxes manually for proper Tailwind styling -->
+        <div class="space-y-3">
+          {% for field in notif_form %}
+            <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-800 bg-slate-950/40 hover:bg-slate-900/40 transition cursor-pointer">
+              {{ field }}
+              <div>
+                <div class="text-sm font-medium text-slate-200">{{ field.label }}</div>
+                {% if field.help_text %}
+                  <div class="text-xs text-slate-400">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                  <div class="text-red-300 text-xs mt-1">{{ field.errors }}</div>
+                {% endif %}
+              </div>
+            </label>
+          {% endfor %}
         </div>
-      </form>
+      </div>
 
-    </div>
+      <!-- Actions -->
+      <div class="flex items-center gap-3">
+        <button type="submit"
+                class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition text-sm font-medium">
+          Save changes
+        </button>
+        <a href="{% url 'users:dashboard' %}"
+           class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+          Cancel
+        </a>
+      </div>
+    </form>
   </div>
 </div>
 
 <script>
-  (function() {
-    const selectors = [
-      'input[type="text"]',
-      'input[type="email"]',
-      'input[type="date"]',
-      'input[type="file"]',
-      'select',
-    ];
-    document.querySelectorAll(selectors.join(',')).forEach(el => {
-      if (el.type === 'file') el.classList.add('form-control');
-      else el.classList.add('form-control', 'bg-dark', 'text-light', 'border-secondary');
-    });
+  // Tailwind-friendly input styling: apply consistent classes to Django-rendered fields.
+  (function () {
+    const base = "w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-600/40 focus:border-indigo-500/40";
+    const file = "w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200";
 
-    // Style notification checkboxes nicely
-    document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.classList.add('form-check-input');
-      // Wrap label spacing is handled by Django's as_p, but you can improve later with custom rendering.
-    });
+    document.querySelectorAll('input[type="text"], input[type="email"], input[type="date"], select, textarea')
+      .forEach(el => el.className = base);
+
+    document.querySelectorAll('input[type="file"]')
+      .forEach(el => el.className = file);
+
+    // Checkbox styling
+    document.querySelectorAll('input[type="checkbox"]')
+      .forEach(cb => cb.className = "h-5 w-5 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-600/40");
   })();
 </script>
+
 {% endblock %}

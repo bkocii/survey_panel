@@ -1,67 +1,100 @@
-{% extends "base.html" %}
+{% extends "users/dashboard_base.html" %}
+
 {% block head_title %}Prizes{% endblock head_title %}
+{% block page_title %}Prizes{% endblock page_title %}
 
 {% block content %}
-<div class="container mt-5">
 
-<a class="btn btn-outline-light btn-sm" href="{% url 'rewards:my_redemptions' %}">
-  My redemptions
-</a>
+<div class="max-w-7xl mx-auto">
 
-  <div class="d-flex align-items-center justify-content-between mb-4">
+  <!-- Top actions row -->
+  <div class="flex items-center justify-between mb-6">
     <div>
-      <h2 class="mb-0">Prizes</h2>
-      <div class="text-secondary">Redeem your points for rewards</div>
+      <div class="text-sm text-slate-400">Redeem your points for rewards</div>
+      <div class="text-xs text-slate-500 mt-1">
+        Browse prizes, view details, and redeem if you have enough points.
+      </div>
     </div>
-    <div class="text-end">
-      <div class="small text-secondary">Your points</div>
-      <div class="fs-4 fw-semibold">{{ request.user.points }}</div>
+
+    <div class="text-right">
+      <div class="text-xs text-slate-500">Your points</div>
+      <div class="text-2xl font-semibold">{{ request.user.points }}</div>
+      <a href="{% url 'rewards:my_redemptions' %}"
+         class="inline-block mt-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+        My redemptions
+      </a>
     </div>
   </div>
 
+  <!-- Django messages -->
   {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{% if message %}{{ message }}{% endif %}</div>
-    {% endfor %}
+    <div class="space-y-2 mb-6">
+      {% for message in messages %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
   {% endif %}
 
-  <div class="row g-4">
+  <!-- Cards grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for p in prizes %}
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="card h-100 bg-dark text-light border-secondary">
-          {% if p.image %}
-            <img src="{{ p.image.url }}" class="card-img-top" alt="{{ p.name }}"
-                 style="height: 180px; object-fit: cover;">
-          {% else %}
-            <div class="d-flex align-items-center justify-content-center text-secondary"
-                 style="height: 180px; background: #222;">
-              <i class="bi bi-gift" style="font-size: 2rem;"></i>
-            </div>
-          {% endif %}
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title mb-1">{{ p.name }}</h5>
-            <p class="card-text text-secondary">{{ p.description|truncatewords:18 }}</p>
+      <div class="card border border-slate-800 bg-slate-900/60 overflow-hidden">
+        <!-- Image -->
+        {% if p.image %}
+          <img src="{{ p.image.url }}" alt="{{ p.name }}" class="w-full h-44 object-cover">
+        {% else %}
+          <div class="w-full h-44 bg-slate-950/60 flex items-center justify-center text-slate-400">
+            <span class="text-2xl">🎁</span>
+          </div>
+        {% endif %}
 
-            <div class="mt-auto d-flex align-items-center justify-content-between">
-              <span class="badge text-bg-primary">{{ p.points_cost }} pts</span>
-              <a class="btn btn-outline-light btn-sm" href="{% url 'rewards:prize_detail' p.id %}">
-                View
-              </a>
+        <div class="p-5 flex flex-col h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-semibold leading-tight">{{ p.name }}</div>
+              <div class="text-sm text-slate-300 mt-1">
+                {{ p.description|truncatewords:18 }}
+              </div>
             </div>
 
-            <div class="mt-2 small text-secondary">
-              {% if p.stock is None %}
-                Stock: unlimited
-              {% else %}
-                Stock: {{ p.stock }}
-              {% endif %}
+            <div class="shrink-0">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-indigo-500/30 bg-indigo-600/20 text-indigo-200">
+                {{ p.points_cost }} pts
+              </span>
             </div>
+          </div>
+
+          <div class="mt-4 text-xs text-slate-400">
+            {% if p.stock is None %}
+              Stock: unlimited
+            {% else %}
+              Stock: {{ p.stock }}
+            {% endif %}
+          </div>
+
+          <div class="mt-5 flex items-center justify-between">
+            <a href="{% url 'rewards:prize_detail' p.id %}"
+               class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+              View
+            </a>
+
+            {% if p.stock is not None and p.stock <= 0 %}
+              <span class="text-xs px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-200">
+                Out of stock
+              </span>
+            {% endif %}
           </div>
         </div>
       </div>
     {% empty %}
-      <div class="text-secondary">No prizes available yet.</div>
+      <div class="text-slate-400 text-sm">
+        No prizes available yet.
+      </div>
     {% endfor %}
   </div>
+
 </div>
+
 {% endblock %}

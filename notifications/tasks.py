@@ -150,9 +150,17 @@ def email_ticket_reply(ticket_id: int):
     if not user.email:
         return "No email"
 
+    # Direct link to the ticket
+    ticket_url = settings.SITE_URL + reverse("support:ticket_detail", args=[ticket.id])
+
     send_mail(
         subject=f"Support replied to your ticket #{ticket.id}",
-        message=f"Hi {user.username},\n\nSupport has replied to your ticket:\n\n{ticket.subject}\n\nOpen your dashboard to view the reply.",
+        message=(
+            f"Hi {user.username},\n\n"
+            f"Support has replied to your ticket:\n\n"
+            f"{ticket.subject}\n\n"
+            f"View it here: {ticket_url}\n"
+        ),
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],
         fail_silently=False,
@@ -172,11 +180,24 @@ def email_redemption_update(redemption_id: int):
     if not user.email:
         return "No email"
 
+    # Direct link to the redemption dashboard page
+    redemptions_url = settings.SITE_URL + reverse("rewards:my_redemptions")
+
+    status_label = redemption.status.replace("_", " ").title()
+
     send_mail(
         subject=f"Redemption update: {redemption.prize.name}",
-        message=f"Hi {user.username},\n\nYour redemption request #{redemption.id} is now: {redemption.status}.\n\nOpen your dashboard to see details.",
+        message=(
+            f"Hi {user.username},\n\n"
+            f"Your redemption request #{redemption.id} for '{redemption.prize.name}' "
+            f"is now: {status_label}.\n\n"
+            f"You can review it here:\n"
+            f"{redemptions_url}\n\n"
+            f"Thank you."
+        ),
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],
         fail_silently=False,
     )
+
     return "Sent"

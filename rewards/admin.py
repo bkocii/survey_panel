@@ -49,6 +49,11 @@ def reject_refund_restore(modeladmin, request, queryset):
             # Mark rejected
             update_data = {"status": "rejected"}
 
+            if not r.admin_note:
+                update_data["admin_note"] = f"Rejected by admin {request.user.username}"
+
+            PrizeRedemption.objects.filter(pk=r.pk).update(**update_data)
+
             Notification.objects.create(
                 user_id=r.user_id,
                 type="redeem_rejected",
@@ -56,12 +61,9 @@ def reject_refund_restore(modeladmin, request, queryset):
                 message=f"Request #{r.id} was rejected. Your points were refunded.",
                 url=reverse("rewards:my_redemptions"),
             )
-            email_redemption_update.delay(r.id)
+            # Email only after commit (prevents “sent but rolled back” + ensures status is updated)
+            transaction.on_commit(lambda rid=r.id: email_redemption_update.delay(rid))
 
-            if not r.admin_note:
-                update_data["admin_note"] = f"Rejected by admin {request.user.username}"
-
-            PrizeRedemption.objects.filter(pk=r.pk).update(**update_data)
             PointsLedger.objects.create(
                 user_id=r.user_id,
                 amount=+r.points_spent,

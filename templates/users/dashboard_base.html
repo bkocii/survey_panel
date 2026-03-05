@@ -28,19 +28,37 @@
       </div>
 
       <div class="flex items-center gap-3">
-          <a class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm transition"
-           href="{% url 'notifications:list' %}">
-          Notifications {% if unread_count %}<span class="ml-2 text-xs px-2 py-1 rounded-full bg-indigo-600/30 border border-indigo-500/30">{{ unread_count }}</span>{% endif %}
-        </a>
-        <a href="{% url 'rewards:prize_list' %}"
-           class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition">
-          Redeem points
-        </a>
-        <a href="{% url 'users:edit_profile' %}"
-           class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition">
-          Edit profile
-        </a>
-      </div>
+
+          <!-- Dashboard link (always visible) -->
+          <a href="{% url 'users:dashboard' %}"
+             class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+            Dashboard
+          </a>
+
+          <!-- Notifications -->
+          <a class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm relative"
+             href="{% url 'notifications:list' %}">
+            Notifications
+            {% if unread_count %}
+              <span class="absolute -top-2 -right-2 text-xs px-2 py-0.5 rounded-full bg-indigo-600 border border-indigo-500">
+                {{ unread_count }}
+              </span>
+            {% endif %}
+          </a>
+
+          <!-- Redeem -->
+          <a href="{% url 'rewards:prize_list' %}"
+             class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition text-sm">
+            Redeem points
+          </a>
+
+          <!-- Profile -->
+          <a href="{% url 'users:edit_profile' %}"
+             class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+            Edit profile
+          </a>
+
+        </div>
     </div>
 
     {% block content %}{% endblock %}

@@ -4,6 +4,7 @@ from django.urls import reverse
 from notifications.models import Notification
 from .models import PrizeRedemption
 from notifications.tasks import email_redemption_update
+from django.db import transaction
 
 
 @receiver(pre_save, sender=PrizeRedemption)
@@ -45,4 +46,4 @@ def notify_redemption_status(sender, instance: PrizeRedemption, created: bool, *
         message=f"Request #{instance.id} is now {new_status}.",
         url=reverse("rewards:my_redemptions"),
     )
-    email_redemption_update.delay(instance.id)
+    transaction.on_commit(lambda rid=instance.id: email_redemption_update.delay(rid))
