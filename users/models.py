@@ -9,6 +9,8 @@ class CustomUser(AbstractUser):
     points = models.PositiveIntegerField(default=0)
     # Optional phone number for user contact or notifications
     phone_number = models.CharField(max_length=15, blank=True)
+    # Make user active after email verification
+    email_verified = models.BooleanField(default=False)
     # Optional date of birth for demographic-based survey targeting
     date_of_birth = models.DateField(null=True, blank=True)
     # Optional gender field for demographic data

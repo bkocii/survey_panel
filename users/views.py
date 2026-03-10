@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django import forms
@@ -13,6 +13,10 @@ from .models import UserNotificationSettings
 from ledger.models import PointsLedger
 from django.db.models import Sum
 from django.contrib import messages
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from .tasks import send_verification_email
 
 
 # Custom form for user registration, including CustomUser fields
@@ -28,15 +32,28 @@ class CustomUserCreationForm(UserCreationForm):
 
 # View to handle user registration
 def register(request):
+    if request.user.is_authenticated:
+        return redirect("users:dashboard")
+
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)  # Initialize form with POST data
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()  # Save new user
-            login(request, user)  # Log in the user automatically
-            return redirect('users:dashboard')  # Redirect to survey list
+            user = form.save(commit=False)
+            user.is_active = False
+            user.email_verified = False
+            user.save()
+
+            send_verification_email.delay(user.id)
+
+            messages.success(
+                request,
+                "Account created. Please check your email and verify your address before logging in."
+            )
+            return redirect("users:login")
     else:
-        form = CustomUserCreationForm()  # Initialize empty form
-    return render(request, 'users/register.html', {'form': form})  # Render registration template
+        form = CustomUserCreationForm()
+
+    return render(request, 'users/register.html', {'form': form})
 
 
 @login_required
@@ -141,3 +158,25 @@ def dashboard(request):
         "spent_total": abs(spent_total),  # show as positive number
         "balance": request.user.points,
     })
+
+
+def verify_email(request, uidb64, token):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.email_verified = True
+        user.is_active = True
+        user.save(update_fields=["email_verified", "is_active"])
+
+        messages.success(request, "Your email has been verified. You can now log in.")
+        return redirect("users:login")
+
+    messages.error(request, "Verification link is invalid or has expired.")
+    return redirect("users:register")

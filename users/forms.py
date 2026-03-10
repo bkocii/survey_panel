@@ -14,6 +14,11 @@ class CustomUserCreationForm(UserCreationForm):
         model = CustomUser
         fields = ('username', 'email', 'password1', 'password2', 'phone_number', 'date_of_birth', 'gender')
 
+    def clean_email(self):
+        email = self.cleaned_data.get("email", "").strip()
+        if email and CustomUser.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
 
 # Form for editing existing users in admin
 class CustomUserChangeForm(UserChangeForm):
