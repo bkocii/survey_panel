@@ -1,35 +1,164 @@
-{% extends "base.html" %}
+{% extends "users/dashboard_base.html" %}
+{% load custom_filters %}
+{% block head_title %}Surveys{% endblock head_title %}
+{% block page_title %}Surveys{% endblock page_title %}
 
 {% block content %}
-  <div class="container my-5">
-    <h1 class="mb-4 text-white">Available Surveys</h1>
-    {% if surveys %}
-      <div class="survey-grid">
-        {% for survey in surveys %}
-          <article class="survey-card">
-            <div class="survey-card__head">
-              <h2 class="survey-card__title">
-                <a href="{% url 'surveys:survey_start' survey.id %}">{{ survey.title }}</a>
-              </h2>
-              <span class="survey-card__points">+{{ survey.points_reward }} pts</span>
+<div class="max-w-6xl mx-auto">
+
+  <!-- Available / in progress -->
+  <div class="mb-8">
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold">Available Surveys</h2>
+      <p class="text-sm text-slate-400 mt-1">
+        Start a new survey or continue one already in progress.
+      </p>
+    </div>
+
+    {% if survey_cards %}
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {% for item in survey_cards %}
+          {% with survey=item.survey %}
+          <article class="card bg-slate-900/60 border border-slate-800 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-500/30">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3">
+                <span class="text-xl mt-0.5">📝</span>
+                <div>
+                  <h3 class="font-semibold text-lg leading-tight">
+                    <a href="{% url 'surveys:survey_start' survey.id %}" class="hover:text-indigo-300 transition">
+                      {{ survey.title }}
+                    </a>
+                  </h3>
+
+                  {% if survey.description %}
+                    <p class="text-sm text-slate-400 mt-2">
+                      {{ survey.description|truncatewords:18 }}
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-indigo-500/30 bg-indigo-600/20 text-indigo-200 shrink-0">
+                +{{ survey.points_reward }} pts
+              </span>
             </div>
 
-            {% if survey.description %}
-              <p class="survey-card__desc">{{ survey.description }}</p>
+            <div class="flex items-center gap-4 text-xs text-slate-500 mt-4">
+              {% if survey.optimal_duration_minutes %}
+                <span>⏱ {{ survey.optimal_duration_minutes }} min</span>
+              {% endif %}
+              <span>📋 {{ item.total_questions }} questions</span>
+            </div>
+
+            {% if item.is_started %}
+              <div class="mt-4">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                  <span>Progress</span>
+                  <span>{{ item.answered_count }} / {{ item.total_questions }}</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div class="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                       style="width: {{ item.progress_percent }}%;"></div>
+                </div>
+                <div class="text-xs text-indigo-300 mt-2">Started</div>
+              </div>
             {% endif %}
 
-            <div class="survey-card__actions">
-              <a href="{% url 'surveys:survey_start' survey.id %}" class="btn-shell">
-                <span class="btn-ui btn-primary">Start survey</span>
+            <div class="mt-5">
+              <a href="{% url 'surveys:survey_start' survey.id %}"
+                 class="inline-flex items-center px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition text-sm">
+                {% if item.is_started %}
+                  Continue survey
+                {% else %}
+                  Start survey
+                {% endif %}
               </a>
+            </div>
+          </article>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card bg-slate-900/60 border border-slate-800 p-6 text-slate-400">
+        No available surveys.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Completed -->
+  <div>
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold">Completed Surveys</h2>
+      <p class="text-sm text-slate-400 mt-1">
+        Surveys you have already submitted.
+      </p>
+    </div>
+
+    {% if completed_submissions %}
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {% for sub in completed_submissions %}
+          <article class="card bg-slate-900/60 border border-slate-800 p-5 opacity-95">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3">
+                <span class="text-xl mt-0.5 text-slate-400">✔</span>
+                <div>
+                  <h3 class="font-semibold text-lg leading-tight">
+                    {{ sub.survey.title }}
+                  </h3>
+
+                  {% if sub.survey.description %}
+                    <p class="text-sm text-slate-400 mt-2">
+                      {{ sub.survey.description|truncatewords:18 }}
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-slate-700 bg-slate-800 text-slate-200 shrink-0">
+                Completed
+              </span>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs text-slate-500 mt-4">
+              <span>📅 {{ sub.submitted_at|date:"Y-m-d H:i" }}</span>
+              {% if sub.duration_seconds %}
+                  <span>⏱ {{ sub.duration_seconds|format_duration }}</span>
+                {% endif %}
+            </div>
+
+            <div class="mt-5">
+              <button type="button"
+                      class="inline-flex items-center px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm cursor-not-allowed"
+                      onclick="showCompletedSurveyWarning()">
+                Already submitted
+              </button>
             </div>
           </article>
         {% endfor %}
       </div>
     {% else %}
-      <div class="survey-empty q-card">
-        No surveys available.
+      <div class="card bg-slate-900/60 border border-slate-800 p-6 text-slate-400">
+        No completed surveys yet.
       </div>
     {% endif %}
   </div>
+
+</div>
+
+<!-- Warning toast -->
+<div id="completed-survey-warning"
+     class="hidden fixed bottom-6 right-6 px-4 py-3 rounded-xl border border-yellow-500/30 bg-yellow-600/20 text-yellow-200 text-sm shadow-lg z-50">
+  This survey has already been submitted.
+</div>
+
+<script>
+  function showCompletedSurveyWarning() {
+    const el = document.getElementById("completed-survey-warning");
+    el.classList.remove("hidden");
+
+    setTimeout(() => {
+      el.classList.add("hidden");
+    }, 3000);
+  }
+</script>
 {% endblock %}

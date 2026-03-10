@@ -1,36 +1,69 @@
 {% extends "base.html" %}
 
+{% block head_title %}Login{% endblock head_title %}
+
 {% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-7 col-lg-5">
+      <div class="card bg-dark text-light border-secondary shadow-sm">
+        <div class="card-body p-4 p-md-5">
 
-<head>
-    <!-- Page title -->
-    <title>Login</title>
-</head>
+          <div class="text-center mb-4">
+            <h1 class="h3 mb-2">Welcome back</h1>
+            <p class="text-secondary mb-0">Sign in to continue to your survey dashboard.</p>
+          </div>
 
-<body>
-    <div class="container mt-5">
-        <!-- Login form header -->
-        <h1>Login</h1>
-        <!-- Login form -->
-        <form method="post">
-            {% csrf_token %} <!-- CSRF token for security -->
-            <div class="mb-3">
-                <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
-                {{ form.username }} <!-- Username input -->
-            </div>
-            <div class="mb-3">
-                <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
-                {{ form.password }} <!-- Password input -->
-            </div>
-            <!-- Display form errors if any -->
+          <form method="post" novalidate>
+            {% csrf_token %}
+
             {% if form.errors %}
-                <div class="alert alert-danger">
-                    Invalid username or password.
-                </div>
+              <div class="alert alert-danger">
+                Invalid username or password.
+              </div>
             {% endif %}
-            <!-- Submit button -->
-            <button type="submit" class="btn btn-primary">Login</button>
-        </form>
+
+            <div class="mb-3">
+              <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+              {{ form.username }}
+              {% if form.username.errors %}
+                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
+              {{ form.password }}
+              {% if form.password.errors %}
+                <div class="text-danger small mt-1">{{ form.password.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-primary">
+                Login
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center mt-4">
+            <span class="text-secondary">Don’t have an account?</span>
+            <a href="{% url 'users:register' %}" class="text-decoration-none ms-1">
+              Register
+            </a>
+          </div>
+
+        </div>
+      </div>
     </div>
-</body>
+  </div>
+</div>
+
+<script>
+  (function () {
+    document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"]').forEach(el => {
+      el.classList.add('form-control', 'bg-dark', 'text-light', 'border-secondary');
+    });
+  })();
+</script>
 {% endblock %}

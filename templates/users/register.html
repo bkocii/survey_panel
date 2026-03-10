@@ -1,45 +1,72 @@
 {% extends "base.html" %}
+
+{% block head_title %}Register{% endblock head_title %}
+
 {% block content %}
-<head>
-    <!-- Page title -->
-    <title>Register</title>
-</head>
-<body>
-    <div class="container mt-5">
-        <!-- Registration form header -->
-        <h1>Register</h1>
-        <!-- Registration form -->
-        <form method="post">
-            {% csrf_token %} <!-- CSRF token for security -->
-            {% for field in form %}
-                <div class="mb-3">
-                    <!-- Field label -->
-                    <label for="{{ field.id_for_label }}" class="form-label text-white dark:text-gray-300">{{ field.label }}</label>
-                    <!-- Field input (e.g., text, password, select) -->
-                    {{ field }}
-                    <!-- Display field-specific errors -->
-                    {% if field.errors %}
-                        <div class="text-danger">
-                            {{ field.errors }}
-                        </div>
-                    {% endif %}
-                    <!-- Display field help text if available -->
-                    {% if field.help_text %}
-                        <small class="form-text text-white">{{ field.help_text }}</small>
-                    {% endif %}
-                </div>
-            {% endfor %}
-            <!-- Display non-field form errors (e.g., password mismatch) -->
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card bg-dark text-light border-secondary shadow-sm">
+        <div class="card-body p-4 p-md-5">
+
+          <div class="text-center mb-4">
+            <h1 class="h3 mb-2">Create your account</h1>
+            <p class="text-secondary mb-0">Join the survey panel and start earning points.</p>
+          </div>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
             {% if form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {{ form.non_field_errors }}
-                </div>
+              <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+              </div>
             {% endif %}
-            <!-- Submit button -->
-            <button type="submit" class="btn btn-primary">Register</button>
-            <!-- Link to login page -->
-            <a href="{% url 'users:login' %}" class="btn btn-secondary">Login</a>
-        </form>
+
+            {% for field in form %}
+              <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+
+                {% if field.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ field.errors }}
+                  </div>
+                {% endif %}
+
+                {% if field.help_text %}
+                  <div class="form-text text-secondary">
+                    {{ field.help_text|safe }}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-primary">
+                Register
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center mt-4">
+            <span class="text-secondary">Already have an account?</span>
+            <a href="{% url 'users:login' %}" class="text-decoration-none ms-1">
+              Login
+            </a>
+          </div>
+
+        </div>
+      </div>
     </div>
-</body>
+  </div>
+</div>
+
+<script>
+  (function () {
+    document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"], input[type="date"], select').forEach(el => {
+      el.classList.add('form-control', 'bg-dark', 'text-light', 'border-secondary');
+    });
+  })();
+</script>
 {% endblock %}

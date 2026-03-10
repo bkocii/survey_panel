@@ -94,3 +94,4 @@ class PrizeRedemptionAdmin(ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("user__username", "user__email", "prize__name")
     actions = [reject_refund_restore]
+    readonly_fields = ("status",)

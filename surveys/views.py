@@ -32,17 +32,81 @@ from ledger.models import PointsLedger
 
 
 # # View to list all active surveys, requires login
+from django.contrib.auth.decorators import login_required
+from django.db import models
+from django.shortcuts import render
+from surveys.models import Survey, Submission, Response, Question
+
+
+from django.contrib.auth.decorators import login_required
+from django.db import models
+from django.shortcuts import render
+
+from .models import Survey, Submission, Response, Question
+
+
 @login_required
 def survey_list(request):
-    # IDs of surveys the user has already responded to
-    completed_ids = Submission.objects.filter(user=request.user).values_list('survey_id', flat=True)
+    user = request.user
 
-    # Surveys the user is allowed to access and hasn't completed yet
-    surveys = Survey.objects.filter(is_active=True).filter(
-        models.Q(groups__in=request.user.groups.all()) | models.Q(groups__isnull=True)
-    ).exclude(id__in=completed_ids).distinct()
+    # Submitted surveys
+    completed_submissions = (
+        Submission.objects
+        .filter(user=user)
+        .select_related("survey")
+        .order_by("-submitted_at")
+    )
+    completed_ids = completed_submissions.values_list("survey_id", flat=True)
 
-    return render(request, 'surveys/survey_list.html', {'surveys': surveys})
+    # Available surveys user can access and has not completed
+    available_surveys = (
+        Survey.objects
+        .filter(is_active=True)
+        .filter(
+            models.Q(groups__in=user.groups.all()) |
+            models.Q(groups__isnull=True)
+        )
+        .exclude(id__in=completed_ids)
+        .distinct()
+        .order_by("-created_at")
+    )
+
+    # Build cards for available/in-progress surveys
+    survey_cards = []
+    for survey in available_surveys:
+        total_questions = Question.objects.filter(survey=survey).count()
+
+        answered_count = (
+            Response.objects
+            .filter(user=user, survey=survey)
+            .filter(
+                models.Q(choice__isnull=False) |
+                models.Q(text_answer__gt="") |
+                models.Q(media_upload__isnull=False) |
+                models.Q(value__isnull=False) |
+                (models.Q(latitude__isnull=False) & models.Q(longitude__isnull=False))
+            )
+            .values("question_id")
+            .distinct()
+            .count()
+        )
+
+        progress_percent = int((answered_count / total_questions) * 100) if total_questions else 0
+        if progress_percent > 100:
+            progress_percent = 100
+
+        survey_cards.append({
+            "survey": survey,
+            "answered_count": answered_count,
+            "total_questions": total_questions,
+            "progress_percent": progress_percent,
+            "is_started": answered_count > 0,
+        })
+
+    return render(request, "surveys/survey_list.html", {
+        "survey_cards": survey_cards,
+        "completed_submissions": completed_submissions,
+    })
 
 
 @login_required

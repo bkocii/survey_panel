@@ -10,7 +10,9 @@ from rewards.models import Prize, PrizeRedemption
 from notifications.models import Notification
 from .forms import NotificationSettingsForm, CustomUserChangeForm, ProfileForm
 from .models import UserNotificationSettings
-
+from ledger.models import PointsLedger
+from django.db.models import Sum
+from django.contrib import messages
 
 
 # Custom form for user registration, including CustomUser fields
@@ -51,6 +53,7 @@ def edit_profile(request):
         if user_form.is_valid() and notif_form.is_valid():
             user_form.save()
             notif_form.save()
+            messages.success(request, "Profile updated successfully.")
             return redirect("users:dashboard")
     else:
         user_form = ProfileForm(instance=user)
@@ -90,30 +93,51 @@ def dashboard(request):
         .order_by("-created_at")
     )
 
+    last_submission = completed_qs.first()
     stats = {
         "available_count": available_surveys.count(),
         "completed_count": completed_qs.count(),
         "points": user.points,
-        "last_submitted_at": completed_qs.first().submitted_at if completed_qs.exists() else None,
+        "last_submitted_at": last_submission.submitted_at if last_submission else None,
     }
 
-    featured_prizes = Prize.objects.filter(is_active=True).order_by("points_cost")[:6]
     recent_redemptions = (
         PrizeRedemption.objects
         .filter(user=user)
         .select_related("prize")
-        .order_by("-created_at")[:6]
+        .order_by("-created_at")[:3]
     )
 
-    unread_count = Notification.objects.filter(user=user, is_read=False).count()
-    latest_notifications = Notification.objects.filter(user=user).order_by("-created_at")[:6]
+    # Points summary (type-based)
+    earned_total = (
+                       PointsLedger.objects
+                       .filter(user=user, type="survey_reward")
+                       .aggregate(total=Sum("amount"))["total"]
+                   ) or 0
+
+    gross_spent_total = (
+                            PointsLedger.objects
+                            .filter(user=user, type="redeem_spend")
+                            .aggregate(total=Sum("amount"))["total"]
+                        ) or 0
+
+    refund_total = (
+                       PointsLedger.objects
+                       .filter(user=user, type="redeem_refund")
+                       .aggregate(total=Sum("amount"))["total"]
+                   ) or 0
+
+    # Net spent = spent - refunded
+    spent_total = abs(gross_spent_total) - refund_total
+    if spent_total < 0:
+        spent_total = 0
 
     return render(request, "users/dashboard.html", {
         "stats": stats,
-        "available_surveys": available_surveys[:5],
-        "completed_surveys": completed_qs[:5],
-        "featured_prizes": featured_prizes,
+        "available_surveys": available_surveys[:3],
+        "completed_surveys": completed_qs[:3],
         "recent_redemptions": recent_redemptions,
-        "unread_count": unread_count,
-        "latest_notifications": latest_notifications,
+        "earned_total": earned_total,
+        "spent_total": abs(spent_total),  # show as positive number
+        "balance": request.user.points,
     })

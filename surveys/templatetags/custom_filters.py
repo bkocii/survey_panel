@@ -35,3 +35,40 @@ def value_in_post_list(post_data, args):
     """
     key, val = args.split(',', 1)
     return val in post_data.getlist(key)
+
+
+@register.filter
+def format_duration(seconds):
+    """
+    Format seconds into a friendly string.
+    Examples:
+      45 -> "45s"
+      90 -> "1m 30s"
+      3661 -> "1h 1m 1s"
+    """
+    if seconds is None:
+        return "-"
+
+    try:
+        seconds = int(seconds)
+    except (TypeError, ValueError):
+        return "-"
+
+    if seconds < 0:
+        return "-"
+
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+
+    parts = []
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if secs or not parts:
+        parts.append(f"{secs}s")
+
+    return " ".join(parts)
+
+
