@@ -8,7 +8,7 @@ app_name = 'users'  # Namespace for URL names
 
 urlpatterns = [
     # Login view, maps to /users/login/
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
+    path('login/', auth_views.LoginView.as_view(template_name='users/login.html', redirect_authenticated_user=True), name='login'),
     # Logout view, maps to /users/logout/
     path('logout/', auth_views.LogoutView.as_view(next_page='surveys:survey_list'), name='logout'),
     # Register view, maps to /users/register/

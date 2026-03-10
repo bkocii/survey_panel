@@ -64,7 +64,7 @@ UNFOLD = {'SITE_HEADER': 'Survey Panel',
           'SITE_TITLE': 'Survey Panel',
           'SHOW_FIELDSETS_AS_TABS': True}
 AUTH_USER_MODEL = 'users.CustomUser'
-LOGIN_REDIRECT_URL = 'surveys:survey_list'
+LOGIN_REDIRECT_URL = 'users:dashboard'
 LOGIN_URL = 'users:login'
 SITE_URL = 'http://localhost:8000'  # Update to your production URL
 

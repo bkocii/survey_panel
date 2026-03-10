@@ -33,7 +33,7 @@ def register(request):
         if form.is_valid():
             user = form.save()  # Save new user
             login(request, user)  # Log in the user automatically
-            return redirect('surveys:survey_list')  # Redirect to survey list
+            return redirect('users:dashboard')  # Redirect to survey list
     else:
         form = CustomUserCreationForm()  # Initialize empty form
     return render(request, 'users/register.html', {'form': form})  # Render registration template
