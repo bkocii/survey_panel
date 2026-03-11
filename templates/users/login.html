@@ -30,9 +30,15 @@
       {{ form.password }}
     </div>
 
-    {% if request.GET.next %}
-      <input type="hidden" name="next" value="{{ request.GET.next }}">
-    {% endif %}
+      <div class="text-end mb-3">
+          <a href="{% url 'users:password_reset' %}" class="small">
+            Forgot password?
+          </a>
+        </div>
+
+{#    {% if request.GET.next %}#}
+{#      <input type="hidden" name="next" value="{{ request.GET.next }}">#}
+{#    {% endif %}#}
 
     <div class="d-grid mt-4">
       <button type="submit" class="btn btn-primary">Login</button>

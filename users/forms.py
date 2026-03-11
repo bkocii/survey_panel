@@ -20,6 +20,7 @@ class CustomUserCreationForm(UserCreationForm):
             raise forms.ValidationError("An account with this email already exists.")
         return email
 
+
 # Form for editing existing users in admin
 class CustomUserChangeForm(UserChangeForm):
     class Meta:

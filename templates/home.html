@@ -1,10 +1,131 @@
-{% extends 'base.html' %}
+{% load static %}
 
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  {% block head_title %}
-  home page
-  {% endblock head_title %}
-{% block content %}
-home new
+<title>Survey Panel</title>
 
-{% endblock %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+    background: linear-gradient(135deg,#020617,#0f172a);
+    color:#e2e8f0;
+    min-height:100vh;
+}
+
+.hero {
+    padding:120px 0;
+}
+
+.feature-icon {
+    font-size:28px;
+}
+
+.card {
+    background:#0f172a;
+    border:1px solid #334155;
+    border-radius:18px;
+}
+
+.btn-primary {
+    background:#6366f1;
+    border:none;
+}
+
+.btn-primary:hover {
+    background:#5458ee;
+}
+
+.text-soft {
+    color:#94a3b8;
+}
+</style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-transparent py-3">
+  <div class="container">
+    <span class="navbar-brand fw-semibold">Survey Panel</span>
+
+    <div>
+      <a href="{% url 'users:login' %}" class="btn btn-outline-light btn-sm me-2">Login</a>
+      <a href="{% url 'users:register' %}" class="btn btn-primary btn-sm">Register</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero text-center">
+<div class="container">
+
+<h1 class="display-5 fw-semibold mb-3">
+Earn rewards by sharing your opinion
+</h1>
+
+<p class="text-soft lead mb-4">
+Complete surveys, earn points, and redeem prizes.
+</p>
+
+<div class="d-flex justify-content-center gap-3">
+  <a href="{% url 'users:register' %}" class="btn btn-primary btn-lg">
+    Join the panel
+  </a>
+
+  <a href="{% url 'users:login' %}" class="btn btn-outline-light btn-lg">
+    Login
+  </a>
+</div>
+
+</div>
+</section>
+
+<section class="pb-5">
+<div class="container">
+
+<div class="row g-4">
+
+<div class="col-md-4">
+<div class="card p-4 h-100">
+<div class="feature-icon mb-3">📝</div>
+<h5>Take surveys</h5>
+<p class="text-soft">
+Answer interesting surveys and share your opinion.
+</p>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card p-4 h-100">
+<div class="feature-icon mb-3">💰</div>
+<h5>Earn points</h5>
+<p class="text-soft">
+Collect points for every completed survey.
+</p>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card p-4 h-100">
+<div class="feature-icon mb-3">🎁</div>
+<h5>Redeem rewards</h5>
+<p class="text-soft">
+Exchange points for prizes and rewards.
+</p>
+</div>
+</div>
+
+</div>
+
+</div>
+</section>
+
+<footer class="text-center text-soft py-4">
+© {{ now|date:"Y" }} Survey Panel
+</footer>
+
+</body>
+</html>

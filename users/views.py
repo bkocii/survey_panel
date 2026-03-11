@@ -180,3 +180,10 @@ def verify_email(request, uidb64, token):
 
     messages.error(request, "Verification link is invalid or has expired.")
     return redirect("users:register")
+
+
+def home(request):
+    """
+    Public landing page for the survey panel.
+    """
+    return render(request, "users/home.html")
