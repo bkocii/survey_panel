@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 from decouple import config
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -63,6 +64,120 @@ INTERNAL_IPS = ["0.0.0.0",
 UNFOLD = {'SITE_HEADER': 'Survey Panel',
           'SITE_TITLE': 'Survey Panel',
           'SHOW_FIELDSETS_AS_TABS': True}
+
+
+UNFOLD = {
+    "SIDEBAR": {
+        "navigation": [
+            {
+                "title": "Users & Access",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Users",
+                        "icon": "person",
+                        "link": reverse_lazy("admin:users_customuser_changelist"),
+                    },
+                    {
+                        "title": "Groups",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Surveys",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Surveys",
+                        "icon": "assignment",
+                        "link": reverse_lazy("admin:surveys_survey_changelist"),
+                    },
+                    {
+                        "title": "Questions",
+                        "icon": "quiz",
+                        "link": reverse_lazy("admin:surveys_question_changelist"),
+                    },
+                    {
+                        "title": "Choices",
+                        "icon": "radio_button_checked",
+                        "link": reverse_lazy("admin:surveys_choice_changelist"),
+                    },
+                    {
+                        "title": "Matrix Cell Routings",
+                        "icon": "table_chart",
+                        "link": reverse_lazy("admin:surveys_matrixcellrouting_changelist"),
+                    },
+                    {
+                        "title": "SBS Cell Routings",
+                        "icon": "view_week",
+                        "link": reverse_lazy("admin:surveys_sbscellrouting_changelist"),
+                    },
+                    {
+                        "title": "Responses",
+                        "icon": "rate_review",
+                        "link": reverse_lazy("admin:surveys_response_changelist"),
+                    },
+                    {
+                        "title": "Submissions",
+                        "icon": "task_alt",
+                        "link": reverse_lazy("admin:surveys_submission_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Rewards",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Prizes",
+                        "icon": "redeem",
+                        "link": reverse_lazy("admin:rewards_prize_changelist"),
+                    },
+                    {
+                        "title": "Prize Redemptions",
+                        "icon": "local_mall",
+                        "link": reverse_lazy("admin:rewards_prizeredemption_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Support & Engagement",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Notifications",
+                        "icon": "notifications",
+                        "link": reverse_lazy("admin:notifications_notification_changelist"),
+                    },
+                    {
+                        "title": "Support Tickets",
+                        "icon": "support_agent",
+                        "link": reverse_lazy("admin:support_supportticket_changelist"),
+                    },
+                    {
+                        "title": "Ticket Messages",
+                        "icon": "forum",
+                        "link": reverse_lazy("admin:support_ticketmessage_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Ledger",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Points Ledger",
+                        "icon": "account_balance_wallet",
+                        "link": reverse_lazy("admin:ledger_pointsledger_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
+}
+
 AUTH_USER_MODEL = 'users.CustomUser'
 LOGIN_REDIRECT_URL = 'users:dashboard'
 LOGOUT_REDIRECT_URL = "surveys:survey_list"

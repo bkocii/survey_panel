@@ -170,25 +170,25 @@ def survey_question(request, survey_id, question_id=None):
         start_time = make_aware(start_time)
 
     # ⏳ Time limit (existing)
-    if survey.time_limit_minutes:
-        time_passed = (now() - start_time).total_seconds()
-        max_time = survey.time_limit_minutes * 60
-        time_left = int(max(0, max_time - time_passed))
-
-        if time_left <= 0:
-            # time up → finalize early
-            request.session.pop(session_key, None)
-            # also clean nav path
-            request.session.pop(path_key, None)
-            if not Submission.objects.filter(user=request.user, survey=survey).exists():
-                submission = Submission.objects.create(user=request.user, survey=survey)
-                Response.objects.filter(
-                    user=request.user, survey=survey, submission__isnull=True
-                ).update(submission=submission)
-                request.user.add_points(survey.points_reward)
-            return redirect('surveys:survey_submit', survey_id=survey.id)
-    else:
-        time_left = None
+    # if survey.time_limit_minutes:
+    #     time_passed = (now() - start_time).total_seconds()
+    #     max_time = survey.time_limit_minutes * 60
+    #     time_left = int(max(0, max_time - time_passed))
+    #
+    #     if time_left <= 0:
+    #         # time up → finalize early
+    #         request.session.pop(session_key, None)
+    #         # also clean nav path
+    #         request.session.pop(path_key, None)
+    #         if not Submission.objects.filter(user=request.user, survey=survey).exists():
+    #             submission = Submission.objects.create(user=request.user, survey=survey)
+    #             Response.objects.filter(
+    #                 user=request.user, survey=survey, submission__isnull=True
+    #             ).update(submission=submission)
+    #             request.user.add_points(survey.points_reward)
+    #         return redirect('surveys:survey_submit', survey_id=survey.id)
+    # else:
+    #     time_left = None
 
     # All questions in fixed order
     all_questions = list(survey.questions.order_by("sort_index", 'id'))
@@ -1187,8 +1187,9 @@ def survey_submit(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id, is_active=True)
 
     # Prevent awarding points multiple times if needed
-    if not Response.objects.filter(user=request.user, survey=survey).exists():
-        return redirect('surveys:survey_list')  # No answers? Don't reward
+    submission = Submission.objects.filter(user=request.user, survey=survey).first()
+    if not submission:
+        return redirect('surveys:survey_list')
 
     return render(request, 'surveys/survey_submit.html', {
         'survey': survey,
