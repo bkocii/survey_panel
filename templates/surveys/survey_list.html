@@ -4,10 +4,10 @@
 {% block page_title %}Surveys{% endblock page_title %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
+<div>
 
   <!-- Available / in progress -->
-  <div class="mb-8">
+  <div class="mb-10">
     <div class="mb-4">
       <h2 class="text-xl font-semibold">Available Surveys</h2>
       <p class="text-sm text-slate-400 mt-1">
@@ -19,7 +19,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {% for item in survey_cards %}
           {% with survey=item.survey %}
-          <article class="card bg-slate-900/60 border border-slate-800 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-500/30">
+          <article class="card bg-slate-900/60 border border-slate-800 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-900/10">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-start gap-3">
                 <span class="text-xl mt-0.5">📝</span>

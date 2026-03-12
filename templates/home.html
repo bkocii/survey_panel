@@ -50,7 +50,9 @@ body {
 
 <nav class="navbar navbar-dark bg-transparent py-3">
   <div class="container">
-    <span class="navbar-brand fw-semibold">Survey Panel</span>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+      <img src="{% static 'images/logo.png' %}" alt="Survey Panel" style="height: 44px; width: auto;">
+    </a>
 
     <div>
       <a href="{% url 'users:login' %}" class="btn btn-outline-light btn-sm me-2">Login</a>

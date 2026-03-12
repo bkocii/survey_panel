@@ -22,147 +22,154 @@
 
     <!-- Top bar -->
     <div class="flex items-center justify-between mb-6">
-      <div>
-        <div class="text-sm text-slate-400">Survey Panel</div>
-        <h1 class="text-2xl font-semibold">{% block page_title %}Dashboard{% endblock page_title %}</h1>
-      </div>
+  <!-- Left: logo + page title -->
+  <div class="flex items-center gap-4">
+    <a href="{% url 'users:dashboard' %}" class="flex items-center">
+      <img src="{% static 'images/logo.png' %}" alt="Survey Panel" class="h-10 w-auto">
+    </a>
 
-      <div class="flex items-center gap-2 md:gap-3">
-          <!-- Nav links (icon + name) -->
-          <a href="{% url 'users:dashboard' %}"
-               class="inline-flex items-center justify-start gap-2 w-32 px-2 py-2 rounded-xl transition text-sm
-               {% if request.resolver_match.namespace == 'users' %}
-                   bg-indigo-600 hover:bg-indigo-500
-               {% else %}
-                   bg-slate-800 hover:bg-slate-700
-               {% endif %}">
-              <span class="text-base">🏠</span>
-              <span class="hidden sm:inline">Dashboard</span>
-            </a>
+    <div class="h-8 w-px bg-slate-800"></div>
 
+    <h1 class="text-2xl font-semibold">
+      {% block page_title %}Dashboard{% endblock page_title %}
+    </h1>
+  </div>
 
-            <a href="{% url 'surveys:survey_list' %}"
-               class="inline-flex items-center justify-start gap-2 w-32 px-2 py-2 rounded-xl transition text-sm
-               {% if request.resolver_match.namespace == 'surveys' %}
-                   bg-indigo-600 hover:bg-indigo-500
-               {% else %}
-                   bg-slate-800 hover:bg-slate-700
-               {% endif %}">
-              <span class="text-base">📝</span>
-              <span class="hidden sm:inline">Surveys</span>
-            </a>
+  <!-- Right: nav + dropdowns -->
+  <div class="flex items-center gap-2 md:gap-3">
+    <!-- Nav links (icon + name) -->
+    <a href="{% url 'users:dashboard' %}"
+       class="inline-flex items-center justify-start gap-2 w-32 px-3 py-2 rounded-xl transition text-sm
+       {% if request.resolver_match.namespace == 'users' %}
+           bg-indigo-600 hover:bg-indigo-500
+       {% else %}
+           bg-slate-800 hover:bg-slate-700
+       {% endif %}">
+      <span class="text-base">🏠</span>
+      <span class="hidden sm:inline">Dashboard</span>
+    </a>
 
+    <a href="{% url 'surveys:survey_list' %}"
+       class="inline-flex items-center justify-start gap-2 w-32 px-3 py-2 rounded-xl transition text-sm
+       {% if request.resolver_match.namespace == 'surveys' %}
+           bg-indigo-600 hover:bg-indigo-500
+       {% else %}
+           bg-slate-800 hover:bg-slate-700
+       {% endif %}">
+      <span class="text-base">📝</span>
+      <span class="hidden sm:inline">Surveys</span>
+    </a>
 
-            <a href="{% url 'rewards:prize_list' %}"
-               class="inline-flex items-center justify-start gap-2 w-32 px-2 py-2 rounded-xl transition text-sm
-               {% if request.resolver_match.namespace == 'rewards' %}
-                   bg-indigo-600 hover:bg-indigo-500
-               {% else %}
-                   bg-slate-800 hover:bg-slate-700
-               {% endif %}">
-              <span class="text-base">🎁</span>
-              <span class="hidden sm:inline">Prizes</span>
-            </a>
+    <a href="{% url 'rewards:prize_list' %}"
+       class="inline-flex items-center justify-start gap-2 w-32 px-3 py-2 rounded-xl transition text-sm
+       {% if request.resolver_match.namespace == 'rewards' %}
+           bg-indigo-600 hover:bg-indigo-500
+       {% else %}
+           bg-slate-800 hover:bg-slate-700
+       {% endif %}">
+      <span class="text-base">🎁</span>
+      <span class="hidden sm:inline">Prizes</span>
+    </a>
 
-          <!-- Divider -->
-          <div class="w-px h-8 bg-slate-800 mx-1"></div>
+    <!-- Divider -->
+    <div class="w-px h-8 bg-slate-800 mx-1"></div>
 
-          <!-- Notifications dropdown (icon-only) -->
-          <div class="relative" id="notif-wrap">
-            <button type="button"
-                    id="notif-btn"
-                    class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 transition relative"
-                    aria-label="Notifications">
-              <span class="text-lg">🔔</span>
-              {% if unread_count %}
-                <span class="absolute -top-2 -right-2 text-xs px-2 py-0.5 rounded-full bg-indigo-600 border border-indigo-500">
-                  {{ unread_count }}
-                </span>
-              {% endif %}
-            </button>
+    <!-- Notifications dropdown -->
+    <div class="relative" id="notif-wrap">
+      <button type="button"
+              id="notif-btn"
+              class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 transition relative"
+              aria-label="Notifications">
+        <span class="text-lg">🔔</span>
+        {% if unread_count %}
+          <span class="absolute -top-2 -right-2 text-xs px-2 py-0.5 rounded-full bg-indigo-600 border border-indigo-500">
+            {{ unread_count }}
+          </span>
+        {% endif %}
+      </button>
 
-            <div id="notif-menu"
-                 class="hidden absolute right-0 mt-2 w-96 max-w-[90vw] rounded-2xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden z-50">
-              <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-                <div class="font-semibold">Notifications</div>
-                <a href="{% url 'notifications:list' %}" class="text-sm text-indigo-400 hover:text-indigo-300">
-                  View all
-                </a>
-              </div>
-
-              <div class="max-h-96 overflow-y-auto">
-                {% for n in latest_notifications %}
-                  <a href="{% url 'notifications:open' n.id %}"
-                     class="block px-4 py-3 border-b border-slate-900 hover:bg-slate-900/60 transition">
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                        <div class="text-sm font-medium text-slate-100 truncate">{{ n.title }}</div>
-                        <div class="text-xs text-slate-500 mt-1">{{ n.created_at|date:"Y-m-d H:i" }}</div>
-                      </div>
-                      {% if not n.is_read %}
-                        <span class="mt-1 shrink-0 inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border border-indigo-500/30 bg-indigo-600/20 text-indigo-200">
-                          New
-                        </span>
-                      {% endif %}
-                    </div>
-                  </a>
-                {% empty %}
-                  <div class="px-4 py-6 text-sm text-slate-400">No notifications yet.</div>
-                {% endfor %}
-              </div>
-
-              <div class="px-4 py-3 bg-slate-950/60">
-                <a href="{% url 'notifications:list' %}"
-                   class="block text-center px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
-                  Open notifications
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <!-- User dropdown (icon-only avatar) -->
-          <div class="relative" id="user-wrap">
-            <button id="user-btn"
-                    class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 transition overflow-hidden border border-slate-700"
-                    aria-label="Account">
-              {% if request.user.avatar %}
-                <img src="{{ request.user.avatar.url }}" class="w-full h-full object-cover" alt="Avatar">
-              {% else %}
-                <span class="text-sm font-semibold">{{ request.user.username|first|upper }}</span>
-              {% endif %}
-            </button>
-
-            <div id="user-menu"
-                 class="hidden absolute right-0 mt-2 w-72 max-w-[90vw] rounded-2xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden z-50">
-              <div class="px-4 py-3 border-b border-slate-800">
-                <div class="font-semibold truncate">{{ request.user.get_full_name|default:request.user.username }}</div>
-                <div class="text-xs text-slate-400 truncate">{{ request.user.email }}</div>
-              </div>
-
-              <div class="py-2">
-                <a href="{% url 'users:edit_profile' %}" class="block px-4 py-2 hover:bg-slate-900 text-sm">
-                  Profile
-                </a>
-                <a href="{% url 'ledger:points_history' %}" class="block px-4 py-2 hover:bg-slate-900 text-sm">
-                  Points history
-                </a>
-                <a href="{% url 'rewards:my_redemptions' %}" class="block px-4 py-2 hover:bg-slate-900 text-sm">
-                  My redemptions
-                </a>
-              </div>
-
-              <div class="border-t border-slate-800">
-                <form method="post" action="{% url 'users:logout' %}">
-                  {% csrf_token %}
-                  <button type="submit" class="w-full text-left px-4 py-2 hover:bg-slate-900 text-sm text-red-400">
-                    Logout
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
+      <div id="notif-menu"
+           class="hidden absolute right-0 mt-2 w-96 max-w-[90vw] rounded-2xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden z-50">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+          <div class="font-semibold">Notifications</div>
+          <a href="{% url 'notifications:list' %}" class="text-sm text-indigo-400 hover:text-indigo-300">
+            View all
+          </a>
         </div>
+
+        <div class="max-h-96 overflow-y-auto">
+          {% for n in latest_notifications %}
+            <a href="{% url 'notifications:open' n.id %}"
+               class="block px-4 py-3 border-b border-slate-900 hover:bg-slate-900/60 transition">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-100 truncate">{{ n.title }}</div>
+                  <div class="text-xs text-slate-500 mt-1">{{ n.created_at|date:"Y-m-d H:i" }}</div>
+                </div>
+                {% if not n.is_read %}
+                  <span class="mt-1 shrink-0 inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border border-indigo-500/30 bg-indigo-600/20 text-indigo-200">
+                    New
+                  </span>
+                {% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div class="px-4 py-6 text-sm text-slate-400">No notifications yet.</div>
+          {% endfor %}
+        </div>
+
+        <div class="px-4 py-3 bg-slate-950/60">
+          <a href="{% url 'notifications:list' %}"
+             class="block text-center px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition text-sm">
+            Open notifications
+          </a>
+        </div>
+      </div>
     </div>
+
+    <!-- User dropdown -->
+    <div class="relative" id="user-wrap">
+      <button id="user-btn"
+              class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 transition overflow-hidden border border-slate-700"
+              aria-label="Account">
+        {% if request.user.avatar %}
+          <img src="{{ request.user.avatar.url }}" class="w-full h-full object-cover" alt="Avatar">
+        {% else %}
+          <span class="text-sm font-semibold">{{ request.user.username|first|upper }}</span>
+        {% endif %}
+      </button>
+
+      <div id="user-menu"
+           class="hidden absolute right-0 mt-2 w-72 max-w-[90vw] rounded-2xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden z-50">
+        <div class="px-4 py-3 border-b border-slate-800">
+          <div class="font-semibold truncate">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="text-xs text-slate-400 truncate">{{ request.user.email }}</div>
+        </div>
+
+        <div class="py-2">
+          <a href="{% url 'users:edit_profile' %}" class="block px-4 py-2 hover:bg-slate-900 text-sm">
+            Profile
+          </a>
+          <a href="{% url 'ledger:points_history' %}" class="block px-4 py-2 hover:bg-slate-900 text-sm">
+            Points history
+          </a>
+          <a href="{% url 'rewards:my_redemptions' %}" class="block px-4 py-2 hover:bg-slate-900 text-sm">
+            My redemptions
+          </a>
+        </div>
+
+        <div class="border-t border-slate-800">
+          <form method="post" action="{% url 'users:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full text-left px-4 py-2 hover:bg-slate-900 text-sm text-red-400">
+              Logout
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
   {% if messages %}
     <div id="toast-container" class="max-w-7xl mx-auto mb-4 space-y-2">

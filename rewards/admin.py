@@ -88,10 +88,114 @@ def reject_refund_restore(modeladmin, request, queryset):
         )
 
 
+@admin.action(description="Approve selected redemptions")
+def approve_redemptions(modeladmin, request, queryset):
+    allowed_statuses = {"pending"}
+
+    processed = 0
+    skipped = 0
+
+    with transaction.atomic():
+        locked_qs = (
+            PrizeRedemption.objects
+            .select_for_update()
+            .select_related("prize", "user")
+            .filter(pk__in=queryset.values_list("pk", flat=True))
+        )
+
+        for r in locked_qs:
+            if r.status not in allowed_statuses:
+                skipped += 1
+                continue
+
+            update_data = {"status": "approved"}
+            if not r.admin_note:
+                update_data["admin_note"] = f"Approved by admin {request.user.username}"
+
+            PrizeRedemption.objects.filter(pk=r.pk).update(**update_data)
+
+            Notification.objects.create(
+                user_id=r.user_id,
+                type="redeem_approved",
+                title=f"Redemption approved: {r.prize.name}",
+                message=f"Request #{r.id} was approved.",
+                url=reverse("rewards:my_redemptions"),
+            )
+
+            transaction.on_commit(lambda rid=r.id: email_redemption_update.delay(rid))
+
+            processed += 1
+
+    if processed:
+        modeladmin.message_user(
+            request,
+            f"Approved {processed} redemption(s).",
+            level=messages.SUCCESS,
+        )
+    if skipped:
+        modeladmin.message_user(
+            request,
+            f"Skipped {skipped} redemption(s) because they were not pending.",
+            level=messages.WARNING,
+        )
+
+
+@admin.action(description="Mark selected redemptions as fulfilled")
+def fulfill_redemptions(modeladmin, request, queryset):
+    allowed_statuses = {"approved"}
+
+    processed = 0
+    skipped = 0
+
+    with transaction.atomic():
+        locked_qs = (
+            PrizeRedemption.objects
+            .select_for_update()
+            .select_related("prize", "user")
+            .filter(pk__in=queryset.values_list("pk", flat=True))
+        )
+
+        for r in locked_qs:
+            if r.status not in allowed_statuses:
+                skipped += 1
+                continue
+
+            update_data = {"status": "fulfilled"}
+            if not r.admin_note:
+                update_data["admin_note"] = f"Fulfilled by admin {request.user.username}"
+
+            PrizeRedemption.objects.filter(pk=r.pk).update(**update_data)
+
+            Notification.objects.create(
+                user_id=r.user_id,
+                type="redeem_fulfilled",
+                title=f"Redemption fulfilled: {r.prize.name}",
+                message=f"Request #{r.id} was fulfilled.",
+                url=reverse("rewards:my_redemptions"),
+            )
+
+            transaction.on_commit(lambda rid=r.id: email_redemption_update.delay(rid))
+
+            processed += 1
+
+    if processed:
+        modeladmin.message_user(
+            request,
+            f"Marked {processed} redemption(s) as fulfilled.",
+            level=messages.SUCCESS,
+        )
+    if skipped:
+        modeladmin.message_user(
+            request,
+            f"Skipped {skipped} redemption(s) because they were not approved.",
+            level=messages.WARNING,
+        )
+
+
 @admin.register(PrizeRedemption)
 class PrizeRedemptionAdmin(ModelAdmin):
     list_display = ("user", "prize", "points_spent", "status", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("user__username", "user__email", "prize__name")
-    actions = [reject_refund_restore]
+    actions = [reject_refund_restore, approve_redemptions, fulfill_redemptions]
     readonly_fields = ("status",)
