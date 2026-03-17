@@ -45,7 +45,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (type === "PHOTO_UPLOAD") {
           document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
         }
-
         if (type === "IMAGE_RATING") {
           document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
         }
