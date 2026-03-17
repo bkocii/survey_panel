@@ -8,10 +8,9 @@ import json
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
 from django.utils.dateparse import parse_datetime
-from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence
+from .services import validate_and_collect_matrix_responses, get_next_question_in_sequence, finalize_submission
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, Http404
 from .models import Survey, Response, Choice, Question, Submission, MatrixRow, MatrixColumn, MatrixCellRouting, SbsCellRouting
 from .forms import SurveyResponseForm, WizardQuestionForm
@@ -36,13 +35,6 @@ from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.shortcuts import render
 from surveys.models import Survey, Submission, Response, Question
-
-
-from django.contrib.auth.decorators import login_required
-from django.db import models
-from django.shortcuts import render
-
-from .models import Survey, Submission, Response, Question
 
 
 @login_required
@@ -169,27 +161,6 @@ def survey_question(request, survey_id, question_id=None):
     elif is_naive(start_time):
         start_time = make_aware(start_time)
 
-    # ⏳ Time limit (existing)
-    # if survey.time_limit_minutes:
-    #     time_passed = (now() - start_time).total_seconds()
-    #     max_time = survey.time_limit_minutes * 60
-    #     time_left = int(max(0, max_time - time_passed))
-    #
-    #     if time_left <= 0:
-    #         # time up → finalize early
-    #         request.session.pop(session_key, None)
-    #         # also clean nav path
-    #         request.session.pop(path_key, None)
-    #         if not Submission.objects.filter(user=request.user, survey=survey).exists():
-    #             submission = Submission.objects.create(user=request.user, survey=survey)
-    #             Response.objects.filter(
-    #                 user=request.user, survey=survey, submission__isnull=True
-    #             ).update(submission=submission)
-    #             request.user.add_points(survey.points_reward)
-    #         return redirect('surveys:survey_submit', survey_id=survey.id)
-    # else:
-    #     time_left = None
-
     # All questions in fixed order
     all_questions = list(survey.questions.order_by("sort_index", 'id'))
 
@@ -236,14 +207,9 @@ def survey_question(request, survey_id, question_id=None):
             break
 
         if not visible_unanswered:
-            # No visible unanswered questions remain → finalize
+            finalize_submission(request=request, survey=survey, session_key=session_key)
+            request.session.pop(session_key, None)
             request.session.pop(path_key, None)
-            if not Submission.objects.filter(user=request.user, survey=survey).exists():
-                submission = Submission.objects.create(user=request.user, survey=survey)
-                Response.objects.filter(
-                    user=request.user, survey=survey, submission__isnull=True
-                ).update(submission=submission)
-                request.user.add_points(survey.points_reward)
             return redirect('surveys:survey_submit', survey_id=survey.id)
 
         question = visible_unanswered
@@ -302,7 +268,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                     })
                 else:
@@ -320,7 +285,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                     })
 
@@ -346,7 +310,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
             if answer and answer.lower() in ['yes', 'no']:
@@ -375,7 +338,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
             if raw != '':
@@ -390,7 +352,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                     })
                 replace_single_answer(user=request.user, survey=survey, question=question)
@@ -418,7 +379,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
             if answer:
@@ -433,7 +393,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                     })
                 if question.min_value is not None and slider_value < question.min_value:
@@ -465,7 +424,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
             if answer:
@@ -498,7 +456,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                     'is_first_step': is_first_step,
                 })
@@ -530,7 +487,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
             # Replace whether empty or not (empty = clearing on non-required)
@@ -582,7 +538,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                     })
                 # 🆕 cleared on non-required → wipe previous
@@ -626,7 +581,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
             # 🆕 replace entire set (even if empty to clear)
@@ -671,7 +625,6 @@ def survey_question(request, survey_id, question_id=None):
                     'total_questions': total_questions,
                     'progress_percent': progress_percent,
                     'previous_response': None,
-                    'time_left': time_left,
                     'grouped_matrix_columns': grouped_matrix_columns,
                 })
 
@@ -703,7 +656,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                     })
 
@@ -734,7 +686,6 @@ def survey_question(request, survey_id, question_id=None):
                         'total_questions': total_questions,
                         'progress_percent': progress_percent,
                         'previous_response': None,
-                        'time_left': time_left,
                         'grouped_matrix_columns': grouped_matrix_columns,
                         'submitted_data': request.POST,
                     })
@@ -825,7 +776,6 @@ def survey_question(request, survey_id, question_id=None):
                                 'total_questions': total_questions,
                                 'progress_percent': progress_percent,
                                 'previous_response': None,
-                                'time_left': time_left,
                                 'submitted_data': request.POST,
                             })
                     if row.required and not row_has_any:
@@ -837,7 +787,6 @@ def survey_question(request, survey_id, question_id=None):
                             'total_questions': total_questions,
                             'progress_percent': progress_percent,
                             'previous_response': None,
-                            'time_left': time_left,
                             'submitted_data': request.POST,
                         })
                 for r in collected_responses:
@@ -871,7 +820,6 @@ def survey_question(request, survey_id, question_id=None):
                                 'total_questions': total_questions,
                                 'progress_percent': progress_percent,
                                 'previous_response': None,
-                                'time_left': time_left,
                                 'submitted_data': request.POST,
                             })
                         continue
@@ -886,7 +834,6 @@ def survey_question(request, survey_id, question_id=None):
                             'total_questions': total_questions,
                             'progress_percent': progress_percent,
                             'previous_response': None,
-                            'time_left': time_left,
                             'submitted_data': request.POST,
                         })
                     collected_responses.append({
@@ -935,49 +882,7 @@ def survey_question(request, survey_id, question_id=None):
         if next_candidate:
             return redirect('surveys:survey_question', survey_id=survey.id, question_id=next_candidate.id)
         else:
-            # Finalize: no visible questions remain
-            if not Submission.objects.filter(user=request.user, survey=survey).exists():
-                # pull start from session
-                start_iso = request.session.get(session_key)
-                start_dt = parse_datetime(start_iso) if start_iso else None
-
-                # fallback if missing (shouldn't happen, but safe)
-                if not start_dt:
-                    start_dt = now()
-
-                submitted_dt = now()
-                duration = int((submitted_dt - start_dt).total_seconds())
-
-                optimal_seconds = None
-                if survey.optimal_duration_minutes:
-                    optimal_seconds = survey.optimal_duration_minutes * 60
-
-                delta = None
-                if optimal_seconds is not None:
-                    delta = duration - optimal_seconds  # + means slower than optimal; - means faster
-
-                submission = Submission.objects.create(
-                    user=request.user,
-                    survey=survey,
-                    started_at=start_dt,
-                    duration_seconds=duration,
-                    delta_seconds=delta,
-                )
-
-                Response.objects.filter(
-                    user=request.user, survey=survey, submission__isnull=True
-                ).update(submission=submission)
-
-                request.user.add_points(survey.points_reward)
-                PointsLedger.objects.create(
-                    user=request.user,
-                    amount=survey.points_reward,
-                    type="survey_reward",
-                    survey_id=survey.id,
-                    submission_id=submission.id,
-                    note=f"Completed survey: {survey.title}",
-                )
-            # 🧹 clear timers + path
+            finalize_submission(request=request, survey=survey, session_key=session_key)
             request.session.pop(session_key, None)
             request.session.pop(path_key, None)
             return redirect('surveys:survey_submit', survey_id=survey.id)
@@ -1164,7 +1069,6 @@ def survey_question(request, survey_id, question_id=None):
         'progress_percent': progress_percent,
 
         # existing
-        'time_left': time_left,
         'grouped_matrix_columns': dict(grouped_matrix_columns),
         'is_first_step': is_first_step,
 
@@ -1194,6 +1098,7 @@ def survey_submit(request, survey_id):
     return render(request, 'surveys/survey_submit.html', {
         'survey': survey,
         'rewarded': survey.points_reward,
+        'submission': submission,
     })
 
 

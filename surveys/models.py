@@ -126,12 +126,13 @@ class Question(models.Model):
             errors['allows_multiple'] = 'This option is only valid for Image Choice.'
 
         # allow_multiple_files: only for *_UPLOAD types
-        upload_types = {'PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD'}
+        upload_types = {'PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD', 'IMAGE_RATING'}
         if self.allow_multiple_files and self.question_type not in upload_types:
             errors['allow_multiple_files'] = 'Multiple files is only valid for upload-type questions.'
 
-        if self.allow_multiple_files and self.question_type != 'PHOTO_UPLOAD':
-            raise ValidationError("“Allow multiple files” is only valid for Photo Upload.")
+        multi_upload_types = {'IMAGE_RATING', 'PHOTO_UPLOAD'}
+        if self.allow_multiple_files and self.question_type not in multi_upload_types:
+            raise ValidationError("“Allow multiple files” is only valid for Photo Upload and Image Rating.")
 
         if errors:
             raise ValidationError(errors)
@@ -153,7 +154,7 @@ class Question(models.Model):
             models.CheckConstraint(
                 name="multi_files_only_for_uploads",
                 check=(
-                        Q(question_type__in=['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD'])
+                        Q(question_type__in=['PHOTO_UPLOAD', 'PHOTO_MULTI_UPLOAD', 'VIDEO_UPLOAD', 'AUDIO_UPLOAD', 'IMAGE_RATING'])
                         | Q(allow_multiple_files=False)
                 )
             ),
@@ -254,6 +255,81 @@ class Response(models.Model):
 
     # class Meta:
     #     unique_together = ('user', 'survey', 'question', 'matrix_row', 'matrix_column')  # Ensure one response per user per question per survey
+
+
+class AnswerFact(models.Model):
+    ANALYSIS_LEVELS = [
+        ('question', 'Question'),
+        ('matrix_row', 'Matrix Row'),
+        ('sbs_row_group', 'SBS Row Group'),
+        ('image_choice_rating', 'Image Choice Rating'),
+    ]
+
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name='answer_facts'
+    )
+    response = models.ForeignKey(
+        Response,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='answer_facts'
+    )
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+
+    # snapshot fields for stable reporting
+    question_code = models.CharField(max_length=50, blank=True)
+    question_text = models.CharField(max_length=500, blank=True)
+    question_type = models.CharField(max_length=30)
+
+    # normalized analytics identity
+    analytics_key = models.CharField(max_length=255, db_index=True)
+    analytics_label = models.CharField(max_length=500)
+    parent_analytics_key = models.CharField(max_length=255, blank=True, default='')
+    analysis_level = models.CharField(
+        max_length=30,
+        choices=ANALYSIS_LEVELS,
+        default='question'
+    )
+
+    # matrix / sbs support
+    matrix_row = models.ForeignKey(MatrixRow, null=True, blank=True, on_delete=models.SET_NULL)
+    matrix_row_text = models.CharField(max_length=255, blank=True)
+
+    matrix_column = models.ForeignKey(MatrixColumn, null=True, blank=True, on_delete=models.SET_NULL)
+    matrix_column_label = models.CharField(max_length=255, blank=True)
+
+    group_label = models.CharField(max_length=100, blank=True, null=True)
+
+    # choice support
+    choice = models.ForeignKey(Choice, null=True, blank=True, on_delete=models.SET_NULL)
+    choice_text = models.CharField(max_length=255, blank=True)
+
+    # normalized answer payload
+    answer_text = models.TextField(blank=True)
+    answer_number = models.FloatField(null=True, blank=True)
+    answer_boolean = models.BooleanField(null=True, blank=True)
+
+    submitted_at = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['survey', 'analytics_key']),
+            models.Index(fields=['question', 'analytics_key']),
+            models.Index(fields=['analysis_level']),
+            models.Index(fields=['submitted_at']),
+        ]
+        ordering = ['survey', 'question', 'analytics_key', 'id']
+
+    def __str__(self):
+        return f"{self.analytics_label} ({self.user})"
 
 
 class MatrixCellRouting(models.Model):

@@ -97,24 +97,6 @@ survey
           </div>
         </div>
 
-    {% if time_left %}
-        <div id="survey-timer" class="alert alert-warning">
-            Time left: <span id="survey-time">{{ time_left }}</span> seconds
-        </div>
-        <script>
-          let surveyTime = {{ time_left }};
-          const surveyInterval = setInterval(() => {
-            surveyTime--;
-            document.getElementById("survey-time").innerText = surveyTime;
-            if (surveyTime <= 0) {
-              clearInterval(surveyInterval);
-              alert("Time is up! Submitting your survey.");
-              window.location.href = "{% url 'surveys:survey_submit' survey.id %}";
-            }
-          }, 1000);
-        </script>
-    {% endif %}
-
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const latInput = document.getElementById('latitude');

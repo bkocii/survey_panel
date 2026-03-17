@@ -124,6 +124,11 @@ UNFOLD = {
                         "icon": "task_alt",
                         "link": reverse_lazy("admin:surveys_submission_changelist"),
                     },
+{
+                        "title": "AnswerFact",
+                        "icon": "rate_review",
+                        "link": reverse_lazy("admin:surveys_answerfact_changelist"),
+                    },
                 ],
             },
             {

@@ -46,6 +46,11 @@ document.addEventListener("DOMContentLoaded", function () {
           document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
         }
 
+        if (type === "IMAGE_RATING") {
+          document.querySelector(".allow_multiple_files-field")?.style.setProperty("display", "block");
+        }
+
+
         // For multiple image choice
         if (type === "IMAGE_CHOICE") {
             document.querySelector(".allows_multiple-field")?.style.setProperty("display", "block");

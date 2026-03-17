@@ -3,6 +3,12 @@ from collections import defaultdict
 from django.utils.html import escape
 from django.utils.text import slugify
 from surveys.models import SbsCellRouting
+from .analytics import build_submission_answer_facts
+from django.utils.timezone import now
+from django.utils.dateparse import parse_datetime
+
+from .models import Submission, Response
+from ledger.models import  PointsLedger # adjust import if your app path differs
 
 
 def validate_and_collect_matrix_responses(request, survey, question):
@@ -180,3 +186,58 @@ def get_next_question_in_sequence(questions, current_question):
         return questions[idx + 1]
     except (ValueError, IndexError):
         return None
+
+
+def finalize_submission(*, request, survey, session_key):
+    """
+    Finalize the current user's in-progress survey run exactly once.
+    """
+    existing = Submission.objects.filter(user=request.user, survey=survey).first()
+    if existing:
+        return existing
+
+    start_iso = request.session.get(session_key)
+    start_dt = parse_datetime(start_iso) if start_iso else None
+    if not start_dt:
+        start_dt = now()
+
+    submitted_dt = now()
+    duration = int((submitted_dt - start_dt).total_seconds())
+
+    optimal_seconds = None
+    if survey.optimal_duration_minutes:
+        optimal_seconds = survey.optimal_duration_minutes * 60
+
+    delta = None
+    if optimal_seconds is not None:
+        delta = duration - optimal_seconds
+
+    submission = Submission.objects.create(
+        user=request.user,
+        survey=survey,
+        started_at=start_dt,
+        duration_seconds=duration,
+        delta_seconds=delta,
+    )
+
+    Response.objects.filter(
+        user=request.user,
+        survey=survey,
+        submission__isnull=True,
+    ).update(submission=submission)
+
+    request.user.add_points(survey.points_reward)
+
+    PointsLedger.objects.create(
+        user=request.user,
+        amount=survey.points_reward,
+        type="survey_reward",
+        survey_id=survey.id,
+        submission_id=submission.id,
+        note=f"Completed survey: {survey.title}",
+    )
+
+    # Step 5: build normalized analytics rows for this submission
+    build_submission_answer_facts(submission)
+
+    return submission

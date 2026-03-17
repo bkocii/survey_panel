@@ -14,7 +14,7 @@ from datetime import date
 import csv
 from django.utils.html import format_html
 from django.http import HttpResponse
-from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn, SbsCellRouting, MatrixCellRouting
+from .models import Survey, Question, Choice, Response, Submission, MatrixRow, MatrixColumn, SbsCellRouting, MatrixCellRouting, AnswerFact
 from notifications.tasks import send_survey_notification, send_survey_reminder
 import os
 import zipfile
@@ -593,3 +593,19 @@ class SbsCellRoutingAdmin(ModelAdmin):
 @admin.register(MatrixCellRouting)
 class MatrixCellRoutingAdmin(ModelAdmin):
     list_display = ('question', 'row', 'col', 'next_question')
+
+
+@admin.register(AnswerFact)
+class AnswerFactAdmin(ModelAdmin):
+    list_display = (
+        'survey',
+        'question',
+        'analytics_key',
+        'analysis_level',
+        'choice_text',
+        'answer_number',
+        'submitted_at',
+    )
+    list_filter = ('survey', 'question_type', 'analysis_level', 'submitted_at')
+    search_fields = ('analytics_key', 'analytics_label', 'question_text', 'choice_text', 'answer_text')
+    ordering = ('-submitted_at',)
